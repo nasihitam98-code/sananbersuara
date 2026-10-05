@@ -149,21 +149,51 @@ opcache.validate_timestamps=0
 
 Karena `validate_timestamps=0`, **setiap deploy** wajib diakhiri dengan `sudo systemctl reload php8.3-fpm`.
 
-## 6. Deploy update
+## 6. Akun deploy (supaya pemilik bisa update tanpa menghubungi pengelola server)
+
+Lakukan **sekali** saat instalasi. Akun `deploy` hanya mengurus folder aplikasi dan boleh me-reload PHP-FPM, bukan akses root.
 
 ```bash
-cd /var/www/rtrw
-php artisan down --retry=15
-git pull
-composer install --no-dev --optimize-autoloader
-npm ci && npm run build
-php artisan migrate --force
-php artisan optimize
-sudo systemctl reload php8.3-fpm
-php artisan up
+# 1. Buat akun dan pasang kunci SSH publik milik pemilik (dikirim pemilik, berawalan "ssh-ed25519")
+sudo adduser --disabled-password --gecos "" deploy
+sudo mkdir -p /home/deploy/.ssh
+echo "<kunci-publik-pemilik>" | sudo tee /home/deploy/.ssh/authorized_keys
+sudo chown -R deploy:deploy /home/deploy/.ssh
+sudo chmod 700 /home/deploy/.ssh && sudo chmod 600 /home/deploy/.ssh/authorized_keys
+
+# 2. Folder aplikasi milik deploy, grup www-data (PHP-FPM tetap bisa menulis)
+sudo chown -R deploy:www-data /var/www/rtrw
+sudo find /var/www/rtrw/storage /var/www/rtrw/bootstrap/cache /var/www/rtrw/public/status -type d -exec chmod 2775 {} \;
+sudo find /var/www/rtrw/storage /var/www/rtrw/bootstrap/cache /var/www/rtrw/public/status -type f -exec chmod 664 {} \;
+sudo -u deploy git config --global --add safe.directory /var/www/rtrw
+
+# 3. Izinkan deploy me-reload PHP-FPM saja (tanpa password)
+echo "deploy ALL=(root) NOPASSWD: /usr/bin/systemctl reload php8.3-fpm" | sudo tee /etc/sudoers.d/deploy
+sudo chmod 440 /etc/sudoers.d/deploy
+
+# 4. Akses baca repo GitHub privat untuk server: buat deploy key (read-only)
+sudo -u deploy ssh-keygen -t ed25519 -N "" -f /home/deploy/.ssh/github
+sudo -u deploy tee /home/deploy/.ssh/config >/dev/null <<'EOF'
+Host github.com
+    IdentityFile ~/.ssh/github
+    IdentitiesOnly yes
+EOF
+sudo cat /home/deploy/.ssh/github.pub
+# Tempel kunci ini di GitHub: repo > Settings > Deploy keys > Add deploy key (tanpa centang "Allow write access")
+# Lalu pastikan remote memakai SSH:
+sudo -u deploy git -C /var/www/rtrw remote set-url origin git@github.com:psikfkh/pemilihan-warga.git
+sudo -u deploy git -C /var/www/rtrw pull --ff-only
 ```
 
-**Jangan deploy saat ada pemilihan berstatus Berlangsung.**
+Setelah itu, pemilik melakukan update dari laptopnya dengan:
+
+```bash
+ssh deploy@<ip-server> /var/www/rtrw/deploy.sh
+```
+
+Skrip `deploy.sh` (ada di repo) akan: menolak jika ada pemilihan berlangsung → mode pemeliharaan → `git pull` → composer → build aset → migrasi → `optimize` → reload PHP-FPM → situs aktif lagi.
+
+**Jangan deploy saat ada pemilihan berstatus Berlangsung.** Skrip menolaknya otomatis; `FORCE=1` hanya untuk keadaan darurat.
 
 ## 7. Firewall dan keamanan dasar
 
