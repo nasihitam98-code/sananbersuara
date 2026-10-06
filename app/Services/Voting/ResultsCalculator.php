@@ -7,6 +7,7 @@ use App\Models\Ballot;
 use App\Models\Candidate;
 use App\Models\Election;
 use App\Models\Round;
+use App\Models\Unit;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -23,12 +24,17 @@ class ResultsCalculator
      *     tie_at_top: bool
      * }
      */
-    public function tally(Ballot $ballot, Round $round): array
+    public function tally(Ballot $ballot, Round $round, ?Unit $unit = null): array
     {
+        $candidates = $ballot->ballotCandidates()
+            ->when($unit !== null, fn ($query) => $query->where('unit_id', $unit->id))
+            ->get();
+
         $counts = DB::table('votes')
             ->where('ballot_id', $ballot->id)
             ->where('round_id', $round->id)
             ->where('status', VoteStatus::Sah->value)
+            ->when($unit !== null, fn ($query) => $query->whereIn('candidate_id', $candidates->modelKeys()))
             ->groupBy('candidate_id')
             ->pluck(DB::raw('count(*)'), 'candidate_id');
 
@@ -38,9 +44,10 @@ class ResultsCalculator
             ->where('ballot_id', $ballot->id)
             ->where('round_id', $round->id)
             ->where('status', VoteStatus::Dibatalkan->value)
+            ->when($unit !== null, fn ($query) => $query->whereIn('candidate_id', $candidates->modelKeys()))
             ->count();
 
-        $rows = $ballot->ballotCandidates()->get()
+        $rows = $candidates
             ->map(fn (Candidate $candidate): array => [
                 'candidate' => $candidate,
                 'votes' => (int) ($counts[$candidate->id] ?? 0),

@@ -554,3 +554,56 @@ label {
     word-break: break-all;
     color: var(--c-indigo-700);
 }
+/* Halaman publik hasil resmi */
+.tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.tabs__item {
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 2px solid var(--c-border);
+    background: #fff;
+    color: var(--c-indigo-700);
+    font-weight: 700;
+    font-size: 16px;
+    text-decoration: none;
+}
+
+.tabs__item--active {
+    background: var(--c-indigo-700);
+    border-color: var(--c-indigo-700);
+    color: #fff;
+}
+
+.winners {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 20px;
+    margin-top: 12px;
+    text-align: center;
+}
+
+.winner__photo {
+    width: 140px;
+    height: 140px;
+    margin: 0 auto 8px;
+}
+
+.winners--single .winner__photo {
+    width: 200px;
+    height: 200px;
+}
+
+.winner__name {
+    font-size: 22px;
+    font-weight: 800;
+    margin: 0;
+}
+
+.wrap > .result {
+    margin-bottom: 12px;
+}

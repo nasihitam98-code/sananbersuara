@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\OfficialReportController;
+use App\Http\Controllers\PublicResultController;
 use App\Http\Controllers\ScreenController;
 use App\Http\Controllers\VoterController;
 use App\Http\Middleware\NoStore;
@@ -10,9 +12,14 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
-Route::get('/', function () {
-    return redirect('/admin');
-});
+/*
+|--------------------------------------------------------------------------
+| Halaman publik: hanya hasil resmi yang sudah dipublikasikan
+|--------------------------------------------------------------------------
+*/
+
+Route::get('/', [PublicResultController::class, 'index'])->name('public.index');
+Route::get('/hasil/{election:public_id}', [PublicResultController::class, 'show'])->name('public.show');
 
 /*
 |--------------------------------------------------------------------------
@@ -49,3 +56,5 @@ Route::prefix('v/{accessCode}')
 Route::middleware('auth')->prefix('layar')->name('screens.')->group(function (): void {
     Route::get('/qr/{election:public_id}', [ScreenController::class, 'qr'])->name('qr');
 });
+
+Route::middleware('auth')->get('/berita-acara/{report:public_id}', [OfficialReportController::class, 'show'])->name('reports.show');

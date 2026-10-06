@@ -9,6 +9,7 @@ use App\Models\Election;
 use App\Models\Round;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\Results\ResultPublication;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -164,6 +165,35 @@ class ElectionLifecycle
         }, meta: fn (Election $election): array => [
             'valid_votes' => $election->votes()->where('status', 'SAH')->count(),
         ]);
+    }
+
+    public function startVerification(Election $election, User $actor): void
+    {
+        $this->transition($election, [ElectionStatus::Ditutup], ElectionStatus::Verifikasi, $actor);
+    }
+
+    /**
+     * Publikasi hasil resmi. Syarat: semua penetapan diisi dan semua berita acara disahkan (K08, K21).
+     */
+    public function publish(Election $election, User $actor): void
+    {
+        $this->transition($election, [ElectionStatus::Verifikasi, ElectionStatus::Unpublished], ElectionStatus::Published, $actor, function (Election $election): void {
+            $problems = app(ResultPublication::class)->publishProblems($election);
+
+            if ($problems !== []) {
+                throw VotingException::invalidState(implode(' ', $problems));
+            }
+        });
+    }
+
+    public function unpublish(Election $election, User $actor, string $note): void
+    {
+        $this->transition($election, [ElectionStatus::Published], ElectionStatus::Unpublished, $actor, note: $note);
+    }
+
+    public function reopenVerification(Election $election, User $actor): void
+    {
+        $this->transition($election, [ElectionStatus::Unpublished], ElectionStatus::Verifikasi, $actor);
     }
 
     public function cancel(Election $election, User $actor, string $note): void
