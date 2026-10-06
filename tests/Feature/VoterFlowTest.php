@@ -90,6 +90,36 @@ class VoterFlowTest extends TestCase
         $this->getJson($this->url('/cari?q=budi'))->assertJson(['results' => []]);
     }
 
+    public function test_same_phone_can_be_lent_to_another_attendee_in_assisted_wave(): void
+    {
+        $registrar = app(AttendeeRegistrar::class);
+        ['attendee' => $owner, 'pin' => $ownerPin] = $registrar->register($this->election, 'Budi Santoso', null, $this->admin);
+        ['attendee' => $elder, 'pin' => $elderPin] = $registrar->register($this->election, 'Mbah Karto', null, $this->admin);
+        app(ElectionLifecycle::class)->start($this->election, $this->admin);
+        $waves = app(WaveManager::class);
+        $waves->open($this->election, WaveKind::Terbuka, 5, $this->admin);
+        $payload = ['ballot' => $this->ballot->public_id, 'candidate' => $this->candidate->public_id];
+
+        $this->post($this->url("/pin/{$owner->public_id}"), ['pin' => $ownerPin]);
+        $this->post($this->url('/surat-suara'), $payload);
+        $this->get($this->url('/selesai'))->assertSee('Sudah memilih');
+
+        $waves->close($this->election, $this->admin);
+        $waves->open($this->election, WaveKind::Bantuan, null, $this->admin);
+
+        $this->get($this->url())->assertOk()->assertSee('Cari nama Anda');
+        $this->getJson($this->url('/cari?q=mbah'))->assertJsonPath('results.0.name', 'Mbah Karto');
+        $this->post($this->url("/pin/{$elder->public_id}"), ['pin' => $elderPin])
+            ->assertRedirect(route('voter.ballot', $this->election->access_code));
+        $this->post($this->url('/surat-suara'), $payload);
+
+        $this->post($this->url("/pin/{$owner->public_id}"), ['pin' => $ownerPin])
+            ->assertRedirect(route('voter.done', $this->election->access_code));
+        $this->get($this->url('/selesai'))->assertSee('sudah memilih', false);
+
+        $this->assertSame(2, Vote::query()->count());
+    }
+
     public function test_resubmitting_after_vote_does_not_create_second_vote(): void
     {
         ['attendee' => $attendee, 'pin' => $pin] = app(AttendeeRegistrar::class)->register($this->election, 'Budi Santoso', null, $this->admin);
