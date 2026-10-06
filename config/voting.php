@@ -105,4 +105,14 @@ return [
 
     'alert_emails' => array_values(array_filter(array_map('trim', explode(',', (string) env('VOTING_ALERT_EMAILS', ''))))),
 
+    /*
+    |--------------------------------------------------------------------------
+    | 2FA login admin (kode lewat email)
+    |--------------------------------------------------------------------------
+    | Bawaan menyala. Matikan hanya di laptop pengembang (ADMIN_2FA=false);
+    | di server pemilihan sungguhan sebaiknya tetap menyala.
+    */
+
+    'admin_two_factor' => (bool) env('ADMIN_2FA', true),
+
 ];

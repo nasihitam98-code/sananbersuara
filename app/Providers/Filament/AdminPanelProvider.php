@@ -35,8 +35,8 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->profile(EditProfile::class, isSimple: false)
             ->multiFactorAuthentication(
-                [EmailAuthentication::make()],
-                isRequired: true,
+                config('voting.admin_two_factor') ? [EmailAuthentication::make()] : [],
+                isRequired: (bool) config('voting.admin_two_factor'),
             )
             ->colors([
                 'primary' => Color::Indigo,

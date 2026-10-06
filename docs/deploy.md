@@ -81,6 +81,8 @@ MAIL_USERNAME=
 MAIL_PASSWORD=
 MAIL_FROM_ADDRESS=
 VOTING_ALERT_EMAILS=<email-ketua-panitia>
+# 2FA login admin lewat kode email. Biarkan true (jangan dimatikan di server pemilihan).
+ADMIN_2FA=true
 
 # Backup (menu Sistem > Backup & Restore). Password zip WAJIB diisi.
 # Simpan juga password ini di luar server (mis. dicatat pemilik); tanpa password, backup tidak bisa dibuka.
