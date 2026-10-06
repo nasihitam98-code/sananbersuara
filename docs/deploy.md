@@ -72,7 +72,8 @@ VOTE_LINK_KEY=
 # Jika memakai Cloudflare, isi dengan rentang IP Cloudflare atau "*" bila hanya bisa diakses lewat Cloudflare
 TRUSTED_PROXIES=
 
-# Notifikasi internal lewat email (tidak memakai WhatsApp). Isi dengan SMTP yang dipakai.
+# WAJIB: kode 2FA login admin dikirim lewat email, jadi tanpa SMTP yang jalan tidak ada yang bisa login.
+# Email juga dipakai untuk notifikasi internal (tidak memakai WhatsApp).
 MAIL_MAILER=smtp
 MAIL_HOST=
 MAIL_PORT=587
@@ -238,6 +239,8 @@ curl -I https://<domain>/up        # 200
 php artisan test                   # opsional di server staging (butuh database rtrw_test)
 ```
 
-Lalu login di `https://<domain>/admin`. Saat login pertama akan diminta memasang 2FA (Google Authenticator/sejenis) dan mengganti password.
+Lalu login di `https://<domain>/admin`. Saat login pertama akan diminta mengaktifkan 2FA dengan **kode 6 angka yang dikirim ke email akun** (berlaku 4 menit), lalu mengganti password. Setiap login berikutnya juga meminta kode dari email.
+
+Jika email belum terkirim, cek pengaturan `MAIL_*` dan `QUEUE_CONNECTION=sync` (kode dikirim lewat antrean; dengan `sync` langsung terkirim tanpa worker).
 
 Terakhir, buka **Sistem > Backup & Restore**, lalu klik **Backup Sekarang**. Statusnya harus **BERHASIL**. Kalau GAGAL, pesan error di tabel biasanya menunjukkan path `mysqldump` atau password database yang salah.

@@ -46,7 +46,7 @@ class CreateSuperAdmin extends Command
 
         $this->info("Super Admin dibuat: {$email}");
         $this->line("Password sementara (tampil sekali): {$password}");
-        $this->line('Saat login pertama: pasang 2FA (aplikasi authenticator) lalu ganti password.');
+        $this->line('Saat login pertama: aktifkan 2FA dengan kode yang dikirim ke email ini, lalu ganti password.');
 
         return self::SUCCESS;
     }

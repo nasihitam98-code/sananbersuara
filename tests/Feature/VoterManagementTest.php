@@ -51,7 +51,7 @@ class VoterManagementTest extends TestCase
     private function makeUser(string $role, ?Unit $unit = null, array $permissions = []): User
     {
         $user = User::factory()->create();
-        $user->forceFill(['app_authentication_secret' => 'JBSWY3DPEHPK3PXP', 'unit_id' => $unit?->id])->save();
+        $user->forceFill(['has_email_authentication' => true, 'unit_id' => $unit?->id])->save();
         $user->assignRole($role);
         $user->givePermissionTo($permissions);
 

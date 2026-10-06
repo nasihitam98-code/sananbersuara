@@ -52,7 +52,7 @@ class AttendanceListTest extends TestCase
     private function makeUser(string $role, ?StaffRole $staffRole = null, ?Election $election = null): User
     {
         $user = User::factory()->create();
-        $user->forceFill(['must_change_password' => false, 'app_authentication_secret' => 'JBSWY3DPEHPK3PXP'])->save();
+        $user->forceFill(['must_change_password' => false, 'has_email_authentication' => true])->save();
         $user->assignRole($role);
 
         if ($staffRole !== null) {

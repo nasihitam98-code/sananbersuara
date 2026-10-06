@@ -4,10 +4,8 @@ namespace App\Models;
 
 use App\Enums\StaffRole;
 use Database\Factories\UserFactory;
-use Filament\Auth\MultiFactor\App\Concerns\InteractsWithAppAuthentication;
-use Filament\Auth\MultiFactor\App\Concerns\InteractsWithAppAuthenticationRecovery;
-use Filament\Auth\MultiFactor\App\Contracts\HasAppAuthentication;
-use Filament\Auth\MultiFactor\App\Contracts\HasAppAuthenticationRecovery;
+use Filament\Auth\MultiFactor\Email\Concerns\InteractsWithEmailAuthentication;
+use Filament\Auth\MultiFactor\Email\Contracts\HasEmailAuthentication;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -24,8 +22,8 @@ use Spatie\Permission\Traits\HasRoles;
  * Kolom is_active dan must_change_password tidak bisa diisi lewat mass assignment.
  */
 #[Fillable(['name', 'email', 'password'])]
-#[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable implements FilamentUser, HasAppAuthentication, HasAppAuthenticationRecovery
+#[Hidden(['password', 'remember_token', 'app_authentication_secret', 'app_authentication_recovery_codes'])]
+class User extends Authenticatable implements FilamentUser, HasEmailAuthentication
 {
     public const ROLE_SUPER_ADMIN = 'super_admin';
 
@@ -40,7 +38,7 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
     public const PERMISSION_DESK = 'petugas_meja';
 
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasRoles, InteractsWithAppAuthentication, InteractsWithAppAuthenticationRecovery, Notifiable;
+    use HasFactory, HasRoles, InteractsWithEmailAuthentication, Notifiable;
 
     /**
      * Get the attributes that should be cast.
@@ -54,6 +52,7 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
             'password' => 'hashed',
             'is_active' => 'boolean',
             'must_change_password' => 'boolean',
+            'has_email_authentication' => 'boolean',
             'last_login_at' => 'datetime',
         ];
     }

@@ -55,7 +55,7 @@ Struktur ini sudah generik: Mode Resmi nanti menambah tabel pemilih, snapshot, s
 
 | Area | Penerapan |
 |---|---|
-| Login admin | Tanpa registrasi publik; **2FA (aplikasi authenticator) wajib** semua akun; wajib ganti password sementara; password min. 12 + huruf + angka (+ cek bocor di produksi); login/gagal/lockout masuk audit |
+| Login admin | Tanpa registrasi publik; **2FA wajib** semua akun (sejak 6 Okt: kode lewat email, bukan aplikasi authenticator, atas keputusan pemilik); wajib ganti password sementara; password min. 12 + huruf + angka (+ cek bocor di produksi); login/gagal/lockout masuk audit |
 | Re-autentikasi | Password diminta ulang untuk Mulai, Tutup, Batalkan pemilihan, reset password/2FA |
 | Otorisasi | Policy server: konfigurasi hanya Super Admin; Meja Pintu hanya Petugas Pintu/Panitia **pemilihan yang ditugaskan**; Ruang Kendali, Layar Hasil, Layar QR hanya Panitia; diuji otomatis (403) |
 | Status | Calon/surat suara terkunci setelah Mulai (diuji); hasil per calon hanya setelah Ditutup |

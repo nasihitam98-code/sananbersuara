@@ -17,8 +17,11 @@ use App\Models\ElectionStaff;
 use App\Models\User;
 use App\Services\Voting\ElectionLifecycle;
 use Database\Seeders\DatabaseSeeder;
+use Filament\Auth\MultiFactor\Email\Notifications\VerifyEmailAuthentication;
+use Filament\Auth\Pages\Login;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification as NotificationFacade;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -48,7 +51,7 @@ class AdminAccessTest extends TestCase
         $user = User::factory()->create();
         $user->forceFill([
             'must_change_password' => false,
-            'app_authentication_secret' => 'JBSWY3DPEHPK3PXP',
+            'has_email_authentication' => true,
         ])->save();
         $user->assignRole($role);
 
@@ -74,6 +77,19 @@ class AdminAccessTest extends TestCase
         $user->assignRole(User::ROLE_SUPER_ADMIN);
 
         $this->actingAs($user)->get('/admin')->assertRedirectContains('multi-factor');
+    }
+
+    public function test_login_sends_two_factor_code_by_email_before_signing_in(): void
+    {
+        NotificationFacade::fake();
+        $user = $this->makeUser(User::ROLE_SUPER_ADMIN);
+
+        Livewire::test(Login::class)
+            ->fillForm(['email' => $user->email, 'password' => 'password'])
+            ->call('authenticate');
+
+        NotificationFacade::assertSentTo($user, VerifyEmailAuthentication::class);
+        $this->assertGuest();
     }
 
     public function test_user_must_change_temporary_password_first(): void

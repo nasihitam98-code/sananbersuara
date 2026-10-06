@@ -185,7 +185,7 @@ class NextRoundTest extends TestCase
         $lifecycle->close($election, $this->superAdmin);
 
         Filament::setCurrentPanel('admin');
-        $this->superAdmin->forceFill(['app_authentication_secret' => 'JBSWY3DPEHPK3PXP'])->save();
+        $this->superAdmin->forceFill(['has_email_authentication' => true])->save();
         $this->actingAs($this->superAdmin);
 
         Livewire::test(VerificationDesk::class)

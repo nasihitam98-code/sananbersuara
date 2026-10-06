@@ -46,7 +46,7 @@ class ResultPublicationTest extends TestCase
 
         $this->seed(DatabaseSeeder::class);
         $this->admin = User::factory()->create();
-        $this->admin->forceFill(['app_authentication_secret' => 'JBSWY3DPEHPK3PXP'])->save();
+        $this->admin->forceFill(['has_email_authentication' => true])->save();
         $this->admin->assignRole(User::ROLE_SUPER_ADMIN);
 
         $this->election = Election::factory()->create(['name' => 'Penjaringan Calon RW 2026']);
@@ -216,7 +216,7 @@ class ResultPublicationTest extends TestCase
         $this->get(VerificationDesk::getUrl())->assertOk()->assertSee($report->number);
 
         $outsider = User::factory()->create();
-        $outsider->forceFill(['app_authentication_secret' => 'JBSWY3DPEHPK3PXP'])->save();
+        $outsider->forceFill(['has_email_authentication' => true])->save();
         $outsider->assignRole(User::ROLE_STAFF);
         $this->actingAs($outsider)->get(VerificationDesk::getUrl())->assertForbidden();
     }

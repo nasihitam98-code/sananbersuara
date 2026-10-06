@@ -108,8 +108,7 @@ class UserResource extends Resource
                     ->formatStateUsing(fn (string $state): string => static::roleOptions()[$state] ?? $state),
                 TextColumn::make('unit.name')->label('RT')->placeholder('-'),
                 IconColumn::make('is_active')->label('Aktif')->boolean(),
-                IconColumn::make('app_authentication_secret')->label('2FA')->boolean()
-                    ->state(fn (User $record): bool => filled($record->app_authentication_secret)),
+                IconColumn::make('has_email_authentication')->label('2FA email')->boolean(),
                 TextColumn::make('last_login_at')->label('Login terakhir')->dateTime('d M Y H:i')->placeholder('-'),
             ])
             ->recordActions([

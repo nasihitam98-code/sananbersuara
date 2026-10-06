@@ -4,7 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Filament\Pages\Auth\EditProfile;
 use App\Http\Middleware\EnsurePasswordChanged;
-use Filament\Auth\MultiFactor\App\AppAuthentication;
+use Filament\Auth\MultiFactor\Email\EmailAuthentication;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -35,7 +35,7 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->profile(EditProfile::class, isSimple: false)
             ->multiFactorAuthentication(
-                [AppAuthentication::make()->recoverable()->brandName(config('app.name'))],
+                [EmailAuthentication::make()],
                 isRequired: true,
             )
             ->colors([

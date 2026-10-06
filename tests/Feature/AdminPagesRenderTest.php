@@ -43,7 +43,7 @@ class AdminPagesRenderTest extends TestCase
         Filament::setCurrentPanel('admin');
 
         $this->superAdmin = User::factory()->create();
-        $this->superAdmin->forceFill(['app_authentication_secret' => 'JBSWY3DPEHPK3PXP'])->save();
+        $this->superAdmin->forceFill(['has_email_authentication' => true])->save();
         $this->superAdmin->assignRole(User::ROLE_SUPER_ADMIN);
         $this->actingAs($this->superAdmin);
     }

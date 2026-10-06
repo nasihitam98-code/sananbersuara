@@ -41,11 +41,11 @@ class EditUser extends EditRecord
             Action::make('resetTwoFactor')
                 ->label('Reset 2FA')
                 ->color('danger')
-                ->visible(fn (): bool => filled($this->record->app_authentication_secret))
-                ->modalDescription('Pengguna harus memasang ulang aplikasi authenticator saat login berikutnya.')
+                ->visible(fn (): bool => (bool) $this->record->has_email_authentication)
+                ->modalDescription('Pengguna harus mengaktifkan ulang kode 2FA lewat email saat login berikutnya (mis. setelah email akunnya diganti).')
                 ->schema([Reauthenticate::field()])
                 ->action(function (): void {
-                    $this->record->forceFill(['app_authentication_secret' => null, 'app_authentication_recovery_codes' => null])->save();
+                    $this->record->forceFill(['has_email_authentication' => false])->save();
                     DB::table('sessions')->where('user_id', $this->record->id)->delete();
                     app(AuditLogger::class)->log('user.two_factor_reset_by_admin', $this->record);
                     Notification::make()->title('2FA direset.')->success()->send();
