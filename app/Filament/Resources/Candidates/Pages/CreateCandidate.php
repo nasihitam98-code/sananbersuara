@@ -12,6 +12,7 @@ use App\Services\CandidatePhotoProcessor;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Exceptions\Halt;
+use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Model;
 use RuntimeException;
 
@@ -20,6 +21,30 @@ class CreateCandidate extends CreateRecord
     protected static string $resource = CandidateResource::class;
 
     protected bool $createAnother = true;
+
+    /**
+     * Di bawah form: calon yang sudah ada di surat suara terpilih, agar terlihat kemajuannya
+     * saat menambah satu per satu ("Buat & buat lainnya").
+     */
+    public function getFooter(): ?View
+    {
+        $ballot = filled($this->data['ballot_id'] ?? null) ? Ballot::query()->find($this->data['ballot_id']) : null;
+
+        if ($ballot === null) {
+            return null;
+        }
+
+        $perUnit = $ballot->scope === BallotScope::PerRt;
+        $unitId = $perUnit ? ($this->data['unit_id'] ?? null) : null;
+
+        return view('filament.resources.candidates.ballot-candidates', [
+            'ballot' => $ballot,
+            'needsUnit' => $perUnit && blank($unitId),
+            'candidates' => $perUnit && blank($unitId)
+                ? collect()
+                : $ballot->candidates()->where('unit_id', $unitId)->orderBy('number')->get(),
+        ]);
+    }
 
     /**
      * @param  array<string, mixed>  $data

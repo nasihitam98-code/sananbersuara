@@ -129,6 +129,23 @@ class AdminPagesRenderTest extends TestCase
         $this->assertSame(CandidateStatus::Aktif, $created->status);
     }
 
+    public function test_candidate_form_lists_candidates_already_entered(): void
+    {
+        $election = Election::factory()->create();
+        $ballot = Ballot::factory()->for($election)->create(['max_candidates' => 27]);
+        Candidate::factory()->for($ballot)->create(['number' => 1, 'name' => 'Bapak Sutrisno']);
+
+        Livewire::test(CreateCandidate::class)
+            ->assertSee('Sudah ada di surat suara ini: 1 calon (batas 27)')
+            ->assertSee('Bapak Sutrisno')
+            ->fillForm(['name' => 'Ibu Sumiati'])
+            ->call('createAnother')
+            ->assertHasNoFormErrors()
+            ->assertSee('Sudah ada di surat suara ini: 2 calon (batas 27)')
+            ->assertSee('Ibu Sumiati')
+            ->assertFormSet(['number' => 3]);
+    }
+
     public function test_candidates_cannot_be_added_after_election_starts(): void
     {
         $election = Election::factory()->create();
