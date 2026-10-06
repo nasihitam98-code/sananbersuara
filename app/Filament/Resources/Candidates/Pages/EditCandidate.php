@@ -7,10 +7,8 @@ use App\Models\Candidate;
 use App\Services\AuditLogger;
 use App\Services\CandidatePhotoProcessor;
 use Filament\Actions\Action;
-use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
-use RuntimeException;
 
 /**
  * @property Candidate $record
@@ -34,12 +32,24 @@ class EditCandidate extends EditRecord
 
     /**
      * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $data['gallery_photo_pick'] = $this->record->gallery_photo_id;
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
      */
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
         $before = $record->only(['number', 'name', 'status', 'origin_unit_id']);
         $upload = $data['photo_upload'] ?? null;
-        unset($data['photo_upload']);
+        $galleryPick = $data['gallery_photo_pick'] ?? null;
+        unset($data['photo_upload'], $data['gallery_photo_pick']);
 
         $record->update($data);
 
@@ -48,13 +58,8 @@ class EditCandidate extends EditRecord
             'after' => $record->only(['number', 'name', 'status', 'origin_unit_id']),
         ]);
 
-        if (filled($upload)) {
-            try {
-                app(CandidatePhotoProcessor::class)->replace($record, $upload);
-            } catch (RuntimeException $exception) {
-                Notification::make()->title('Foto ditolak: '.$exception->getMessage())->warning()->send();
-            }
-        }
+        // Pilihan galeri hanya dipakai bila berbeda dari foto galeri yang sudah terpasang.
+        CreateCandidate::attachPhoto($record, $upload, (int) $galleryPick === (int) $record->gallery_photo_id ? null : $galleryPick);
 
         return $record;
     }

@@ -61,6 +61,16 @@ class Candidate extends Model
     }
 
     /**
+     * Foto galeri yang sedang dipakai calon ini (null bila foto diunggah langsung).
+     *
+     * @return BelongsTo<GalleryPhoto, $this>
+     */
+    public function galleryPhoto(): BelongsTo
+    {
+        return $this->belongsTo(GalleryPhoto::class);
+    }
+
+    /**
      * Asal RT calon (keterangan, mis. calon RW perwakilan RT 03).
      *
      * @return BelongsTo<Unit, $this>

@@ -7,8 +7,11 @@ use App\Enums\CandidateStatus;
 use App\Filament\Resources\Candidates\CandidateResource;
 use App\Models\Ballot;
 use App\Models\Candidate;
+use App\Models\GalleryPhoto;
+use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\CandidatePhotoProcessor;
+use App\Services\Candidates\CandidateGallery;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Exceptions\Halt;
@@ -79,20 +82,36 @@ class CreateCandidate extends CreateRecord
         }
 
         $data['status'] ??= CandidateStatus::Aktif;
+        $upload = $data['photo_upload'] ?? null;
+        $galleryPick = $data['gallery_photo_pick'] ?? null;
+        unset($data['photo_upload'], $data['gallery_photo_pick']);
+
         $candidate = new Candidate($data);
         $candidate->ballot()->associate($ballot);
         $candidate->save();
 
         app(AuditLogger::class)->log('candidate.created', $candidate, $ballot->election, meta: $candidate->only(['number', 'name', 'status']));
 
-        if (filled($data['photo_upload'] ?? null)) {
-            try {
-                app(CandidatePhotoProcessor::class)->replace($candidate, $data['photo_upload']);
-            } catch (RuntimeException $exception) {
-                Notification::make()->title('Foto ditolak: '.$exception->getMessage())->warning()->send();
-            }
-        }
+        static::attachPhoto($candidate, $upload, $galleryPick);
 
         return $candidate;
+    }
+
+    /**
+     * Foto calon dari unggahan baru, atau (bila tidak ada) dari Galeri Foto. Dipakai juga saat Ubah.
+     */
+    public static function attachPhoto(Candidate $candidate, mixed $upload, mixed $galleryPick): void
+    {
+        try {
+            if (filled($upload)) {
+                app(CandidatePhotoProcessor::class)->replace($candidate, $upload);
+            } elseif (filled($galleryPick)) {
+                /** @var User $user */
+                $user = auth()->user();
+                app(CandidateGallery::class)->assign($candidate, GalleryPhoto::query()->findOrFail($galleryPick), $user);
+            }
+        } catch (RuntimeException $exception) {
+            Notification::make()->title('Foto ditolak: '.$exception->getMessage())->warning()->send();
+        }
     }
 }

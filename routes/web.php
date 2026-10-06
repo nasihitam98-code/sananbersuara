@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BackupDownloadController;
 use App\Http\Controllers\BoothController;
+use App\Http\Controllers\GalleryPreviewController;
 use App\Http\Controllers\OfficialReportController;
 use App\Http\Controllers\PublicResultController;
 use App\Http\Controllers\RecapExportController;
@@ -83,4 +84,5 @@ Route::middleware('auth')->get('/berita-acara/{report:public_id}', [OfficialRepo
 Route::middleware('auth')->get('/pemilih/template', VoterTemplateController::class)->name('voters.template');
 Route::middleware('auth')->get('/rekap/{election:public_id}', RecapExportController::class)->name('recap.export');
 Route::middleware(['auth', 'signed'])->get('/backup/{backup:public_id}/unduh', BackupDownloadController::class)->name('backups.download');
+Route::middleware('auth')->get('/panel/galeri/{galleryPhoto:public_id}/{size?}', GalleryPreviewController::class)->whereIn('size', ['thumb', 'full'])->name('gallery.preview');
 Route::middleware('auth')->get('/panel/mode/{mode?}', WorkspaceController::class)->whereIn('mode', ['dadakan', 'resmi', 'pilih'])->name('workspace.switch');

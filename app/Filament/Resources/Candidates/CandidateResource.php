@@ -12,11 +12,16 @@ use App\Filament\Resources\Candidates\Pages\ListCandidates;
 use App\Filament\Support\Workspace;
 use App\Models\Ballot;
 use App\Models\Candidate;
+use App\Models\GalleryPhoto;
 use App\Models\Unit;
+use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\CandidatePhotoProcessor;
+use App\Services\Candidates\CandidateGallery;
+use App\Services\Voting\VotingException;
 use BackedEnum;
 use Closure;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
@@ -102,6 +107,49 @@ class CandidateResource extends Resource
         }
 
         return (int) Candidate::query()->where('ballot_id', $ballotId)->max('number') + 1;
+    }
+
+    /**
+     * Calon yang fotonya masih boleh diubah (pemilihan Draf/Siap, sesuai mode kerja), untuk dropdown.
+     *
+     * @return array<int, string>
+     */
+    public static function editableCandidateOptions(): array
+    {
+        return Candidate::query()
+            ->with(['ballot.election', 'unit'])
+            ->whereHas('ballot.election', fn (Builder $query) => $query->whereIn('status', [ElectionStatus::Draft, ElectionStatus::Ready])
+                ->when(Workspace::current(), fn (Builder $query, ElectionMode $mode): Builder => $query->where('mode', $mode)))
+            ->orderBy('ballot_id')
+            ->orderBy('unit_id')
+            ->orderBy('number')
+            ->get()
+            ->mapWithKeys(fn (Candidate $candidate): array => [
+                $candidate->id => "{$candidate->ballot->title}".($candidate->unit ? " {$candidate->unit->name}" : '')." — {$candidate->displayNumber()} {$candidate->name}",
+            ])
+            ->all();
+    }
+
+    /**
+     * Pilihan foto galeri dengan gambar kecil (untuk Select allowHtml).
+     *
+     * @return array<int, string>
+     */
+    public static function galleryOptions(): array
+    {
+        return GalleryPhoto::query()
+            ->with('candidates')
+            ->latest()
+            ->limit(300)
+            ->get()
+            ->mapWithKeys(fn (GalleryPhoto $photo): array => [
+                $photo->id => '<span style="display:flex;align-items:center;gap:.5rem">'
+                    .'<img src="'.e($photo->previewUrl()).'" alt="" style="width:2.5rem;height:2.5rem;border-radius:.375rem;object-fit:cover">'
+                    .'<span>'.e($photo->original_name)
+                    .($photo->candidates->isNotEmpty() ? ' <small style="opacity:.6">(dipakai '.e($photo->candidates->map(fn (Candidate $candidate): string => $candidate->displayNumber())->implode(', ')).')</small>' : '')
+                    .'</span></span>',
+            ])
+            ->all();
     }
 
     public static function ballotIsPerUnit(mixed $ballotId): bool
@@ -194,8 +242,52 @@ class CandidateResource extends Resource
                             ->directory('unggahan-sementara')
                             ->visibility('private')
                             ->helperText('Kosongkan jika tidak ingin mengganti foto.'),
+                        Select::make('gallery_photo_pick')
+                            ->label('Atau pilih dari Galeri Foto')
+                            ->options(fn (): array => static::galleryOptions())
+                            ->allowHtml()
+                            ->searchable()
+                            ->placeholder('Tidak memilih dari galeri')
+                            ->helperText('Dipakai bila tidak mengunggah foto baru di atas. Isi galeri lewat menu Galeri Foto.'),
                     ]),
             ]);
+    }
+
+    /**
+     * Pilih foto dari Galeri Foto langsung dari baris daftar calon.
+     */
+    public static function galleryPhotoAction(): Action
+    {
+        return Action::make('galleryPhoto')
+            ->label('Foto')
+            ->icon(Heroicon::OutlinedPhoto)
+            ->color('gray')
+            ->visible(fn (Candidate $record): bool => static::canEdit($record))
+            ->modalHeading(fn (Candidate $record): string => "Pilih foto untuk {$record->displayNumber()} {$record->name}")
+            ->modalSubmitActionLabel('Pasang')
+            ->schema([
+                Select::make('gallery_photo_id')
+                    ->label('Foto dari galeri')
+                    ->options(fn (): array => static::galleryOptions())
+                    ->allowHtml()
+                    ->searchable()
+                    ->required()
+                    ->helperText('Galeri kosong? Unggah dulu lewat menu Galeri Foto.'),
+            ])
+            ->action(function (Candidate $record, array $data): void {
+                /** @var User $user */
+                $user = auth()->user();
+
+                try {
+                    app(CandidateGallery::class)->assign($record, GalleryPhoto::query()->findOrFail($data['gallery_photo_id']), $user);
+                } catch (VotingException $exception) {
+                    Notification::make()->title($exception->getMessage())->danger()->send();
+
+                    return;
+                }
+
+                Notification::make()->title("Foto dipasang ke {$record->displayNumber()} {$record->name}.")->success()->send();
+            });
     }
 
     public static function table(Table $table): Table
@@ -266,6 +358,7 @@ class CandidateResource extends Resource
                     ->options(fn (): array => Ballot::query()->with('election')->get()->mapWithKeys(fn (Ballot $ballot): array => [$ballot->id => "{$ballot->election->name} — {$ballot->title}"])->all()),
             ])
             ->recordActions([
+                static::galleryPhotoAction(),
                 EditAction::make(),
                 static::deleteAction(),
             ]);

@@ -233,7 +233,7 @@ class CandidateBulkImporter
      * @param  Collection<int, Candidate>  $candidates  calon dengan kunci nomor urut
      * @return array{0: ?Candidate, 1: string}
      */
-    private function matchPhoto(string $originalName, Collection $candidates): array
+    public function matchPhoto(string $originalName, Collection $candidates): array
     {
         if (preg_match('/^\s*0*(\d{1,3})(?!\d)/', $originalName, $match) === 1) {
             $candidate = $candidates->get((int) $match[1]);

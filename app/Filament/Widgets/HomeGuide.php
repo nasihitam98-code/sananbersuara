@@ -9,6 +9,7 @@ use App\Filament\Pages\ControlRoom;
 use App\Filament\Pages\DeskPage;
 use App\Filament\Pages\DevicesPage;
 use App\Filament\Pages\DoorDesk;
+use App\Filament\Pages\GalleryPage;
 use App\Filament\Pages\ParticipationPage;
 use App\Filament\Pages\ResultScreen;
 use App\Filament\Pages\VerificationDesk;
@@ -257,7 +258,8 @@ class HomeGuide extends Widget
         $steps = match ($this->mode()) {
             ElectionMode::Dadakan => [
                 [ElectionResource::class, 'Buat pemilihan', 'Tambah surat suara, mis. "Calon Ketua RW", berhak: semua yang hadir.'],
-                [CandidateResource::class, 'Masukkan calon dan fotonya', 'Foto otomatis dipotong kotak dan dikecilkan.'],
+                [CandidateResource::class, 'Masukkan calon', 'Satu per satu atau Tambah banyak calon (tempel daftar nama).'],
+                [GalleryPage::class, 'Galeri Foto: unggah foto calon', 'Lalu Pasang otomatis (nama file) atau pilih per calon.'],
                 [ElectionResource::class, 'Tugaskan Panitia dan Petugas Pintu', 'Di pemilihan, tab Panitia & Petugas Pintu. Lalu Status → Tandai Siap → Mulai.'],
                 [DoorDesk::class, 'Meja Pintu: daftarkan yang hadir', 'Ketik nama, tekan Daftarkan & buat PIN, tulis PIN di kertas.'],
                 [ControlRoom::class, 'Ruang Kendali: buka voting', 'Tampilkan Layar QR, tekan BUKA VOTING. Gelombang bantuan untuk lansia.'],
@@ -269,6 +271,7 @@ class HomeGuide extends Widget
                 [UnitResource::class, 'Cek Daftar RT', 'Tambah RT bila jumlahnya lebih dari yang ada (bawaan 9).'],
                 [ElectionResource::class, 'Buat pemilihan', 'Surat suara Ketua RT (per RT, maks. 5 calon) dan Ketua RW (semua RT).'],
                 [CandidateResource::class, 'Masukkan calon RT tiap RT dan calon RW', ''],
+                [GalleryPage::class, 'Galeri Foto: unggah dan pasang foto calon', ''],
                 [UserResource::class, 'Buat akun Admin RT untuk tiap RT', 'Centang izin Kelola data pemilih dan/atau Petugas Meja.'],
                 [VoterResource::class, 'Isi data pemilih per RT', 'Satu per satu atau import Excel (template tersedia).'],
                 [DevicesPage::class, 'Tandai Siap, lalu pasang laptop dengan token', 'Laptop meja dan bilik tiap RT. Setelah itu Mulai Pemilihan.'],

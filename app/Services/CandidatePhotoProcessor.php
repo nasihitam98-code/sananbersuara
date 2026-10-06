@@ -55,7 +55,7 @@ class CandidatePhotoProcessor
                 $disk->put(config('voting.photo.directory')."/{$newKey}-{$size}.webp", (string) $encoded);
             }
 
-            $candidate->forceFill(['photo_key' => $newKey])->save();
+            $candidate->forceFill(['photo_key' => $newKey, 'gallery_photo_id' => null])->save();
             $this->deleteFiles($oldKey);
 
             $this->audit->log('candidate.photo_replaced', $candidate, $candidate->ballot->election, meta: [
@@ -69,7 +69,7 @@ class CandidatePhotoProcessor
     public function remove(Candidate $candidate): void
     {
         $this->deleteFiles($candidate->photo_key);
-        $candidate->forceFill(['photo_key' => null])->save();
+        $candidate->forceFill(['photo_key' => null, 'gallery_photo_id' => null])->save();
 
         $this->audit->log('candidate.photo_removed', $candidate, $candidate->ballot->election);
     }
