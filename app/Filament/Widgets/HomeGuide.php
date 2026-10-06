@@ -14,6 +14,7 @@ use App\Filament\Pages\ResultScreen;
 use App\Filament\Pages\VerificationDesk;
 use App\Filament\Resources\Candidates\CandidateResource;
 use App\Filament\Resources\Elections\ElectionResource;
+use App\Filament\Resources\Units\UnitResource;
 use App\Filament\Resources\Users\UserResource;
 use App\Filament\Resources\Voters\VoterResource;
 use App\Filament\Support\Workspace;
@@ -265,6 +266,7 @@ class HomeGuide extends Widget
                 [VerificationDesk::class, 'Tetapkan yang lolos, lalu Publish', 'Nama yang lolos tampil di halaman publik.'],
             ],
             ElectionMode::Resmi => [
+                [UnitResource::class, 'Cek Daftar RT', 'Tambah RT bila jumlahnya lebih dari yang ada (bawaan 9).'],
                 [ElectionResource::class, 'Buat pemilihan', 'Surat suara Ketua RT (per RT, maks. 5 calon) dan Ketua RW (semua RT).'],
                 [CandidateResource::class, 'Masukkan calon RT tiap RT dan calon RW', ''],
                 [UserResource::class, 'Buat akun Admin RT untuk tiap RT', 'Centang izin Kelola data pemilih dan/atau Petugas Meja.'],
