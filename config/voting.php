@@ -77,6 +77,28 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Backup (K27)
+    |--------------------------------------------------------------------------
+    |
+    | Zip terenkripsi AES-256 berisi dump database + foto calon. offsite_disk = nama disk
+    | filesystem untuk salinan di luar server (diisi saat deployment, mis. sftp/s3).
+    |
+    */
+
+    'backup' => [
+        'disk' => 'local',
+        'directory' => 'backups',
+        'offsite_disk' => env('BACKUP_OFFSITE_DISK'),
+        'password' => env('BACKUP_PASSWORD'),
+        'mysqldump' => env('BACKUP_MYSQLDUMP_PATH', 'mysqldump'),
+        'mysql' => env('BACKUP_MYSQL_PATH', 'mysql'),
+        'live_interval_minutes' => 15,
+        'idle_interval_minutes' => 360,
+        'keep_days' => 30,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Penerima notifikasi internal tambahan (mis. Ketua Panitia), dipisah koma
     |--------------------------------------------------------------------------
     */
