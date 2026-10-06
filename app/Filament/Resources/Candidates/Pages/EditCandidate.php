@@ -37,7 +37,7 @@ class EditCandidate extends EditRecord
      */
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
-        $before = $record->only(['number', 'name', 'status']);
+        $before = $record->only(['number', 'name', 'status', 'origin_unit_id']);
         $upload = $data['photo_upload'] ?? null;
         unset($data['photo_upload']);
 
@@ -45,7 +45,7 @@ class EditCandidate extends EditRecord
 
         app(AuditLogger::class)->log('candidate.updated', $record, $record->ballot->election, meta: [
             'before' => $before,
-            'after' => $record->only(['number', 'name', 'status']),
+            'after' => $record->only(['number', 'name', 'status', 'origin_unit_id']),
         ]);
 
         if (filled($upload)) {

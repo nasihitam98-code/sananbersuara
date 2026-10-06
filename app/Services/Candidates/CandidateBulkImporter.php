@@ -6,6 +6,7 @@ use App\Enums\BallotScope;
 use App\Enums\CandidateStatus;
 use App\Models\Ballot;
 use App\Models\Candidate;
+use App\Models\Unit;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\CandidatePhotoProcessor;
@@ -29,10 +30,11 @@ class CandidateBulkImporter
     ) {}
 
     /**
-     * Baris boleh berisi nama saja (nomor otomatis), "5. Nama", "5 - Nama", "5;Nama",
-     * atau dua kolom Excel yang ditempel (nomor<TAB>nama).
+     * Baris boleh berisi nama saja (nomor otomatis), "5. Nama", "5 - Nama", atau kolom yang
+     * dipisah TAB (tempelan Excel), ";" atau "|": nomor | nama | RT, nama | RT, nomor | nama.
+     * RT boleh ditulis "RT 03", "03", atau "3".
      *
-     * @return array<int, array{line: int, number: ?int, name: string}>
+     * @return array<int, array{line: int, number: ?int, name: string, rt: ?string}>
      */
     public function parse(string $text): array
     {
@@ -46,16 +48,39 @@ class CandidateBulkImporter
             }
 
             $number = null;
+            $rt = null;
+            $columns = array_values(array_filter(array_map('trim', preg_split('/\t|;|\|/u', $line) ?: []), fn (string $column): bool => $column !== ''));
 
-            if (preg_match('/^(\d{1,3})\s*(?:[.)\-;,:|\t]|\s)\s*(.+)$/u', $line, $match) === 1) {
+            if (count($columns) >= 2) {
+                if (ctype_digit($columns[0])) {
+                    $number = (int) array_shift($columns);
+                }
+
+                $line = $columns[0] ?? '';
+                $rt = $columns[1] ?? null;
+            } elseif (preg_match('/^(\d{1,3})\s*(?:[.)\-,:]|\s)\s*(.+)$/u', $line, $match) === 1) {
                 $number = (int) $match[1];
                 $line = $match[2];
             }
 
-            $rows[] = ['line' => $index + 1, 'number' => $number, 'name' => Str::squish($line)];
+            $rows[] = ['line' => $index + 1, 'number' => $number, 'name' => Str::squish($line), 'rt' => $rt];
         }
 
         return $rows;
+    }
+
+    /**
+     * "RT 03" / "03" / "3" → id RT, null bila tidak dikenal.
+     *
+     * @param  Collection<int, Unit>  $units
+     */
+    private function resolveUnitId(string $value, Collection $units): ?int
+    {
+        if (preg_match('/(\d{1,3})/', $value, $match) !== 1) {
+            return null;
+        }
+
+        return $units->first(fn (Unit $unit): bool => (int) $unit->code === (int) $match[1])?->id;
     }
 
     /**
@@ -79,7 +104,9 @@ class CandidateBulkImporter
             throw VotingException::invalidState('Belum ada nama. Tempel satu nama calon per baris.');
         }
 
-        return DB::transaction(function () use ($ballot, $unitId, $rows): int {
+        $units = Unit::query()->get(['id', 'code']);
+
+        return DB::transaction(function () use ($ballot, $unitId, $rows, $perUnit, $units): int {
             $current = Candidate::query()
                 ->where('ballot_id', $ballot->id)
                 ->where('unit_id', $unitId)
@@ -110,10 +137,21 @@ class CandidateBulkImporter
                     $problems[] = "baris {$row['line']}: nama \"{$row['name']}\" ".$names[Candidate::normalizeName($row['name'])];
                 }
 
+                // Asal RT hanya untuk surat suara yang bukan per RT (mis. calon RW).
+                $originUnitId = null;
+
+                if ($row['rt'] !== null && ! $perUnit) {
+                    $originUnitId = $this->resolveUnitId($row['rt'], $units);
+
+                    if ($originUnitId === null) {
+                        $problems[] = "baris {$row['line']}: RT \"{$row['rt']}\" tidak dikenal";
+                    }
+                }
+
                 $names[Candidate::normalizeName($row['name'])] ??= "sudah ditulis di baris {$row['line']}";
                 $used[$number] = true;
                 $next = max($next, $number + 1);
-                $prepared[] = ['number' => $number, 'name' => $row['name']];
+                $prepared[] = ['number' => $number, 'name' => $row['name'], 'origin_unit_id' => $originUnitId];
             }
 
             if ($ballot->max_candidates !== null && count($existing) + count($prepared) > $ballot->max_candidates) {
@@ -125,11 +163,17 @@ class CandidateBulkImporter
             }
 
             foreach ($prepared as $item) {
-                $candidate = new Candidate(['number' => $item['number'], 'name' => $item['name'], 'status' => CandidateStatus::Aktif, 'unit_id' => $unitId]);
+                $candidate = new Candidate([
+                    'number' => $item['number'],
+                    'name' => $item['name'],
+                    'status' => CandidateStatus::Aktif,
+                    'unit_id' => $unitId,
+                    'origin_unit_id' => $item['origin_unit_id'],
+                ]);
                 $candidate->ballot()->associate($ballot);
                 $candidate->save();
 
-                $this->audit->log('candidate.created', $candidate, $ballot->election, meta: $candidate->only(['number', 'name', 'status']) + ['via' => 'bulk']);
+                $this->audit->log('candidate.created', $candidate, $ballot->election, meta: $candidate->only(['number', 'name', 'status', 'origin_unit_id']) + ['via' => 'bulk']);
             }
 
             return count($prepared);

@@ -129,6 +129,12 @@ class CandidateResource extends Resource
                             ->required(fn (Get $get, ?Candidate $record): bool => static::ballotIsPerUnit($record?->ballot_id ?? $get('ballot_id')))
                             ->disabledOn('edit')
                             ->live(),
+                        Select::make('origin_unit_id')
+                            ->label('Asal RT (opsional)')
+                            ->options(fn (): array => Unit::query()->orderBy('sort')->pluck('name', 'id')->all())
+                            ->placeholder('Tidak diisi')
+                            ->helperText('Mis. calon RW perwakilan RT 03. Tampil di surat suara dan hasil.')
+                            ->visible(fn (Get $get, ?Candidate $record): bool => filled($record?->ballot_id ?? $get('ballot_id')) && ! static::ballotIsPerUnit($record?->ballot_id ?? $get('ballot_id'))),
                         TextInput::make('number')
                             ->label('Nomor urut')
                             ->helperText('Terisi otomatis dengan nomor berikutnya; boleh diubah.')
@@ -202,6 +208,7 @@ class CandidateResource extends Resource
                 TextColumn::make('name')->label('Nama')->searchable()->weight('bold'),
                 TextColumn::make('ballot.title')->label('Surat suara'),
                 TextColumn::make('unit.name')->label('RT')->placeholder('-'),
+                TextColumn::make('originUnit.name')->label('Asal RT')->placeholder('-'),
                 TextColumn::make('ballot.election.name')->label('Pemilihan')->toggleable(),
                 TextColumn::make('status')->label('Status')->badge(),
                 TextColumn::make('photo_key')

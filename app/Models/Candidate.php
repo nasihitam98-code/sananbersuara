@@ -12,11 +12,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-#[Fillable(['unit_id', 'number', 'name', 'status'])]
+#[Fillable(['unit_id', 'origin_unit_id', 'number', 'name', 'status'])]
 #[RouteKey('public_id')]
 class Candidate extends Model
 {
     use HasFactory, HasUlids;
+
+    /**
+     * Asal RT selalu ikut dimuat (tabel RT kecil) agar tampilan surat suara/hasil tidak N+1.
+     *
+     * @var array<int, string>
+     */
+    protected $with = ['originUnit'];
 
     /**
      * @return array<int, string>
@@ -51,6 +58,32 @@ class Candidate extends Model
     public function unit(): BelongsTo
     {
         return $this->belongsTo(Unit::class);
+    }
+
+    /**
+     * Asal RT calon (keterangan, mis. calon RW perwakilan RT 03).
+     *
+     * @return BelongsTo<Unit, $this>
+     */
+    public function originUnit(): BelongsTo
+    {
+        return $this->belongsTo(Unit::class, 'origin_unit_id');
+    }
+
+    /**
+     * Teks asal RT untuk ditampilkan, mis. "RT 03", atau null bila tidak diisi.
+     */
+    public function originLabel(): ?string
+    {
+        return $this->originUnit?->name;
+    }
+
+    /**
+     * Nama + asal RT untuk teks satu baris (berita acara, rekap), mis. "Bapak Joko (RT 03)".
+     */
+    public function nameWithOrigin(): string
+    {
+        return $this->originLabel() === null ? $this->name : "{$this->name} ({$this->originLabel()})";
     }
 
     public function photoPath(string $size): ?string

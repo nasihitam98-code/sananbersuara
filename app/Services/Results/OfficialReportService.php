@@ -174,7 +174,7 @@ class OfficialReportService
                 'tie_at_top' => $tally['tie_at_top'] ?? false,
                 'candidates' => collect($tally['candidates'] ?? [])->map(fn (array $row): array => [
                     'number' => $row['candidate']->displayNumber(),
-                    'name' => $row['candidate']->name,
+                    'name' => $row['candidate']->nameWithOrigin(),
                     'withdrawn' => $row['candidate']->status->value === 'MUNDUR',
                     'votes' => $row['votes'],
                     'percent' => $row['percent'],
@@ -182,7 +182,7 @@ class OfficialReportService
                 ])->all(),
                 'outcome' => $outcome === null ? null : [
                     'label' => $outcome->label(),
-                    'candidates' => $outcome->candidates->map(fn ($candidate): string => $candidate->displayNumber().' · '.$candidate->name)->all(),
+                    'candidates' => $outcome->candidates->map(fn ($candidate): string => $candidate->displayNumber().' · '.$candidate->nameWithOrigin())->all(),
                     'note' => $outcome->note,
                 ],
                 'participation' => $election->isDadakan() ? null : $this->calculator->ballotParticipation($slot['ballot'], $slotRound, $slot['unit']?->id),

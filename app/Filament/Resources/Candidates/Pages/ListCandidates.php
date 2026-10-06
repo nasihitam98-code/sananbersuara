@@ -32,7 +32,7 @@ class ListCandidates extends ListRecords
                 ->color('gray')
                 ->visible(fn (): bool => CandidateResource::canCreate())
                 ->modalHeading('Tambah banyak calon sekaligus')
-                ->modalDescription('Tempel daftar nama, satu calon per baris (bisa disalin dari Excel, WhatsApp, atau Word). Nomor urut otomatis, atau tulis nomornya di depan, mis. "5. Bapak Joko".')
+                ->modalDescription('Tempel daftar nama, satu calon per baris (bisa disalin dari Excel, WhatsApp, atau Word). Nomor urut otomatis, atau tulis nomornya di depan, mis. "5. Bapak Joko". Untuk calon RW, asal RT bisa ditambahkan sebagai kolom ketiga: "5 | Bapak Joko | RT 03" (atau tempel 3 kolom dari Excel).')
                 ->modalSubmitActionLabel('Simpan semua')
                 ->schema([
                     ...$this->ballotFields(),

@@ -75,7 +75,7 @@
                                 @foreach ($tally['candidates'] as $line)
                                     <tr class="border-t border-gray-100 dark:border-white/5">
                                         <td class="py-1">{{ $line['rank'] }}</td>
-                                        <td>{{ $line['candidate']->displayNumber() }} · {{ $line['candidate']->name }}</td>
+                                        <td>{{ $line['candidate']->displayNumber() }} · {{ $line['candidate']->nameWithOrigin() }}</td>
                                         <td class="text-right tabular-nums">{{ $line['votes'] }}</td>
                                         <td class="text-right tabular-nums">{{ $line['percent'] }}</td>
                                     </tr>

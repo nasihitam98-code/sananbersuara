@@ -6,6 +6,7 @@ use App\Enums\WaveKind;
 use App\Models\Ballot;
 use App\Models\Candidate;
 use App\Models\Election;
+use App\Models\Unit;
 use App\Models\User;
 use App\Models\Vote;
 use App\Services\Voting\AttendeeRegistrar;
@@ -33,7 +34,11 @@ class VoterFlowTest extends TestCase
         $this->admin = User::factory()->create();
         $this->election = Election::factory()->create(['name' => 'Penjaringan Calon RW']);
         $this->ballot = Ballot::factory()->for($this->election)->create();
-        $this->candidate = Candidate::factory()->for($this->ballot)->create(['number' => 7, 'name' => 'Bapak Sutrisno']);
+        $this->candidate = Candidate::factory()->for($this->ballot)->create([
+            'number' => 7,
+            'name' => 'Bapak Sutrisno',
+            'origin_unit_id' => Unit::factory()->create(['code' => '03', 'name' => 'RT 03'])->id,
+        ]);
         Candidate::factory()->for($this->ballot)->create(['number' => 8]);
 
         app(ElectionLifecycle::class)->markReady($this->election, $this->admin);
@@ -76,6 +81,7 @@ class VoterFlowTest extends TestCase
         $this->get($this->url('/surat-suara'))
             ->assertOk()
             ->assertSee('Bapak Sutrisno')
+            ->assertSee('Asal RT 03')
             ->assertSee('KONFIRMASI PILIHAN');
 
         $this->post($this->url('/surat-suara'), [

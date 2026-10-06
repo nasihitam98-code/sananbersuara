@@ -19,7 +19,7 @@
                         <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-bold text-gray-600 dark:bg-white/10 dark:text-gray-300">{{ $candidate->initials() }}</span>
                     @endif
                     <div class="min-w-0">
-                        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400">Nomor {{ $candidate->displayNumber() }}</p>
+                        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400">Nomor {{ $candidate->displayNumber() }}{{ $candidate->originLabel() ? ' · Asal '.$candidate->originLabel() : '' }}</p>
                         <x-filament::link :href="\App\Filament\Resources\Candidates\CandidateResource::getUrl('edit', ['record' => $candidate])" class="truncate">
                             {{ $candidate->name }}
                         </x-filament::link>

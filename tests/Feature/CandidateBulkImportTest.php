@@ -56,11 +56,11 @@ class CandidateBulkImportTest extends TestCase
         $rows = $this->importer()->parse("Bapak Sutrisno\n\n5. Ibu Sumiati\n6\tBapak Ahmad Fauzi\n7 - H. Muhammad Nur\n  Ibu  Dewi  ");
 
         $this->assertSame([
-            ['line' => 1, 'number' => null, 'name' => 'Bapak Sutrisno'],
-            ['line' => 3, 'number' => 5, 'name' => 'Ibu Sumiati'],
-            ['line' => 4, 'number' => 6, 'name' => 'Bapak Ahmad Fauzi'],
-            ['line' => 5, 'number' => 7, 'name' => 'H. Muhammad Nur'],
-            ['line' => 6, 'number' => null, 'name' => 'Ibu Dewi'],
+            ['line' => 1, 'number' => null, 'name' => 'Bapak Sutrisno', 'rt' => null],
+            ['line' => 3, 'number' => 5, 'name' => 'Ibu Sumiati', 'rt' => null],
+            ['line' => 4, 'number' => 6, 'name' => 'Bapak Ahmad Fauzi', 'rt' => null],
+            ['line' => 5, 'number' => 7, 'name' => 'H. Muhammad Nur', 'rt' => null],
+            ['line' => 6, 'number' => null, 'name' => 'Ibu Dewi', 'rt' => null],
         ], $rows);
     }
 
@@ -98,6 +98,30 @@ class CandidateBulkImportTest extends TestCase
         }
 
         $this->assertSame(1, $this->ballot->candidates()->count());
+    }
+
+    public function test_origin_rt_column_is_read_for_rw_ballots(): void
+    {
+        $rt03 = Unit::query()->where('code', '03')->firstOrFail();
+        $rt05 = Unit::query()->where('code', '05')->firstOrFail();
+
+        $this->importer()->import($this->ballot, null, "1 | Bapak Joko | RT 03\nIbu Dewi;5\n3\tBapak Agus", $this->superAdmin);
+
+        $candidates = $this->ballot->candidates()->orderBy('number')->get();
+        $this->assertSame([1, 2, 3], $candidates->pluck('number')->all());
+        $this->assertSame([$rt03->id, $rt05->id, null], $candidates->pluck('origin_unit_id')->all());
+        $this->assertSame('Bapak Joko (RT 03)', $candidates->first()->nameWithOrigin());
+
+        try {
+            $this->importer()->import($this->ballot, null, 'Ibu Baru | RT 77', $this->superAdmin);
+            $this->fail('RT tidak dikenal harus ditolak.');
+        } catch (VotingException $exception) {
+            $this->assertStringContainsString('RT "RT 77" tidak dikenal', $exception->getMessage());
+        }
+
+        $perRt = Ballot::factory()->for(Election::factory())->create(['scope' => BallotScope::PerRt]);
+        $this->importer()->import($perRt, $rt03->id, 'Calon RT | RT 05', $this->superAdmin);
+        $this->assertNull($perRt->candidates()->firstOrFail()->origin_unit_id, 'Surat suara per RT tidak memakai asal RT');
     }
 
     public function test_duplicate_names_are_rejected_in_bulk_and_single_form(): void

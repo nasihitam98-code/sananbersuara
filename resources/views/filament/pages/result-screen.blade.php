@@ -57,7 +57,7 @@
                             @endif
                             <div>
                                 <p class="font-semibold">
-                                    <span class="text-gray-500">No. {{ $candidate->displayNumber() }}</span> · {{ $candidate->name }}
+                                    <span class="text-gray-500">No. {{ $candidate->displayNumber() }}</span> · {{ $candidate->nameWithOrigin() }}
                                     @if ($candidate->status->value === 'MUNDUR')
                                         <x-filament::badge color="warning" size="sm">Mengundurkan diri</x-filament::badge>
                                     @endif

@@ -98,7 +98,7 @@ class ResultPublication
             'ballot' => $ballot->title,
             'unit' => $unit?->name,
             'status' => $status->value,
-            'candidates' => $outcome->candidates->map(fn ($candidate): string => $candidate->displayNumber().' '.$candidate->name)->all(),
+            'candidates' => $outcome->candidates->map(fn ($candidate): string => $candidate->displayNumber().' '.$candidate->nameWithOrigin())->all(),
         ], actor: $actor);
 
         return $outcome;

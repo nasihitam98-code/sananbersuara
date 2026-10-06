@@ -61,6 +61,7 @@ class CreateCandidate extends CreateRecord
 
         $perUnit = $ballot->scope === BallotScope::PerRt;
         $data['unit_id'] = $perUnit ? ($data['unit_id'] ?? null) : null;
+        $data['origin_unit_id'] = $perUnit ? null : ($data['origin_unit_id'] ?? null);
 
         if ($perUnit && $data['unit_id'] === null) {
             Notification::make()->title('Pilih RT calon untuk surat suara per RT.')->danger()->send();

@@ -314,6 +314,12 @@ function initBallotSteps(onChoose) {
         review.querySelector('[data-review-number]').textContent = `Nomor ${source.dataset.number}`;
         review.querySelector('[data-review-name]').textContent = source.dataset.name;
 
+        const origin = review.querySelector('[data-review-origin]');
+
+        if (origin) {
+            origin.textContent = source.dataset.origin ? `Asal ${source.dataset.origin}` : '';
+        }
+
         choose.classList.add('hidden');
         nextBar.classList.add('hidden');
         review.classList.remove('hidden');

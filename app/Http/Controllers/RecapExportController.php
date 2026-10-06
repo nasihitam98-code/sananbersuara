@@ -43,7 +43,7 @@ class RecapExportController extends Controller
         $writer->openToFile($path);
 
         $writer->getCurrentSheet()->setName('Hasil');
-        $writer->addRow(Row::fromValues(['Surat suara', 'RT', 'Peringkat', 'Nomor', 'Nama calon', 'Suara', 'Persen', 'Suara sah', 'Suara dibatalkan']));
+        $writer->addRow(Row::fromValues(['Surat suara', 'RT', 'Peringkat', 'Nomor', 'Nama calon', 'Asal RT', 'Suara', 'Persen', 'Suara sah', 'Suara dibatalkan']));
 
         foreach ($slots->slots($election) as $slot) {
             if ($limitUnit !== null && $slot['unit'] !== null && $slot['unit']->id !== $limitUnit) {
@@ -60,6 +60,7 @@ class RecapExportController extends Controller
                     $row['rank'],
                     $row['candidate']->displayNumber(),
                     $row['candidate']->name,
+                    $row['candidate']->originLabel() ?? '',
                     $row['votes'],
                     $row['percent'],
                     $tally['valid'],

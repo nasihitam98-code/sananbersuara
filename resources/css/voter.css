@@ -487,6 +487,16 @@ label {
     line-height: 1.2;
 }
 
+.candidate__origin {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--c-indigo-700);
+}
+
+.candidate__origin:empty {
+    display: none;
+}
+
 .tag {
     display: inline-block;
     margin-top: 4px;

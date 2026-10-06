@@ -39,6 +39,9 @@
                                 </span>
                                 <p class="candidate__number">Nomor {{ $candidate->displayNumber() }}</p>
                                 <p class="winner__name">{{ $candidate->name }}</p>
+                                @if ($candidate->originLabel())
+                                    <p class="candidate__origin">Asal {{ $candidate->originLabel() }}</p>
+                                @endif
                             </div>
                         @endforeach
                     </div>
