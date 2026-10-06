@@ -212,7 +212,8 @@ class CandidateBulkImportTest extends TestCase
         $rt03 = Unit::query()->where('code', '03')->firstOrFail();
 
         $page = Livewire::test(ListCandidates::class);
-        $page->call('updateTableColumnState', 'name', (string) $first->getKey(), 'Bapak Sutrisno');
+        $page->call('updateTableColumnState', 'name', (string) $first->getKey(), 'Bapak Sutrisno')
+            ->assertNotified('Tersimpan: Nama calon nomor 01.');
         $page->call('updateTableColumnState', 'origin_unit_id', (string) $first->getKey(), (string) $rt03->id);
         $page->call('updateTableColumnState', 'name', (string) $first->getKey(), 'ibu  SUMIATI');
         $page->call('updateTableColumnState', 'number', (string) $first->getKey(), '2');

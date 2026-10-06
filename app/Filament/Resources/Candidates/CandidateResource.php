@@ -22,6 +22,7 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
@@ -265,7 +266,7 @@ class CandidateResource extends Resource
     }
 
     /**
-     * Catat perubahan dari edit cepat di tabel.
+     * Setelah edit cepat di tabel tersimpan: catat di audit dan beri tanda "Tersimpan".
      */
     public static function auditInlineEdit(Candidate $record, string $field, mixed $value): void
     {
@@ -274,6 +275,14 @@ class CandidateResource extends Resource
             'after' => $value,
             'via' => 'tabel',
         ]);
+
+        $label = ['number' => 'Nomor', 'name' => 'Nama', 'origin_unit_id' => 'Asal RT'][$field] ?? $field;
+
+        Notification::make()
+            ->title("Tersimpan: {$label} calon nomor {$record->displayNumber()}.")
+            ->success()
+            ->duration(2500)
+            ->send();
     }
 
     /**
