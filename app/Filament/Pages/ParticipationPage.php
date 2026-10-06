@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
 use App\Enums\VoteStatus;
+use App\Filament\Support\Workspace;
 use App\Models\Attendee;
 use App\Models\BallotVoter;
 use App\Models\Election;
@@ -31,7 +32,7 @@ class ParticipationPage extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPresentationChartLine;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Mode Resmi';
+    protected static string|UnitEnum|null $navigationGroup = 'Hari H';
 
     protected static ?string $navigationLabel = 'Partisipasi';
 
@@ -40,6 +41,11 @@ class ParticipationPage extends Page
     protected static ?string $slug = 'partisipasi';
 
     protected static ?int $navigationSort = 3;
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Workspace::shows(ElectionMode::Resmi);
+    }
 
     public ?int $unitFilter = null;
 

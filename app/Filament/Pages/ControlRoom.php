@@ -2,12 +2,14 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
 use App\Enums\RestoreReason;
 use App\Enums\StaffRole;
 use App\Enums\WaveKind;
 use App\Enums\WaveStatus;
 use App\Filament\Pages\Concerns\InteractsWithElection;
+use App\Filament\Support\Workspace;
 use App\Models\Attendee;
 use App\Models\Election;
 use App\Services\AuditLogger;
@@ -42,7 +44,7 @@ class ControlRoom extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPlayCircle;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Mode Dadakan';
+    protected static string|UnitEnum|null $navigationGroup = 'Hari H';
 
     protected static ?string $navigationLabel = 'Ruang Kendali';
 
@@ -51,6 +53,11 @@ class ControlRoom extends Page
     protected static ?string $slug = 'ruang-kendali';
 
     protected static ?int $navigationSort = 2;
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Workspace::shows(ElectionMode::Dadakan);
+    }
 
     public string $search = '';
 

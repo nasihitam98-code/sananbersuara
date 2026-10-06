@@ -6,6 +6,7 @@ use App\Enums\ElectionStatus;
 use App\Enums\OutcomeStatus;
 use App\Enums\ReportStatus;
 use App\Filament\Support\Reauthenticate;
+use App\Filament\Support\Workspace;
 use App\Models\Ballot;
 use App\Models\Election;
 use App\Models\OfficialReport;
@@ -53,6 +54,11 @@ class VerificationDesk extends Page
     protected static ?string $slug = 'verifikasi-publikasi';
 
     protected static ?int $navigationSort = 2;
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Workspace::shows();
+    }
 
     #[Url(as: 'pemilihan')]
     public ?string $electionId = null;

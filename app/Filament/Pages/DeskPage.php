@@ -9,6 +9,7 @@ use App\Enums\ElectionStatus;
 use App\Enums\PermitCancelReason;
 use App\Enums\TpsPauseReason;
 use App\Enums\VoteStatus;
+use App\Filament\Support\Workspace;
 use App\Models\Attendee;
 use App\Models\BallotVoter;
 use App\Models\Device;
@@ -43,7 +44,7 @@ class DeskPage extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentCheck;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Mode Resmi';
+    protected static string|UnitEnum|null $navigationGroup = 'Hari H';
 
     protected static ?string $navigationLabel = 'Meja Izin';
 
@@ -52,6 +53,11 @@ class DeskPage extends Page
     protected static ?string $slug = 'meja-izin';
 
     protected static ?int $navigationSort = 2;
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Workspace::shows(ElectionMode::Resmi);
+    }
 
     public string $search = '';
 

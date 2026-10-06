@@ -4,10 +4,12 @@ namespace App\Filament\Resources\Candidates;
 
 use App\Enums\BallotScope;
 use App\Enums\CandidateStatus;
+use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
 use App\Filament\Resources\Candidates\Pages\CreateCandidate;
 use App\Filament\Resources\Candidates\Pages\EditCandidate;
 use App\Filament\Resources\Candidates\Pages\ListCandidates;
+use App\Filament\Support\Workspace;
 use App\Models\Ballot;
 use App\Models\Candidate;
 use App\Models\Unit;
@@ -45,6 +47,11 @@ class CandidateResource extends Resource
 
     protected static ?int $navigationSort = 2;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Workspace::shows();
+    }
+
     /**
      * Surat suara yang masih boleh diisi kandidat (pemilihan Draf/Siap).
      *
@@ -54,7 +61,8 @@ class CandidateResource extends Resource
     {
         return Ballot::query()
             ->with('election')
-            ->whereHas('election', fn (Builder $query) => $query->whereIn('status', [ElectionStatus::Draft, ElectionStatus::Ready]))
+            ->whereHas('election', fn (Builder $query) => $query->whereIn('status', [ElectionStatus::Draft, ElectionStatus::Ready])
+                ->when(Workspace::current(), fn (Builder $query, ElectionMode $mode): Builder => $query->where('mode', $mode)))
             ->get()
             ->mapWithKeys(fn (Ballot $ballot): array => [$ballot->id => "{$ballot->election->name} — {$ballot->title}"])
             ->all();
@@ -136,7 +144,8 @@ class CandidateResource extends Resource
     {
         return $table
             ->defaultSort('number')
-            ->modifyQueryUsing(fn (Builder $query) => $query->with('ballot.election'))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with('ballot.election')
+                ->when(Workspace::current(), fn (Builder $query, ElectionMode $mode): Builder => $query->whereHas('ballot.election', fn (Builder $election): Builder => $election->where('mode', $mode))))
             ->columns([
                 ImageColumn::make('photo')
                     ->label('Foto')

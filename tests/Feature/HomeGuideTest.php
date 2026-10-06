@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\ElectionMode;
 use App\Enums\StaffRole;
+use App\Filament\Support\Workspace;
 use App\Models\Ballot;
 use App\Models\Candidate;
 use App\Models\Election;
@@ -52,30 +53,63 @@ class HomeGuideTest extends TestCase
         return $user;
     }
 
-    public function test_super_admin_home_shows_next_step_both_guides_and_public_link(): void
+    public function test_super_admin_chooses_mode_first(): void
     {
         $this->actingAs($this->superAdmin)->get('/admin')
             ->assertOk()
-            ->assertSee('Beranda')
-            ->assertSee('Penjaringan Calon RW')
-            ->assertSee('Petugas pintu sudah bisa mendata yang hadir')
-            ->assertSee('Panduan Mode Dadakan')
-            ->assertSee('Panduan Mode Resmi')
-            ->assertSee(route('public.index'), false);
+            ->assertSee('Mau mengurus pemilihan yang mana?')
+            ->assertSee('Mode Dadakan')
+            ->assertSee('Mode Resmi')
+            ->assertSee(route('workspace.switch', 'dadakan'), false)
+            ->assertDontSee('Meja Pintu')
+            ->assertDontSee('Meja Izin');
     }
 
-    public function test_door_staff_only_sees_dadakan_steps_they_can_open(): void
+    public function test_dadakan_workspace_shows_current_stage_button_and_only_dadakan_menu(): void
     {
-        $this->actingAs($this->makeUser(User::ROLE_STAFF, StaffRole::PetugasPintu))->get('/admin')
+        $this->actingAs($this->superAdmin)->get(route('workspace.switch', 'dadakan'))->assertRedirect(url('/admin'));
+
+        $this->get('/admin')
+            ->assertOk()
+            ->assertSee('Mode Dadakan')
+            ->assertSee('Ganti mode')
+            ->assertSee('Penjaringan Calon RW')
+            ->assertSee('Sudah siap. Petugas pintu sudah bisa mendata')
+            ->assertSee('Buka pengaturan (Mulai Pemilihan)')
+            ->assertSee('Panduan langkah Mode Dadakan', false)
+            ->assertSee('Meja Pintu')
+            ->assertDontSee('Meja Izin')
+            ->assertDontSee('Data Pemilih');
+    }
+
+    public function test_resmi_workspace_shows_only_resmi_menu(): void
+    {
+        $this->actingAs($this->superAdmin)
+            ->withSession([Workspace::SESSION_KEY => ElectionMode::Resmi->value])
+            ->get('/admin')
+            ->assertSee('Mode Resmi')
+            ->assertSee('Perangkat')
+            ->assertSee('Data Pemilih')
+            ->assertDontSee('Meja Pintu')
+            ->assertDontSee('Penjaringan Calon RW');
+    }
+
+    public function test_door_staff_goes_straight_to_dadakan_and_cannot_switch_to_resmi(): void
+    {
+        $door = $this->makeUser(User::ROLE_STAFF, StaffRole::PetugasPintu);
+
+        $this->actingAs($door)->get('/admin')
             ->assertOk()
             ->assertSee('Penjaringan Calon RW')
             ->assertSee('Buka Meja Pintu')
             ->assertSee('Meja Pintu: daftarkan yang hadir')
             ->assertDontSee('Ruang Kendali: buka voting')
-            ->assertDontSee('Panduan Mode Resmi');
+            ->assertDontSee('Ganti mode');
+
+        $this->actingAs($door)->get(route('workspace.switch', 'resmi'))->assertForbidden();
     }
 
-    public function test_admin_rt_only_sees_resmi_guide(): void
+    public function test_admin_rt_goes_straight_to_resmi(): void
     {
         $adminRt = $this->makeUser(User::ROLE_ADMIN_RT, unit: Unit::query()->firstOrFail());
         $adminRt->givePermissionTo([User::PERMISSION_MANAGE_VOTERS, User::PERMISSION_DESK]);
@@ -85,9 +119,9 @@ class HomeGuideTest extends TestCase
             ->assertOk()
             ->assertSee('Pemilihan RT dan RW')
             ->assertDontSee('Penjaringan Calon RW')
-            ->assertSee('Panduan Mode Resmi')
             ->assertSee('Isi data pemilih per RT')
-            ->assertDontSee('Panduan Mode Dadakan');
+            ->assertDontSee('Meja Pintu')
+            ->assertDontSee('Ganti mode');
     }
 
     public function test_public_portal_links_to_admin_and_lists_running_elections(): void

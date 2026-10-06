@@ -6,6 +6,7 @@ use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
 use App\Enums\StaffRole;
 use App\Filament\Pages\Concerns\InteractsWithElection;
+use App\Filament\Support\Workspace;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\Results\ResultSlots;
@@ -40,6 +41,11 @@ class ResultScreen extends Page
     protected static ?string $slug = 'layar-hasil';
 
     protected static ?int $navigationSort = 1;
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Workspace::shows();
+    }
 
     /** Hanya bisa diubah lewat aksi server (tercatat di audit), tidak dari browser. */
     #[Locked]

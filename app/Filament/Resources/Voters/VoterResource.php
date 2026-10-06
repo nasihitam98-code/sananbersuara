@@ -2,11 +2,13 @@
 
 namespace App\Filament\Resources\Voters;
 
+use App\Enums\ElectionMode;
 use App\Enums\EmergencyAddReason;
 use App\Filament\Pages\ImportVoters;
 use App\Filament\Resources\Voters\Pages\CreateVoter;
 use App\Filament\Resources\Voters\Pages\EditVoter;
 use App\Filament\Resources\Voters\Pages\ListVoters;
+use App\Filament\Support\Workspace;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Voter;
@@ -51,6 +53,11 @@ class VoterResource extends Resource
     protected static ?string $recordTitleAttribute = 'name';
 
     protected static ?int $navigationSort = 3;
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Workspace::shows(ElectionMode::Resmi);
+    }
 
     public static function getEloquentQuery(): Builder
     {

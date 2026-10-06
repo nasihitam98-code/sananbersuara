@@ -7,6 +7,7 @@ use App\Enums\CorrectionStatus;
 use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
 use App\Filament\Support\Reauthenticate;
+use App\Filament\Support\Workspace;
 use App\Models\Attendee;
 use App\Models\Ballot;
 use App\Models\Election;
@@ -34,7 +35,7 @@ class CorrectionsPage extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowUturnLeft;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Mode Resmi';
+    protected static string|UnitEnum|null $navigationGroup = 'Hari H';
 
     protected static ?string $navigationLabel = 'Koreksi Suara';
 
@@ -43,6 +44,11 @@ class CorrectionsPage extends Page
     protected static ?string $slug = 'koreksi-suara';
 
     protected static ?int $navigationSort = 4;
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Workspace::shows(ElectionMode::Resmi);
+    }
 
     public string $search = '';
 

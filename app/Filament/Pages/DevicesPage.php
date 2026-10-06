@@ -8,6 +8,7 @@ use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
 use App\Enums\TpsPauseReason;
 use App\Filament\Support\Reauthenticate;
+use App\Filament\Support\Workspace;
 use App\Models\Device;
 use App\Models\Election;
 use App\Models\TpsPause;
@@ -36,7 +37,7 @@ class DevicesPage extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedComputerDesktop;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Mode Resmi';
+    protected static string|UnitEnum|null $navigationGroup = 'Hari H';
 
     protected static ?string $navigationLabel = 'Perangkat';
 
@@ -45,6 +46,11 @@ class DevicesPage extends Page
     protected static ?string $slug = 'perangkat';
 
     protected static ?int $navigationSort = 1;
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Workspace::shows(ElectionMode::Resmi);
+    }
 
     /**
      * @var array{desk: string, token: string}|null

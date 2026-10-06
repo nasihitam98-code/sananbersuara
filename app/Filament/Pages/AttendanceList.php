@@ -2,9 +2,11 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
 use App\Enums\StaffRole;
 use App\Filament\Pages\Concerns\InteractsWithElection;
+use App\Filament\Support\Workspace;
 use App\Models\Attendee;
 use App\Models\Unit;
 use App\Services\AuditLogger;
@@ -42,7 +44,7 @@ class AttendanceList extends Page implements HasTable
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentList;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Mode Dadakan';
+    protected static string|UnitEnum|null $navigationGroup = 'Hari H';
 
     protected static ?string $navigationLabel = 'Daftar Hadir';
 
@@ -51,6 +53,11 @@ class AttendanceList extends Page implements HasTable
     protected static ?string $slug = 'daftar-hadir';
 
     protected static ?int $navigationSort = 3;
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Workspace::shows(ElectionMode::Dadakan);
+    }
 
     protected static function allowedStaffRoles(): array
     {

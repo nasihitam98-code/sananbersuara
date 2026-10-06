@@ -8,6 +8,7 @@ use App\Http\Controllers\RecapExportController;
 use App\Http\Controllers\ScreenController;
 use App\Http\Controllers\VoterController;
 use App\Http\Controllers\VoterTemplateController;
+use App\Http\Controllers\WorkspaceController;
 use App\Http\Middleware\NoStore;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -82,3 +83,4 @@ Route::middleware('auth')->get('/berita-acara/{report:public_id}', [OfficialRepo
 Route::middleware('auth')->get('/pemilih/template', VoterTemplateController::class)->name('voters.template');
 Route::middleware('auth')->get('/rekap/{election:public_id}', RecapExportController::class)->name('recap.export');
 Route::middleware(['auth', 'signed'])->get('/backup/{backup:public_id}/unduh', BackupDownloadController::class)->name('backups.download');
+Route::middleware('auth')->get('/panel/mode/{mode?}', WorkspaceController::class)->whereIn('mode', ['dadakan', 'resmi', 'pilih'])->name('workspace.switch');

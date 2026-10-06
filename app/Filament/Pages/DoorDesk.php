@@ -2,9 +2,11 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
 use App\Enums\StaffRole;
 use App\Filament\Pages\Concerns\InteractsWithElection;
+use App\Filament\Support\Workspace;
 use App\Models\Attendee;
 use App\Models\Unit;
 use App\Services\AuditLogger;
@@ -33,7 +35,7 @@ class DoorDesk extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedIdentification;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Mode Dadakan';
+    protected static string|UnitEnum|null $navigationGroup = 'Hari H';
 
     protected static ?string $navigationLabel = 'Meja Pintu';
 
@@ -42,6 +44,11 @@ class DoorDesk extends Page
     protected static ?string $slug = 'meja-pintu';
 
     protected static ?int $navigationSort = 1;
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Workspace::shows(ElectionMode::Dadakan);
+    }
 
     /**
      * @var array<string, mixed>|null

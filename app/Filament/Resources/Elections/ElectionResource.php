@@ -9,6 +9,7 @@ use App\Filament\Resources\Elections\Pages\EditElection;
 use App\Filament\Resources\Elections\Pages\ListElections;
 use App\Filament\Resources\Elections\RelationManagers\BallotsRelationManager;
 use App\Filament\Resources\Elections\RelationManagers\StaffRelationManager;
+use App\Filament\Support\Workspace;
 use App\Models\Election;
 use BackedEnum;
 use Filament\Actions\EditAction;
@@ -21,6 +22,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 class ElectionResource extends Resource
@@ -38,6 +40,11 @@ class ElectionResource extends Resource
     protected static ?string $recordTitleAttribute = 'name';
 
     protected static ?int $navigationSort = 1;
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Workspace::shows();
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -57,7 +64,7 @@ class ElectionResource extends Resource
                         Select::make('mode')
                             ->label('Mode')
                             ->options(ElectionMode::class)
-                            ->default(ElectionMode::Dadakan)
+                            ->default(fn (): ElectionMode => Workspace::current() ?? ElectionMode::Dadakan)
                             ->helperText('Dadakan: QR + nama + PIN (rapat). Resmi: Meja Izin + laptop bilik per RT.')
                             ->required()
                             ->live()
@@ -127,6 +134,7 @@ class ElectionResource extends Resource
     {
         return $table
             ->defaultSort('created_at', 'desc')
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->when(Workspace::current(), fn (Builder $query, ElectionMode $mode): Builder => $query->where('mode', $mode)))
             ->columns([
                 TextColumn::make('name')->label('Nama')->searchable()->weight('bold'),
                 TextColumn::make('mode')->label('Mode')->badge(),

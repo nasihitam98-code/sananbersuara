@@ -15,6 +15,8 @@ use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Support\Icons\Heroicon;
+use Filament\View\PanelsRenderHook;
+use Illuminate\Contracts\View\View;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -48,8 +50,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->navigationGroups([
                 NavigationGroup::make('Persiapan'),
-                NavigationGroup::make('Mode Dadakan'),
-                NavigationGroup::make('Mode Resmi'),
+                NavigationGroup::make('Hari H'),
                 NavigationGroup::make('Hasil'),
                 NavigationGroup::make('Sistem')->collapsed(),
             ])
@@ -60,6 +61,7 @@ class AdminPanelProvider extends PanelProvider
                     ->sort(1),
             ])
             ->sidebarCollapsibleOnDesktop()
+            ->renderHook(PanelsRenderHook::GLOBAL_SEARCH_BEFORE, fn (): View => view('filament.workspace-switcher'))
             ->databaseNotifications()
             ->databaseNotificationsPolling('30s')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
