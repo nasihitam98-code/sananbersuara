@@ -12,6 +12,7 @@ use App\Models\Outcome;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\Voting\RoundResolver;
 use App\Services\Voting\VotingException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -79,7 +80,7 @@ class ResultPublication
                 'election_id' => $election->id,
                 'ballot_id' => $ballot->id,
                 'unit_id' => $unit?->id,
-                'round_id' => $election->currentRound()->id,
+                'round_id' => (app(RoundResolver::class)->roundFor($election, $ballot, $unit?->id) ?? $election->currentRound())->id,
                 'status' => $status,
                 'note' => $note,
                 'decided_by' => $actor->id,

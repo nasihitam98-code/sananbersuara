@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\Results\ResultSlots;
 use App\Services\Voting\ResultsCalculator;
+use App\Services\Voting\RoundResolver;
 use Illuminate\Http\Request;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Writer\XLSX\Writer;
@@ -48,7 +49,8 @@ class RecapExportController extends Controller
                 continue;
             }
 
-            $tally = $calculator->tally($slot['ballot'], $round, $slot['unit']);
+            $slotRound = app(RoundResolver::class)->roundFor($election, $slot['ballot'], $slot['unit']?->id) ?? $round;
+            $tally = $calculator->tally($slot['ballot'], $slotRound, $slot['unit']);
 
             foreach ($tally['candidates'] as $row) {
                 $writer->addRow(Row::fromValues($this->safe([
@@ -76,7 +78,7 @@ class RecapExportController extends Controller
 
             foreach ($election->ballots()->get() as $ballot) {
                 foreach (Unit::query()->orderBy('sort')->when($limitUnit !== null, fn ($query) => $query->whereKey($limitUnit))->get() as $unit) {
-                    $row = $calculator->ballotParticipation($ballot, $round, $unit->id);
+                    $row = $calculator->ballotParticipation($ballot, app(RoundResolver::class)->roundFor($election, $ballot, $unit->id) ?? $round, $unit->id);
 
                     if ($row['eligible'] > 0) {
                         $writer->addRow(Row::fromValues($this->safe([$ballot->title, $unit->name, $row['eligible'], $row['voted'], $row['not_voted'], $row['percent'], $row['added_during_live']])));

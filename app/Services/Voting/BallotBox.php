@@ -52,7 +52,7 @@ class BallotBox
 
         $wave = $this->currentWaveOrFail($election);
         $round = $wave->round;
-        $ballotCount = $election->ballots()->count();
+        $ballotCount = app(RoundResolver::class)->ballotIds($election, $round)->count();
 
         return Attendee::query()
             ->where('election_id', $election->id)
@@ -135,7 +135,9 @@ class BallotBox
             ->where('active_key', 1)
             ->pluck('ballot_id');
 
-        return $election->ballots()->whereNotIn('id', $done)->get();
+        $inRound = app(RoundResolver::class)->ballotIds($election, $wave->round);
+
+        return $election->ballots()->whereIn('id', $inRound)->whereNotIn('id', $done)->get();
     }
 
     /**
@@ -164,6 +166,12 @@ class BallotBox
             }
 
             if ($locked->election_id !== $election->id || $ballot->election_id !== $election->id || $candidate->ballot_id !== $ballot->id) {
+                throw VotingException::invalidChoice();
+            }
+
+            $resolver = app(RoundResolver::class);
+
+            if (! $resolver->covers($wave->round, $ballot->id, null) || ! $resolver->allowsCandidate($wave->round, $candidate->id)) {
                 throw VotingException::invalidChoice();
             }
 
@@ -237,6 +245,6 @@ class BallotBox
             ->where('active_key', 1)
             ->count();
 
-        return $voted >= Ballot::query()->where('election_id', $attendee->election_id)->count();
+        return $voted >= app(RoundResolver::class)->ballotIds($attendee->election, $wave->round)->count();
     }
 }

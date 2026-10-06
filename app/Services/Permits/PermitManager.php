@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Models\Vote;
 use App\Models\Voter;
 use App\Services\AuditLogger;
+use App\Services\Voting\RoundResolver;
 use App\Services\Voting\VotingException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
@@ -82,7 +83,7 @@ class PermitManager
 
             if ($this->pendingBallots($voter, $election)->isEmpty()) {
                 throw $this->eligibleBallotIds($voter, $election)->isEmpty()
-                    ? VotingException::invalidState('Tidak berhak di pemilihan ini.')
+                    ? VotingException::invalidState('Tidak berhak di pemilihan/putaran ini.')
                     : VotingException::alreadyVoted();
             }
 
@@ -230,11 +231,18 @@ class PermitManager
      */
     public function eligibleBallotIds(Voter $voter, Election $election): Collection
     {
+        $round = $election->currentRound();
+        $resolver = app(RoundResolver::class);
+
+        // Berhak = ada di snapshot DAN surat suara/RT-nya termasuk cakupan putaran berjalan (K22).
         return BallotVoter::query()
             ->where('voter_id', $voter->id)
             ->whereNull('revoked_at')
             ->whereIn('ballot_id', $election->ballots()->pluck('id'))
-            ->pluck('ballot_id');
+            ->get(['ballot_id', 'unit_id'])
+            ->filter(fn (BallotVoter $entry): bool => $round === null || $resolver->covers($round, $entry->ballot_id, $entry->unit_id))
+            ->pluck('ballot_id')
+            ->values();
     }
 
     /**
@@ -270,8 +278,11 @@ class PermitManager
         $ids = $voters->modelKeys();
         $ballotIds = $election->ballots()->pluck('id');
 
+        $resolver = app(RoundResolver::class);
         $eligible = BallotVoter::query()->whereIn('voter_id', $ids)->whereIn('ballot_id', $ballotIds)->whereNull('revoked_at')
-            ->get(['voter_id', 'ballot_id'])->groupBy('voter_id');
+            ->get(['voter_id', 'ballot_id', 'unit_id'])
+            ->filter(fn (BallotVoter $entry): bool => $round === null || $resolver->covers($round, $entry->ballot_id, $entry->unit_id))
+            ->groupBy('voter_id');
         $voted = Vote::query()->whereIn('voter_id', $ids)->where('round_id', $round?->id)->where('status', VoteStatus::Sah)
             ->get(['voter_id', 'ballot_id'])->groupBy('voter_id');
         $permits = Permit::query()->where('election_id', $election->id)->whereIn('active_voter_id', $ids)->with('device.unit')->get()->keyBy('voter_id');

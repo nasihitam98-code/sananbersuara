@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\Results\ResultSlots;
 use App\Services\Voting\ResultsCalculator;
+use App\Services\Voting\RoundResolver;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -103,8 +104,14 @@ class ResultScreen extends Page
         $slots = app(ResultSlots::class)->slots($election)
             ->filter(fn (array $slot): bool => $user->isSuperAdmin() || $election->isDadakan() || $slot['unit'] === null || $slot['unit']->id === $user->unit_id);
 
+        $resolver = app(RoundResolver::class);
+
         foreach ($election->rounds as $round) {
             foreach ($slots as $slot) {
+                if (! $resolver->covers($round, $slot['ballot']->id, $slot['unit']?->id)) {
+                    continue;
+                }
+
                 $output[] = [
                     'round' => $round->number,
                     'ballot' => $slot['ballot'],

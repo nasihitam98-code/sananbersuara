@@ -191,6 +191,27 @@ class ElectionLifecycle
         ]);
     }
 
+    /**
+     * Membuka kembali pemungutan untuk putaran berikutnya (dipanggil NextRoundService).
+     *
+     * @param  callable(Election): void  $prepare
+     */
+    public function startNextRound(Election $election, User $actor, callable $prepare, string $reason): void
+    {
+        $this->transition($election, [ElectionStatus::Ditutup, ElectionStatus::Verifikasi], ElectionStatus::Berlangsung, $actor, function (Election $election) use ($prepare): void {
+            $otherLive = Election::query()
+                ->whereKeyNot($election->id)
+                ->whereIn('status', [ElectionStatus::Berlangsung, ElectionStatus::Paused])
+                ->exists();
+
+            if ($otherLive) {
+                throw VotingException::invalidState('Masih ada pemilihan lain yang berlangsung (K13).');
+            }
+
+            $prepare($election);
+        }, note: $reason);
+    }
+
     public function startVerification(Election $election, User $actor): void
     {
         $this->transition($election, [ElectionStatus::Ditutup], ElectionStatus::Verifikasi, $actor);

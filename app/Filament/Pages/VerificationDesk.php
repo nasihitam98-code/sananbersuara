@@ -16,7 +16,9 @@ use App\Services\Results\OfficialReportService;
 use App\Services\Results\ResultPublication;
 use App\Services\Results\ResultSlots;
 use App\Services\Voting\ElectionLifecycle;
+use App\Services\Voting\NextRoundService;
 use App\Services\Voting\ResultsCalculator;
+use App\Services\Voting\RoundResolver;
 use App\Services\Voting\VotingException;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -104,7 +106,8 @@ class VerificationDesk extends Page
         return app(ResultSlots::class)->slots($election)->map(fn (array $slot): array => [
             'key' => $slot['key'],
             'title' => $slot['ballot']->title.($slot['unit'] !== null ? ' — '.$slot['unit']->name : ''),
-            'tally' => $calculator->tally($slot['ballot'], $round, $slot['unit']),
+            'round' => ($slotRound = app(RoundResolver::class)->roundFor($election, $slot['ballot'], $slot['unit']?->id) ?? $round)->number,
+            'tally' => $calculator->tally($slot['ballot'], $slotRound, $slot['unit']),
             'outcome' => $publication->outcome($slot['ballot'], $slot['unit']),
         ])->all();
     }
@@ -213,6 +216,52 @@ class VerificationDesk extends Page
             ->action(fn (array $data) => $this->guard(
                 fn () => app(DataRetention::class)->extendLinkage($this->authorizedElection(), (int) $data['days'], $data['reason'], auth()->user()),
                 'Masa simpan diperpanjang.',
+            ));
+    }
+
+    public function nextRoundAction(): Action
+    {
+        return Action::make('nextRound')
+            ->label('Buka Putaran Berikutnya')
+            ->icon('heroicon-o-arrow-path')
+            ->color('warning')
+            ->visible(fn (): bool => in_array($this->election()?->status, [ElectionStatus::Ditutup, ElectionStatus::Verifikasi], true))
+            ->modalHeading('Buka putaran berikutnya')
+            ->modalDescription('Untuk seri atau keputusan panitia. Pemilihan kembali Berlangsung hanya untuk surat suara/RT yang dipilih, dengan calon yang dipilih. Mode Resmi: laptop meja dan bilik perlu dipasang ulang dengan token baru.')
+            ->schema(fn (): array => [
+                CheckboxList::make('slots')
+                    ->label('Surat suara / RT yang diulang')
+                    ->options(fn (): array => app(ResultSlots::class)->slots($this->election())
+                        ->mapWithKeys(fn (array $slot): array => [$slot['key'] => $slot['ballot']->title.($slot['unit'] !== null ? ' — '.$slot['unit']->name : '')])
+                        ->all())
+                    ->required()
+                    ->live(),
+                CheckboxList::make('candidates')
+                    ->label('Calon yang ikut putaran berikutnya (minimal dua per surat suara/RT)')
+                    ->options(function (Get $get): array {
+                        $chosen = collect($get('slots') ?? []);
+                        $options = [];
+
+                        // Kunci = ID calon (jangan pakai flatMap: kunci numerik akan diurutkan ulang).
+                        foreach (app(ResultSlots::class)->slots($this->election())->filter(fn (array $slot): bool => $chosen->contains($slot['key'])) as $slot) {
+                            $candidates = $slot['ballot']->ballotCandidates()
+                                ->when($slot['unit'] !== null, fn ($query) => $query->where('unit_id', $slot['unit']->id))
+                                ->get();
+
+                            foreach ($candidates as $candidate) {
+                                $options[$candidate->id] = $slot['ballot']->title.($slot['unit'] !== null ? ' '.$slot['unit']->name : '').' · '.$candidate->displayNumber().' '.$candidate->name;
+                            }
+                        }
+
+                        return $options;
+                    })
+                    ->required(),
+                Textarea::make('reason')->label('Alasan (mis. hasil seri, keputusan rapat panitia)')->required()->maxLength(500),
+                Reauthenticate::field(),
+            ])
+            ->action(fn (array $data) => $this->guard(
+                fn () => app(NextRoundService::class)->open($this->authorizedElection(), $data['slots'], array_map('intval', $data['candidates']), $data['reason'], auth()->user()),
+                'Putaran berikutnya dibuka. Pemilihan kembali Berlangsung.',
             ));
     }
 

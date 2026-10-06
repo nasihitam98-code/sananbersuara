@@ -27,6 +27,7 @@
                     {{ $this->publishAction }}
                     {{ $this->unpublishAction }}
                     {{ $this->reopenVerificationAction }}
+                    {{ $this->nextRoundAction }}
                 </div>
             </div>
 
@@ -55,7 +56,7 @@
                     <div class="rounded-xl border border-gray-200 p-4 dark:border-white/10">
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div>
-                                <p class="text-lg font-bold">{{ $row['title'] }}</p>
+                                <p class="text-lg font-bold">{{ $row['title'] }} @if ($row['round'] > 1)<span class="text-sm font-normal text-warning-600">· Putaran {{ $row['round'] }}</span>@endif</p>
                                 <p class="text-sm text-gray-500">
                                     Suara sah {{ $tally['valid'] }} · Dibatalkan {{ $tally['cancelled'] }}
                                     @if ($tally['tie_at_top'])

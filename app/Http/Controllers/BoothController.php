@@ -12,6 +12,7 @@ use App\Models\Permit;
 use App\Services\Devices\DeviceManager;
 use App\Services\Permits\BoothBallotBox;
 use App\Services\Permits\PermitManager;
+use App\Services\Voting\RoundResolver;
 use App\Services\Voting\VotingException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -118,8 +119,10 @@ class BoothController extends Controller
         }
 
         $entry = BallotVoter::query()->where('ballot_id', $ballot->id)->where('voter_id', $permit->voter_id)->first();
+        $allowed = app(RoundResolver::class)->allowedCandidateIds($booth->election->currentRound());
         $candidates = $ballot->ballotCandidates()
             ->when($ballot->scope === BallotScope::PerRt, fn ($query) => $query->where('unit_id', $entry?->unit_id))
+            ->when($allowed !== null, fn ($query) => $query->whereIn('id', $allowed))
             ->get();
 
         $all = $this->permits->eligibleBallotIds($permit->voter, $booth->election);

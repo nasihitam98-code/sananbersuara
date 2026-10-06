@@ -12,6 +12,7 @@ use App\Models\Candidate;
 use App\Models\Device;
 use App\Models\Permit;
 use App\Models\Vote;
+use App\Services\Voting\RoundResolver;
 use App\Services\Voting\VotingException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -68,6 +69,14 @@ class BoothBallotBox
             }
 
             if ($ballot->scope === BallotScope::PerRt && $candidate->unit_id !== $entry->unit_id) {
+                throw VotingException::invalidChoice();
+            }
+
+            // Putaran lanjutan: hanya surat suara/RT dan calon yang ditetapkan panitia (K22).
+            $round = $locked->round()->firstOrFail();
+            $resolver = app(RoundResolver::class);
+
+            if (! $resolver->covers($round, $ballot->id, $entry->unit_id) || ! $resolver->allowsCandidate($round, $candidate->id)) {
                 throw VotingException::invalidChoice();
             }
 

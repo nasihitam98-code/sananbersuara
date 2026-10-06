@@ -21,6 +21,7 @@ use App\Models\Voter;
 use App\Services\Devices\DeviceManager;
 use App\Services\Permits\PermitManager;
 use App\Services\Permits\TpsPauseService;
+use App\Services\Voting\RoundResolver;
 use App\Services\Voting\VotingException;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -168,7 +169,8 @@ class DeskPage extends Page
 
         return $election->ballots()->get()->map(function ($ballot) use ($round): array {
             $eligibleIds = BallotVoter::query()->where('ballot_id', $ballot->id)->where('unit_id', $this->user()->unit_id)->whereNull('revoked_at')->pluck('voter_id');
-            $voted = $round === null ? 0 : Vote::query()->where('ballot_id', $ballot->id)->where('round_id', $round->id)->where('status', VoteStatus::Sah)->whereIn('voter_id', $eligibleIds)->count();
+            $ballotRound = app(RoundResolver::class)->roundFor($ballot->election, $ballot, $this->user()->unit_id) ?? $round;
+            $voted = $ballotRound === null ? 0 : Vote::query()->where('ballot_id', $ballot->id)->where('round_id', $ballotRound->id)->where('status', VoteStatus::Sah)->whereIn('voter_id', $eligibleIds)->count();
             $eligible = $eligibleIds->count();
 
             return ['title' => $ballot->title, 'eligible' => $eligible, 'voted' => $voted, 'percent' => $eligible === 0 ? 0.0 : round($voted * 100 / $eligible, 1)];

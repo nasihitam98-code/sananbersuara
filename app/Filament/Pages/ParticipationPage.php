@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\Vote;
 use App\Models\Voter;
 use App\Services\Voting\ResultsCalculator;
+use App\Services\Voting\RoundResolver;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -97,14 +98,14 @@ class ParticipationPage extends Page
 
         return $election->ballots()->get()->map(function ($ballot) use ($round, $calculator, $units): array {
             $perUnit = $units
-                ->map(fn (Unit $unit): array => ['unit' => $unit->name] + $calculator->ballotParticipation($ballot, $round, $unit->id))
+                ->map(fn (Unit $unit): array => ['unit' => $unit->name] + $calculator->ballotParticipation($ballot, app(RoundResolver::class)->roundFor($ballot->election, $ballot, $unit->id) ?? $round, $unit->id))
                 ->filter(fn (array $row): bool => $row['eligible'] > 0)
                 ->values()
                 ->all();
 
             return [
                 'title' => $ballot->title,
-                'total' => $this->user()->isSuperAdmin() ? $calculator->ballotParticipation($ballot, $round) : null,
+                'total' => $this->user()->isSuperAdmin() ? $calculator->ballotParticipation($ballot, app(RoundResolver::class)->roundFor($ballot->election, $ballot, null) ?? $round) : null,
                 'units' => $perUnit,
             ];
         })->all();

@@ -9,6 +9,7 @@ use App\Models\Candidate;
 use App\Models\Election;
 use App\Models\Wave;
 use App\Services\Voting\BallotBox;
+use App\Services\Voting\RoundResolver;
 use App\Services\Voting\VoterStatus;
 use App\Services\Voting\VotingException;
 use Illuminate\Http\JsonResponse;
@@ -132,13 +133,17 @@ class VoterController extends Controller
             return $this->finish($request, $accessCode);
         }
 
+        $resolver = app(RoundResolver::class);
+        $allowed = $resolver->allowedCandidateIds($wave->round);
+        $inRound = $resolver->ballotIds($election, $wave->round);
+
         return view('voter.ballot', [
             'election' => $election,
             'ballot' => $ballot,
-            'candidates' => $ballot->ballotCandidates()->get(),
+            'candidates' => $ballot->ballotCandidates()->when($allowed !== null, fn ($query) => $query->whereIn('id', $allowed))->get(),
             'status' => $this->status->for($election),
-            'ballotTotal' => $election->ballots()->count(),
-            'ballotIndex' => $election->ballots()->pluck('id')->search($ballot->id) + 1,
+            'ballotTotal' => $inRound->count(),
+            'ballotIndex' => $inRound->search($ballot->id) + 1,
         ]);
     }
 

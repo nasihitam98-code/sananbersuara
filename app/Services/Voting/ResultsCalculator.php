@@ -86,7 +86,7 @@ class ResultsCalculator
     public function participation(Election $election, ?Round $round): array
     {
         $attendees = $election->attendees()->count();
-        $ballotCount = max(1, $election->ballots()->count());
+        $ballotCount = max(1, $round === null ? $election->ballots()->count() : app(RoundResolver::class)->ballotIds($election, $round)->count());
 
         $voted = $round === null ? 0 : (int) DB::table('attendee_participations')
             ->where('round_id', $round->id)

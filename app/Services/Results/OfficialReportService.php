@@ -12,6 +12,7 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\Voting\ResultsCalculator;
+use App\Services\Voting\RoundResolver;
 use App\Services\Voting\VotingException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -156,7 +157,8 @@ class OfficialReportService
         $ballots = [];
 
         foreach ($this->slots->slotsInScope($election, $scope) as $slot) {
-            $tally = $round === null ? null : $this->calculator->tally($slot['ballot'], $round, $slot['unit']);
+            $slotRound = app(RoundResolver::class)->roundFor($election, $slot['ballot'], $slot['unit']?->id) ?? $round;
+            $tally = $slotRound === null ? null : $this->calculator->tally($slot['ballot'], $slotRound, $slot['unit']);
             $outcome = Outcome::query()
                 ->where('ballot_id', $slot['ballot']->id)
                 ->where('unit_id', $slot['unit']?->id)
@@ -166,7 +168,7 @@ class OfficialReportService
 
             $ballots[] = [
                 'title' => $slot['ballot']->title.($slot['unit'] !== null ? ' — '.$slot['unit']->name : ''),
-                'round' => $round?->number,
+                'round' => $slotRound?->number,
                 'valid' => $tally['valid'] ?? 0,
                 'cancelled' => $tally['cancelled'] ?? 0,
                 'tie_at_top' => $tally['tie_at_top'] ?? false,
@@ -183,7 +185,7 @@ class OfficialReportService
                     'candidates' => $outcome->candidates->map(fn ($candidate): string => $candidate->displayNumber().' · '.$candidate->name)->all(),
                     'note' => $outcome->note,
                 ],
-                'participation' => $election->isDadakan() ? null : $this->calculator->ballotParticipation($slot['ballot'], $round, $slot['unit']?->id),
+                'participation' => $election->isDadakan() ? null : $this->calculator->ballotParticipation($slot['ballot'], $slotRound, $slot['unit']?->id),
             ];
         }
 
