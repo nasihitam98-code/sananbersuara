@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Users\Pages;
 
 use App\Filament\Resources\Users\UserResource;
+use App\Filament\Support\PasswordHint;
 use App\Filament\Support\Reauthenticate;
 use App\Models\User;
 use App\Services\AuditLogger;
@@ -29,7 +30,7 @@ class EditUser extends EditRecord
                 ->label('Reset password')
                 ->color('warning')
                 ->schema([
-                    TextInput::make('password')->label('Password sementara baru')->password()->revealable()->required()->rule(Password::default()),
+                    TextInput::make('password')->label('Password sementara baru')->password()->revealable()->required()->rule(Password::default())->helperText(PasswordHint::TEXT),
                     Reauthenticate::field(),
                 ])
                 ->action(function (array $data): void {

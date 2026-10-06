@@ -2,8 +2,11 @@
 
 namespace App\Filament\Pages\Auth;
 
+use App\Filament\Support\PasswordHint;
 use App\Services\AuditLogger;
 use Filament\Auth\Pages\EditProfile as BaseEditProfile;
+use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Component;
 use Illuminate\Database\Eloquent\Model;
 use SensitiveParameter;
 
@@ -12,6 +15,14 @@ use SensitiveParameter;
  */
 class EditProfile extends BaseEditProfile
 {
+    protected function getPasswordFormComponent(): Component
+    {
+        /** @var TextInput $component */
+        $component = parent::getPasswordFormComponent();
+
+        return $component->helperText(PasswordHint::TEXT);
+    }
+
     /**
      * @param  array<string, mixed>  $data
      */

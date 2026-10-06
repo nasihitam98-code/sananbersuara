@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Users;
 use App\Filament\Resources\Users\Pages\CreateUser;
 use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
+use App\Filament\Support\PasswordHint;
 use App\Filament\Support\Workspace;
 use App\Models\Unit;
 use App\Models\User;
@@ -80,7 +81,7 @@ class UserResource extends Resource
                         TextInput::make('email')->label('Email (untuk login)')->email()->required()->maxLength(190)->unique(ignoreRecord: true),
                         TextInput::make('password')
                             ->label('Password sementara')
-                            ->helperText('Minimal 12 karakter, huruf dan angka. Pengguna wajib menggantinya saat login pertama.')
+                            ->helperText(PasswordHint::TEXT.'. Pengguna wajib menggantinya saat login pertama.')
                             ->password()
                             ->revealable()
                             ->rule(Password::default())
