@@ -31,7 +31,7 @@ class ResultScreen extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChartBar;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Hari H';
+    protected static string|UnitEnum|null $navigationGroup = 'Hasil';
 
     protected static ?string $navigationLabel = 'Layar Hasil';
 
@@ -39,7 +39,7 @@ class ResultScreen extends Page
 
     protected static ?string $slug = 'layar-hasil';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 1;
 
     /** Hanya bisa diubah lewat aksi server (tercatat di audit), tidak dari browser. */
     #[Locked]

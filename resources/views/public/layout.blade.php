@@ -8,13 +8,20 @@
     @vite(['resources/css/voter.css'])
 </head>
 <body>
-    <header class="topbar">
-        <p class="topbar__label">Hasil resmi</p>
-        <p class="topbar__title">@yield('heading')</p>
+    <header class="topbar topbar--portal">
+        <div>
+            <p class="topbar__label"><a href="{{ route('public.index') }}">Portal pemilihan</a></p>
+            <p class="topbar__title">@yield('heading')</p>
+        </div>
+        <a class="topbar__action" href="{{ url('/admin') }}">Masuk Panitia</a>
     </header>
 
     <main class="wrap">
         @yield('content')
     </main>
+
+    <footer class="portal-footer">
+        <p>Panitia dan pengurus RT: <a href="{{ url('/admin') }}">masuk ke panel admin</a>.</p>
+    </footer>
 </body>
 </html>

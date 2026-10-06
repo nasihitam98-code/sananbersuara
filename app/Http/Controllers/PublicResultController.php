@@ -24,8 +24,13 @@ class PublicResultController extends Controller
             ->latest('closed_at')
             ->get();
 
+        $upcoming = Election::query()
+            ->whereIn('status', [ElectionStatus::Ready, ElectionStatus::Berlangsung, ElectionStatus::Paused])
+            ->latest()
+            ->get(['id', 'name', 'status']);
+
         return response()
-            ->view('public.index', ['elections' => $elections])
+            ->view('public.index', ['elections' => $elections, 'upcoming' => $upcoming])
             ->header('Cache-Control', 'public, max-age=60');
     }
 

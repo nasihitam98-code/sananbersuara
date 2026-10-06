@@ -27,6 +27,8 @@ class AuditLogResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Sistem';
 
+    protected static ?int $navigationSort = 1;
+
     protected static ?string $modelLabel = 'catatan audit';
 
     protected static ?string $pluralModelLabel = 'Audit Log';

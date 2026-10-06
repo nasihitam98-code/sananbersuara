@@ -43,7 +43,7 @@ class DeskPage extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentCheck;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Hari H';
+    protected static string|UnitEnum|null $navigationGroup = 'Mode Resmi';
 
     protected static ?string $navigationLabel = 'Meja Izin';
 
@@ -51,7 +51,7 @@ class DeskPage extends Page
 
     protected static ?string $slug = 'meja-izin';
 
-    protected static ?int $navigationSort = 0;
+    protected static ?int $navigationSort = 2;
 
     public string $search = '';
 

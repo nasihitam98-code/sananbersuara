@@ -34,7 +34,7 @@ class CorrectionsPage extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowUturnLeft;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Hari H';
+    protected static string|UnitEnum|null $navigationGroup = 'Mode Resmi';
 
     protected static ?string $navigationLabel = 'Koreksi Suara';
 
@@ -42,7 +42,7 @@ class CorrectionsPage extends Page
 
     protected static ?string $slug = 'koreksi-suara';
 
-    protected static ?int $navigationSort = 6;
+    protected static ?int $navigationSort = 4;
 
     public string $search = '';
 

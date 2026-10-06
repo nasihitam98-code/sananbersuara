@@ -42,7 +42,7 @@ class AttendanceList extends Page implements HasTable
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentList;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Hari H';
+    protected static string|UnitEnum|null $navigationGroup = 'Mode Dadakan';
 
     protected static ?string $navigationLabel = 'Daftar Hadir';
 

@@ -33,7 +33,7 @@ class DoorDesk extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedIdentification;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Hari H';
+    protected static string|UnitEnum|null $navigationGroup = 'Mode Dadakan';
 
     protected static ?string $navigationLabel = 'Meja Pintu';
 

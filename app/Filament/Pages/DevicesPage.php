@@ -36,7 +36,7 @@ class DevicesPage extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedComputerDesktop;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Hari H';
+    protected static string|UnitEnum|null $navigationGroup = 'Mode Resmi';
 
     protected static ?string $navigationLabel = 'Perangkat';
 
@@ -44,7 +44,7 @@ class DevicesPage extends Page
 
     protected static ?string $slug = 'perangkat';
 
-    protected static ?int $navigationSort = 5;
+    protected static ?int $navigationSort = 1;
 
     /**
      * @var array{desk: string, token: string}|null

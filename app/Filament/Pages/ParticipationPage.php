@@ -31,7 +31,7 @@ class ParticipationPage extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPresentationChartLine;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Hari H';
+    protected static string|UnitEnum|null $navigationGroup = 'Mode Resmi';
 
     protected static ?string $navigationLabel = 'Partisipasi';
 
@@ -39,7 +39,7 @@ class ParticipationPage extends Page
 
     protected static ?string $slug = 'partisipasi';
 
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 3;
 
     public ?int $unitFilter = null;
 

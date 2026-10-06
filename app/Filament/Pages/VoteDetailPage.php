@@ -36,6 +36,8 @@ class VoteDetailPage extends Page
 
     protected static string|UnitEnum|null $navigationGroup = 'Sistem';
 
+    protected static ?int $navigationSort = 3;
+
     protected static ?string $navigationLabel = 'Detail Suara';
 
     protected static ?string $title = 'Detail Suara / Audit Pilihan';

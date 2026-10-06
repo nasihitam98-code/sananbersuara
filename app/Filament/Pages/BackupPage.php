@@ -28,6 +28,8 @@ class BackupPage extends Page
 
     protected static string|UnitEnum|null $navigationGroup = 'Sistem';
 
+    protected static ?int $navigationSort = 2;
+
     protected static ?string $navigationLabel = 'Backup & Restore';
 
     protected static ?string $title = 'Backup & Restore';

@@ -42,7 +42,7 @@ class ControlRoom extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPlayCircle;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Hari H';
+    protected static string|UnitEnum|null $navigationGroup = 'Mode Dadakan';
 
     protected static ?string $navigationLabel = 'Ruang Kendali';
 

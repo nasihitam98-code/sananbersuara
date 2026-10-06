@@ -44,7 +44,7 @@ class VerificationDesk extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentCheck;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Hari H';
+    protected static string|UnitEnum|null $navigationGroup = 'Hasil';
 
     protected static ?string $navigationLabel = 'Verifikasi & Publikasi';
 
@@ -52,7 +52,7 @@ class VerificationDesk extends Page
 
     protected static ?string $slug = 'verifikasi-publikasi';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 2;
 
     #[Url(as: 'pemilihan')]
     public ?string $electionId = null;
