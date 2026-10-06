@@ -209,7 +209,7 @@ EOF
 sudo cat /home/deploy/.ssh/github.pub
 # Tempel kunci ini di GitHub: repo > Settings > Deploy keys > Add deploy key (tanpa centang "Allow write access")
 # Lalu pastikan remote memakai SSH:
-sudo -u deploy git -C /var/www/rtrw remote set-url origin git@github.com:psikfkh/pemilihan-warga.git
+sudo -u deploy git -C /var/www/rtrw remote set-url origin git@github.com:nasihitam98-code/sananbersuara.git
 sudo -u deploy git -C /var/www/rtrw pull --ff-only
 ```
 
