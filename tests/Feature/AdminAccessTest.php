@@ -11,6 +11,7 @@ use App\Filament\Pages\DoorDesk;
 use App\Filament\Pages\ResultScreen;
 use App\Filament\Resources\Elections\ElectionResource;
 use App\Filament\Resources\Elections\Pages\EditElection;
+use App\Filament\Resources\Elections\Pages\ListElections;
 use App\Filament\Resources\Elections\RelationManagers\BallotsRelationManager;
 use App\Models\Attendee;
 use App\Models\AuditLog;
@@ -198,6 +199,21 @@ class AdminAccessTest extends TestCase
         $this->assertSame('Draf baru', $draft->name);
         $this->assertSame(42, $draft->setting('headcount'), 'Pengaturan di luar form tidak boleh hilang');
         $this->assertSame(config('voting.defaults.wave_minutes'), $draft->setting('wave_minutes'), 'Kotak kosong memakai nilai bawaan');
+    }
+
+    public function test_election_list_hides_cancelled_and_keeps_manage_for_live(): void
+    {
+        $this->actingAs($this->superAdmin);
+        app(ElectionLifecycle::class)->start($this->election, $this->superAdmin);
+        $cancelled = Election::factory()->create(['name' => 'Latihan batal']);
+        app(ElectionLifecycle::class)->cancel($cancelled, $this->superAdmin, 'latihan');
+
+        Livewire::test(ListElections::class)
+            ->assertCanSeeTableRecords([$this->election])
+            ->assertCanNotSeeTableRecords([$cancelled->fresh()])
+            ->assertActionVisible(TestAction::make('edit')->table($this->election))
+            ->filterTable('closed', true)
+            ->assertCanSeeTableRecords([$this->election, $cancelled->fresh()]);
     }
 
     public function test_adding_dadakan_ballot_needs_only_a_title(): void

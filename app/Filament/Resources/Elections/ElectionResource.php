@@ -21,6 +21,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
@@ -157,8 +158,25 @@ class ElectionResource extends Resource
                 TextColumn::make('attendees_count')->label('Peserta hadir')->counts('attendees'),
                 TextColumn::make('started_at')->label('Dimulai')->dateTime('d M Y H:i')->placeholder('-'),
             ])
+            ->filters([
+                // Pemilihan yang sudah dimulai tidak bisa dihapus (jejak audit); yang batal cukup disembunyikan.
+                TernaryFilter::make('closed')
+                    ->label('Pemilihan dibatalkan/diarsipkan')
+                    ->placeholder('Sembunyikan')
+                    ->trueLabel('Tampilkan juga')
+                    ->falseLabel('Hanya yang dibatalkan/diarsipkan')
+                    ->queries(
+                        true: fn (Builder $query): Builder => $query,
+                        false: fn (Builder $query): Builder => $query->whereIn('status', [ElectionStatus::Cancelled, ElectionStatus::Archived]),
+                        blank: fn (Builder $query): Builder => $query->whereNotIn('status', [ElectionStatus::Cancelled, ElectionStatus::Archived]),
+                    ),
+            ])
+            // Halaman pemilihan selalu bisa dibuka Super Admin (isian terkunci sesuai status).
+            ->recordUrl(fn (Election $record): ?string => static::canView($record) ? static::getUrl('edit', ['record' => $record]) : null)
             ->recordActions([
-                EditAction::make()->label('Kelola'),
+                EditAction::make()
+                    ->label('Kelola')
+                    ->authorize(fn (Election $record): bool => static::canView($record)),
             ]);
     }
 
