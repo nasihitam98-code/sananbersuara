@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\BallotScope;
 use App\Enums\ElectionStatus;
 use App\Enums\StaffRole;
 use App\Enums\WaveKind;
@@ -10,6 +11,7 @@ use App\Filament\Pages\DoorDesk;
 use App\Filament\Pages\ResultScreen;
 use App\Filament\Resources\Elections\ElectionResource;
 use App\Filament\Resources\Elections\Pages\EditElection;
+use App\Filament\Resources\Elections\RelationManagers\BallotsRelationManager;
 use App\Models\Attendee;
 use App\Models\AuditLog;
 use App\Models\Ballot;
@@ -19,6 +21,7 @@ use App\Models\ElectionStaff;
 use App\Models\User;
 use App\Services\Voting\ElectionLifecycle;
 use Database\Seeders\DatabaseSeeder;
+use Filament\Actions\Testing\TestAction;
 use Filament\Auth\MultiFactor\Email\Notifications\VerifyEmailAuthentication;
 use Filament\Auth\Pages\Login;
 use Filament\Facades\Filament;
@@ -195,6 +198,21 @@ class AdminAccessTest extends TestCase
         $this->assertSame('Draf baru', $draft->name);
         $this->assertSame(42, $draft->setting('headcount'), 'Pengaturan di luar form tidak boleh hilang');
         $this->assertSame(config('voting.defaults.wave_minutes'), $draft->setting('wave_minutes'), 'Kotak kosong memakai nilai bawaan');
+    }
+
+    public function test_adding_dadakan_ballot_needs_only_a_title(): void
+    {
+        $draft = Election::factory()->create(['name' => 'Penjaringan baru']);
+        $this->actingAs($this->superAdmin);
+
+        Livewire::test(BallotsRelationManager::class, ['ownerRecord' => $draft, 'pageClass' => EditElection::class])
+            ->callAction(TestAction::make('create')->table(), ['title' => 'Calon Ketua RW'])
+            ->assertHasNoFormErrors();
+
+        $ballot = $draft->ballots()->firstOrFail();
+        $this->assertSame('Calon Ketua RW', $ballot->title);
+        $this->assertSame(BallotScope::DaftarHadir, $ballot->scope);
+        $this->assertSame(1, $ballot->sort);
     }
 
     public function test_committee_opens_wave_from_control_room(): void

@@ -61,8 +61,11 @@ class BallotsRelationManager extends RelationManager
                     ->label(fn (Get $get): string => in_array($get('scope'), [BallotScope::PerRt, BallotScope::PerRt->value], true) ? 'Batas jumlah calon per RT (opsional)' : 'Batas jumlah calon (opsional)')
                     ->numeric()->minValue(1)->maxValue(100),
                 TextInput::make('sort')
-                    ->label('Urutan')
-                    ->numeric()->default(0),
+                    ->label('Urutan tampil')
+                    ->helperText('Surat suara dengan angka lebih kecil tampil lebih dulu di bilik (mis. Ketua RT = 1, Ketua RW = 2).')
+                    ->numeric()
+                    ->default(fn (): int => (int) $election->ballots()->max('sort') + 1)
+                    ->visible(! $election->isDadakan()),
             ]);
     }
 
@@ -80,11 +83,13 @@ class BallotsRelationManager extends RelationManager
             ->headerActions([
                 CreateAction::make()
                     ->label('Tambah surat suara')
+                    ->createAnother(false)
                     ->using(function (array $data): Model {
                         /** @var Election $election */
                         $election = $this->getOwnerRecord();
                         $ballot = new Ballot($data);
                         $ballot->scope = $election->isDadakan() ? BallotScope::DaftarHadir : ($data['scope'] ?? BallotScope::SemuaRt);
+                        $ballot->sort ??= (int) $election->ballots()->max('sort') + 1;
                         $ballot->election()->associate($election);
                         $ballot->save();
 
