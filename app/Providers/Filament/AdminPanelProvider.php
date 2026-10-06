@@ -52,6 +52,7 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make('Persiapan'),
                 NavigationGroup::make('Hari H'),
                 NavigationGroup::make('Hasil'),
+                NavigationGroup::make('Data dasar'),
                 NavigationGroup::make('Sistem')->collapsed(),
             ])
             ->navigationItems([

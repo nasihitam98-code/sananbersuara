@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Elections\RelationManagers;
 
 use App\Enums\StaffRole;
+use App\Filament\Resources\Elections\Pages\EditElection;
 use App\Models\ElectionStaff;
 use App\Models\User;
 use App\Services\AuditLogger;
@@ -74,6 +75,7 @@ class StaffRelationManager extends RelationManager
                         $staff->save();
 
                         app(AuditLogger::class)->log('election.staff_assigned', $staff->user, $this->getOwnerRecord(), meta: ['role' => $staff->role->value]);
+                        $this->dispatch(EditElection::PREPARATION_UPDATED);
 
                         return $staff;
                     }),
@@ -81,7 +83,10 @@ class StaffRelationManager extends RelationManager
             ->recordActions([
                 DeleteAction::make()
                     ->label('Cabut')
-                    ->after(fn (ElectionStaff $record) => app(AuditLogger::class)->log('election.staff_removed', $record->user, $this->getOwnerRecord(), meta: ['role' => $record->role->value])),
+                    ->after(function (ElectionStaff $record): void {
+                        app(AuditLogger::class)->log('election.staff_removed', $record->user, $this->getOwnerRecord(), meta: ['role' => $record->role->value]);
+                        $this->dispatch(EditElection::PREPARATION_UPDATED);
+                    }),
             ]);
     }
 }

@@ -20,6 +20,7 @@ use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
+use Livewire\Attributes\On;
 
 /**
  * @property Election $record
@@ -27,6 +28,17 @@ use Illuminate\Database\Eloquent\Model;
 class EditElection extends EditRecord
 {
     protected static string $resource = ElectionResource::class;
+
+    /**
+     * Dikirim tab Surat suara / Panitia setelah ada perubahan, agar daftar periksa ikut diperbarui.
+     */
+    public const PREPARATION_UPDATED = 'election-preparation-updated';
+
+    #[On(self::PREPARATION_UPDATED)]
+    public function refreshPreparation(): void
+    {
+        $this->record->refresh();
+    }
 
     /**
      * Halaman ini juga tempat tombol Status (Jeda/Tutup/Batalkan), jadi Super Admin harus tetap

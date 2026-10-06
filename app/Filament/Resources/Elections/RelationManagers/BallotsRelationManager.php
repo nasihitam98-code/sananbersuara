@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Elections\RelationManagers;
 
 use App\Enums\BallotScope;
 use App\Filament\Resources\Candidates\CandidateResource;
+use App\Filament\Resources\Elections\Pages\EditElection;
 use App\Models\Ballot;
 use App\Models\Election;
 use App\Services\AuditLogger;
@@ -94,6 +95,7 @@ class BallotsRelationManager extends RelationManager
                         $ballot->save();
 
                         app(AuditLogger::class)->log('ballot.created', $ballot, $election, meta: ['title' => $ballot->title]);
+                        $this->dispatch(EditElection::PREPARATION_UPDATED);
 
                         return $ballot;
                     }),
@@ -106,7 +108,10 @@ class BallotsRelationManager extends RelationManager
                 EditAction::make()
                     ->after(fn (Ballot $record) => app(AuditLogger::class)->log('ballot.updated', $record, $record->election, meta: $record->only(['title', 'max_candidates', 'sort']))),
                 DeleteAction::make()
-                    ->after(fn (Ballot $record) => app(AuditLogger::class)->log('ballot.deleted', null, $record->election, meta: ['title' => $record->title])),
+                    ->after(function (Ballot $record): void {
+                        app(AuditLogger::class)->log('ballot.deleted', null, $record->election, meta: ['title' => $record->title]);
+                        $this->dispatch(EditElection::PREPARATION_UPDATED);
+                    }),
             ]);
     }
 }

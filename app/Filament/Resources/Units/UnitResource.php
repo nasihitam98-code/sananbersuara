@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\Units;
 
 use App\Filament\Resources\Units\Pages\ManageUnits;
-use App\Filament\Support\Workspace;
 use App\Models\Unit;
 use App\Services\AuditLogger;
 use BackedEnum;
@@ -30,20 +29,15 @@ class UnitResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedHomeModern;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Persiapan';
+    protected static string|UnitEnum|null $navigationGroup = 'Data dasar';
 
-    protected static ?int $navigationSort = 5;
+    protected static ?int $navigationSort = 2;
 
     protected static ?string $modelLabel = 'RT';
 
     protected static ?string $pluralModelLabel = 'Daftar RT';
 
     protected static ?string $slug = 'rt';
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        return Workspace::shows();
-    }
 
     public static function form(Schema $schema): Schema
     {

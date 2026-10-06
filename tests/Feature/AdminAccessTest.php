@@ -15,6 +15,7 @@ use App\Filament\Resources\Elections\Pages\EditElection;
 use App\Filament\Resources\Elections\Pages\ListElections;
 use App\Filament\Resources\Elections\RelationManagers\BallotsRelationManager;
 use App\Filament\Resources\Elections\RelationManagers\HistoryRelationManager;
+use App\Filament\Resources\Elections\RelationManagers\StaffRelationManager;
 use App\Models\Attendee;
 use App\Models\AuditLog;
 use App\Models\Ballot;
@@ -215,9 +216,11 @@ class AdminAccessTest extends TestCase
             ->assertSee('Lengkapi langkah di atas dulu');
 
         foreach ([StaffRole::Panitia, StaffRole::PetugasPintu] as $role) {
-            $staff = new ElectionStaff(['user_id' => $this->superAdmin->id, 'role' => $role]);
-            $staff->election()->associate($draft);
-            $staff->save();
+            // Lewat tab Panitia & Petugas Pintu: daftar periksa diberi tahu agar langsung diperbarui.
+            Livewire::test(StaffRelationManager::class, ['ownerRecord' => $draft, 'pageClass' => EditElection::class])
+                ->callAction(TestAction::make('create')->table(), ['user_id' => $this->superAdmin->id, 'role' => $role->value])
+                ->assertHasNoFormErrors()
+                ->assertDispatched(EditElection::PREPARATION_UPDATED);
         }
 
         Livewire::test(EditElection::class, ['record' => $draft->public_id])

@@ -6,7 +6,6 @@ use App\Filament\Resources\Users\Pages\CreateUser;
 use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Filament\Support\PasswordHint;
-use App\Filament\Support\Workspace;
 use App\Models\Unit;
 use App\Models\User;
 use BackedEnum;
@@ -32,14 +31,9 @@ class UserResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Persiapan';
+    protected static string|UnitEnum|null $navigationGroup = 'Data dasar';
 
-    protected static ?int $navigationSort = 4;
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        return Workspace::shows();
-    }
+    protected static ?int $navigationSort = 1;
 
     protected static ?string $modelLabel = 'akun';
 
