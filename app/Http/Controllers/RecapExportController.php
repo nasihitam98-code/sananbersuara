@@ -7,6 +7,7 @@ use App\Models\Election;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\Exports\SpreadsheetSanitizer;
 use App\Services\Results\ResultSlots;
 use App\Services\Voting\ResultsCalculator;
 use App\Services\Voting\RoundResolver;
@@ -53,7 +54,7 @@ class RecapExportController extends Controller
             $tally = $calculator->tally($slot['ballot'], $slotRound, $slot['unit']);
 
             foreach ($tally['candidates'] as $row) {
-                $writer->addRow(Row::fromValues($this->safe([
+                $writer->addRow(Row::fromValues(SpreadsheetSanitizer::row([
                     $slot['ballot']->title,
                     $slot['unit']?->name ?? 'Semua',
                     $row['rank'],
@@ -81,7 +82,7 @@ class RecapExportController extends Controller
                     $row = $calculator->ballotParticipation($ballot, app(RoundResolver::class)->roundFor($election, $ballot, $unit->id) ?? $round, $unit->id);
 
                     if ($row['eligible'] > 0) {
-                        $writer->addRow(Row::fromValues($this->safe([$ballot->title, $unit->name, $row['eligible'], $row['voted'], $row['not_voted'], $row['percent'], $row['added_during_live']])));
+                        $writer->addRow(Row::fromValues(SpreadsheetSanitizer::row([$ballot->title, $unit->name, $row['eligible'], $row['voted'], $row['not_voted'], $row['percent'], $row['added_during_live']])));
                     }
                 }
             }
@@ -92,19 +93,5 @@ class RecapExportController extends Controller
         app(AuditLogger::class)->log('recap.exported', $election, $election, meta: ['unit_id' => $limitUnit], actor: $user);
 
         return response()->download($path, 'rekap-'.$election->public_id.'.xlsx')->deleteFileAfterSend();
-    }
-
-    /**
-     * Teks yang diawali karakter pemicu rumus diberi awalan apostrof (anti CSV/formula injection).
-     *
-     * @param  array<int, mixed>  $values
-     * @return array<int, mixed>
-     */
-    private function safe(array $values): array
-    {
-        return array_map(
-            fn (mixed $value): mixed => is_string($value) && preg_match('/^[=+\-@\t\r]/', $value) === 1 ? "'".$value : $value,
-            $values,
-        );
     }
 }

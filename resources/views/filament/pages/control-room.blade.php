@@ -144,6 +144,10 @@
             <x-filament::input.wrapper>
                 <x-filament::input type="search" wire:model.live.debounce.400ms="notVotedFilter" placeholder="Saring nama" />
             </x-filament::input.wrapper>
+            <p class="mt-2 text-sm text-gray-500">
+                Menampilkan maksimal 200 nama.
+                <x-filament::link :href="\App\Filament\Pages\AttendanceList::getUrl(['pemilihan' => $election->public_id])">Lihat semua di Daftar Hadir</x-filament::link>
+            </p>
             <ul class="mt-3 grid gap-x-6 md:grid-cols-2 xl:grid-cols-3">
                 @forelse ($this->notVoted() as $attendee)
                     <li class="py-1">{{ $attendee->name }} <span class="text-sm text-gray-500">· No. {{ $attendee->displayNumber() }}</span></li>
