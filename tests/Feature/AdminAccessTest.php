@@ -30,6 +30,7 @@ use Filament\Auth\MultiFactor\Email\Notifications\VerifyEmailAuthentication;
 use Filament\Auth\Pages\Login;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification as NotificationFacade;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -99,6 +100,20 @@ class AdminAccessTest extends TestCase
 
         NotificationFacade::assertSentTo($user, VerifyEmailAuthentication::class);
         $this->assertGuest();
+    }
+
+    public function test_forgotten_password_can_be_reset_from_server_console(): void
+    {
+        $this->artisan('pemilihan:reset-password', ['email' => strtoupper($this->superAdmin->email)])
+            ->expectsOutputToContain('Password sementara (tampil sekali)')
+            ->assertSuccessful();
+
+        $this->superAdmin->refresh();
+        $this->assertFalse(Hash::check('password', $this->superAdmin->password), 'Password lama tidak berlaku lagi');
+        $this->assertTrue($this->superAdmin->must_change_password);
+        $this->assertTrue(AuditLog::query()->where('action', 'user.password_reset_by_console')->exists());
+
+        $this->artisan('pemilihan:reset-password', ['email' => 'tidak-ada@example.test'])->assertFailed();
     }
 
     public function test_user_must_change_temporary_password_first(): void

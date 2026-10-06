@@ -254,3 +254,19 @@ Lalu login di `https://<domain>/admin`. Saat login pertama akan diminta mengakti
 Jika email belum terkirim, cek pengaturan `MAIL_*` dan `QUEUE_CONNECTION=sync` (kode dikirim lewat antrean; dengan `sync` langsung terkirim tanpa worker).
 
 Terakhir, buka **Sistem > Backup & Restore**, lalu klik **Backup Sekarang**. Statusnya harus **BERHASIL**. Kalau GAGAL, pesan error di tabel biasanya menunjukkan path `mysqldump` atau password database yang salah.
+
+## 9. Lupa password
+
+| Siapa yang lupa | Cara |
+|---|---|
+| Panitia, Petugas Pintu, Admin RT | Super Admin: menu **Akun** → **Ubah** → **Reset password** (beri password sementara; pengguna wajib menggantinya saat login) |
+| Super Admin, dan ada Super Admin lain | Super Admin lain mereset lewat menu **Akun**, sama seperti di atas |
+| Satu-satunya Super Admin | Jalankan di server (bisa dari akun `deploy`): |
+
+```bash
+ssh deploy@<ip-server> "cd /var/www/rtrw && php artisan pemilihan:reset-password <email>"
+```
+
+Password sementara tampil sekali di terminal. Login dengan password itu (plus kode 2FA dari email), lalu langsung buat password baru. Reset ini tercatat di Audit Log.
+
+Saran: buat **dua akun Super Admin** (mis. ketua panitia dan pemilik) agar saling bisa mereset.
