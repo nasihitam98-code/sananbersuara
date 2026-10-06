@@ -11,6 +11,7 @@ use App\Models\Election;
 use App\Models\OfficialReport;
 use App\Models\Unit;
 use App\Models\User;
+use App\Services\Results\DataRetention;
 use App\Services\Results\OfficialReportService;
 use App\Services\Results\ResultPublication;
 use App\Services\Results\ResultSlots;
@@ -26,6 +27,7 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Url;
 use UnitEnum;
@@ -186,6 +188,32 @@ class VerificationDesk extends Page
             ->visible(fn (): bool => $this->election()?->status === ElectionStatus::Unpublished)
             ->requiresConfirmation()
             ->action(fn () => $this->guard(fn () => app(ElectionLifecycle::class)->reopenVerification($this->authorizedElection(), auth()->user()), 'Status: Verifikasi.'));
+    }
+
+    public function retentionDeadline(): ?Carbon
+    {
+        $election = $this->election();
+
+        return $election === null ? null : app(DataRetention::class)->linkageDeadline($election);
+    }
+
+    public function extendRetentionAction(): Action
+    {
+        return Action::make('extendRetention')
+            ->label('Perpanjang masa simpan detail suara')
+            ->color('gray')
+            ->size('sm')
+            ->visible(fn (): bool => $this->retentionDeadline() !== null && $this->election()?->vote_links_destroyed_at === null)
+            ->modalDescription('Gunakan bila ada sengketa yang belum selesai. Perpanjangan tercatat di audit log.')
+            ->schema([
+                Select::make('days')->label('Tambah')->options([7 => '7 hari', 14 => '14 hari', 30 => '30 hari', 60 => '60 hari'])->required(),
+                Textarea::make('reason')->label('Alasan')->required()->maxLength(500),
+                Reauthenticate::field(),
+            ])
+            ->action(fn (array $data) => $this->guard(
+                fn () => app(DataRetention::class)->extendLinkage($this->authorizedElection(), (int) $data['days'], $data['reason'], auth()->user()),
+                'Masa simpan diperpanjang.',
+            ));
     }
 
     public function decideAction(): Action

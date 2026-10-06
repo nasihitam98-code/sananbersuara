@@ -60,6 +60,8 @@ class Election extends Model
             'settings' => 'array',
             'started_at' => 'datetime',
             'closed_at' => 'datetime',
+            'published_at' => 'datetime',
+            'personal_data_purged_at' => 'datetime',
             'results_revealed_at' => 'datetime',
             'vote_links_destroyed_at' => 'datetime',
         ];

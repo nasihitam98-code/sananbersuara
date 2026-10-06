@@ -207,6 +207,9 @@ class ElectionLifecycle
             if ($problems !== []) {
                 throw VotingException::invalidState(implode(' ', $problems));
             }
+
+            // Awal masa sengketa untuk retensi K26 dihitung dari publikasi pertama.
+            $election->published_at ??= Carbon::now();
         });
 
         app(InternalNotifier::class)->notifySuperAdmins('Hasil dipublikasikan', "{$actor->name} mempublikasikan hasil \"{$election->name}\".", $actor);

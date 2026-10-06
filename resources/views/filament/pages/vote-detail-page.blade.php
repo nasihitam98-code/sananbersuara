@@ -7,7 +7,7 @@
                 <p>Halaman ini menampilkan <strong>siapa memilih siapa</strong> untuk pemilihan Mode Resmi yang sudah <strong>ditutup</strong>.</p>
                 <p class="text-sm text-gray-500">Gunakan hanya untuk sengketa, pemeriksaan koreksi, atau audit. Setiap pembukaan dicatat dan diberitahukan.</p>
                 @if ($this->availableElections()->isEmpty())
-                    <p class="text-warning-600">Belum ada pemilihan Mode Resmi yang ditutup.</p>
+                    <p class="text-warning-600">Belum ada pemilihan Mode Resmi yang ditutup (atau keterkaitannya sudah dihapus sesuai kebijakan retensi).</p>
                 @else
                     {{ $this->openAction }}
                 @endif

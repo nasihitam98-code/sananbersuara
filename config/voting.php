@@ -45,6 +45,9 @@ return [
         'booth_idle_minutes' => 3,
         'booth_token_minutes' => 10,
         'desk_token_hours' => 24,
+
+        // Retensi (K26): keterkaitan pemilih-pilihan dihapus N hari setelah dipublikasikan
+        'linkage_retention_days' => 30,
     ],
 
     /*

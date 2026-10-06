@@ -15,9 +15,11 @@ use App\Filament\Pages\ResultScreen;
 use App\Filament\Pages\VoteDetailPage;
 use App\Models\AuditLog;
 use App\Models\Ballot;
+use App\Models\BallotVoter;
 use App\Models\Candidate;
 use App\Models\Device;
 use App\Models\Election;
+use App\Models\Permit;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Vote;
@@ -26,9 +28,11 @@ use App\Services\Corrections\CorrectionService;
 use App\Services\Devices\DeviceManager;
 use App\Services\Permits\BoothBallotBox;
 use App\Services\Permits\PermitManager;
+use App\Services\Results\DataRetention;
 use App\Services\Results\OfficialReportService;
 use App\Services\Results\ResultPublication;
 use App\Services\Voting\ElectionLifecycle;
+use App\Services\Voting\ResultsCalculator;
 use App\Services\Voting\VotingException;
 use Database\Seeders\DatabaseSeeder;
 use Filament\Actions\Testing\TestAction;
@@ -274,6 +278,69 @@ class ResmiResultsTest extends TestCase
 
         $this->actingAs($this->adminRt03)->get(route('reports.show', $rt03Report->public_id))->assertOk();
         $this->actingAs($this->adminRt03)->get(route('reports.show', $reports->current($this->election, $this->rt04)->public_id))->assertForbidden();
+    }
+
+    private function publishAll(): void
+    {
+        $lifecycle = app(ElectionLifecycle::class);
+        $lifecycle->close($this->election, $this->superAdmin);
+        $lifecycle->startVerification($this->election, $this->superAdmin);
+
+        $publication = app(ResultPublication::class);
+        $publication->decide($this->election, $this->rtBallot, $this->rt03, OutcomeStatus::Ditetapkan, [$this->candidates['rt03']->id], null, $this->superAdmin);
+        $publication->decide($this->election, $this->rtBallot, $this->rt04, OutcomeStatus::Ditetapkan, [$this->candidates['rt04']->id], null, $this->superAdmin);
+        $publication->decide($this->election, $this->rwBallot, null, OutcomeStatus::Ditetapkan, [$this->candidates['rw2']->id], null, $this->superAdmin);
+
+        $reports = app(OfficialReportService::class);
+
+        foreach ([null, $this->rt03, $this->rt04] as $scope) {
+            $reports->ratify($reports->createDraft($this->election, $scope, $this->superAdmin), $this->superAdmin);
+        }
+
+        $lifecycle->publish($this->election, $this->superAdmin);
+    }
+
+    public function test_vote_linkage_is_purged_after_retention_but_participation_survives(): void
+    {
+        $this->publishAll();
+        $calculator = app(ResultsCalculator::class);
+        $round = $this->election->currentRound();
+
+        $this->travel(20)->days();
+        $this->artisan('pemilihan:retensi')->assertSuccessful();
+        $this->assertSame(8, Vote::query()->where('election_id', $this->election->id)->whereNotNull('voter_id')->count(), 'Belum lewat 30 hari');
+
+        app(DataRetention::class)->extendLinkage($this->election->fresh(), 14, 'Ada sengketa', $this->superAdmin);
+        $this->travel(15)->days();
+        $this->artisan('pemilihan:retensi')->assertSuccessful();
+        $this->assertSame(8, Vote::query()->whereNotNull('voter_id')->count(), 'Diperpanjang 14 hari');
+
+        $this->travel(10)->days();
+        $this->artisan('pemilihan:retensi')->assertSuccessful();
+
+        $this->assertSame(0, Vote::query()->where('election_id', $this->election->id)->whereNotNull('voter_id')->count());
+        $this->assertSame(0, Vote::query()->whereNotNull('permit_id')->count());
+        $this->assertNotNull($this->election->fresh()->vote_links_destroyed_at);
+        $this->assertSame(3, $calculator->ballotParticipation($this->rtBallot, $round, $this->rt03->id)['voted']);
+        $this->assertSame(1, $calculator->ballotParticipation($this->rwBallot, $round, $this->rt04->id)['voted']);
+        $this->assertSame(4, app(ResultsCalculator::class)->tally($this->rwBallot, $round)['valid'], 'Hasil tetap utuh');
+
+        $this->actingAs($this->superAdmin);
+        Livewire::test(VoteDetailPage::class)->assertSee('keterkaitannya sudah dihapus');
+    }
+
+    public function test_personal_data_is_anonymised_after_one_year(): void
+    {
+        $this->publishAll();
+
+        $this->travel(366)->days();
+        $this->artisan('pemilihan:retensi')->assertSuccessful();
+
+        $this->assertSame(0, BallotVoter::query()->count());
+        $this->assertSame(0, Permit::query()->where('election_id', $this->election->id)->count());
+        $this->assertNotNull($this->election->fresh()->personal_data_purged_at);
+        $this->assertSame(4, app(ResultsCalculator::class)->tally($this->rwBallot, $this->election->currentRound())['valid']);
+        $this->assertTrue(AuditLog::query()->where('action', 'retention.personal_data_purged')->exists());
     }
 
     public function test_result_screen_for_admin_rt_shows_own_rt_and_rw_total_only(): void

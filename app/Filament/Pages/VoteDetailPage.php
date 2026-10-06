@@ -68,6 +68,7 @@ class VoteDetailPage extends Page
         return Election::query()
             ->where('mode', ElectionMode::Resmi)
             ->whereIn('status', [ElectionStatus::Ditutup, ElectionStatus::Verifikasi, ElectionStatus::Published, ElectionStatus::Unpublished, ElectionStatus::Archived])
+            ->whereNull('vote_links_destroyed_at')
             ->latest()
             ->get();
     }

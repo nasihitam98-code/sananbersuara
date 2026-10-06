@@ -131,12 +131,19 @@ class ResultsCalculator
         $eligible = (clone $entries)->count();
         $addedDuringLive = (clone $entries)->where('added_during_live', true)->count();
 
-        $voted = $round === null ? 0 : DB::table('votes')
-            ->where('ballot_id', $ballot->id)
-            ->where('round_id', $round->id)
-            ->where('status', VoteStatus::Sah->value)
-            ->whereIn('voter_id', (clone $entries)->select('voter_id'))
-            ->count();
+        // Setelah keterkaitan suara dihapus (K26), status "sudah memilih" diambil dari snapshot.
+        $linkageDestroyed = $ballot->election()->value('vote_links_destroyed_at') !== null;
+
+        $voted = match (true) {
+            $round === null => 0,
+            $linkageDestroyed => (clone $entries)->whereNotNull('voted_at')->count(),
+            default => DB::table('votes')
+                ->where('ballot_id', $ballot->id)
+                ->where('round_id', $round->id)
+                ->where('status', VoteStatus::Sah->value)
+                ->whereIn('voter_id', (clone $entries)->select('voter_id'))
+                ->count(),
+        };
 
         return [
             'eligible' => $eligible,
