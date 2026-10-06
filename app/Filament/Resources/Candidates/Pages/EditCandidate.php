@@ -7,7 +7,6 @@ use App\Models\Candidate;
 use App\Services\AuditLogger;
 use App\Services\CandidatePhotoProcessor;
 use Filament\Actions\Action;
-use Filament\Actions\DeleteAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
@@ -29,8 +28,7 @@ class EditCandidate extends EditRecord
                 ->visible(fn (): bool => $this->record->photo_key !== null)
                 ->requiresConfirmation()
                 ->action(fn () => app(CandidatePhotoProcessor::class)->remove($this->record)),
-            DeleteAction::make()
-                ->after(fn (Candidate $record) => app(AuditLogger::class)->log('candidate.deleted', null, $record->ballot->election, meta: $record->only(['number', 'name']))),
+            CandidateResource::deleteAction(),
         ];
     }
 

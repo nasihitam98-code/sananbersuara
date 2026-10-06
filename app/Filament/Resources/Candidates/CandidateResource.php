@@ -13,7 +13,10 @@ use App\Filament\Support\Workspace;
 use App\Models\Ballot;
 use App\Models\Candidate;
 use App\Models\Unit;
+use App\Services\AuditLogger;
+use App\Services\CandidatePhotoProcessor;
 use BackedEnum;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -205,7 +208,23 @@ class CandidateResource extends Resource
             ])
             ->recordActions([
                 EditAction::make(),
+                static::deleteAction(),
             ]);
+    }
+
+    /**
+     * Hapus calon dengan konfirmasi; foto ikut dihapus dan tercatat di audit.
+     * Hanya tampil selama pemilihan masih Draf/Siap (lihat CandidatePolicy::delete).
+     */
+    public static function deleteAction(): DeleteAction
+    {
+        return DeleteAction::make()
+            ->modalHeading(fn (Candidate $record): string => "Hapus calon nomor {$record->displayNumber()} {$record->name}?")
+            ->modalDescription('Calon dan fotonya dihapus dari surat suara. Tindakan ini tidak bisa dibatalkan.')
+            ->modalSubmitActionLabel('Ya, hapus')
+            ->before(fn (Candidate $record) => $record->photo_key !== null ? app(CandidatePhotoProcessor::class)->remove($record) : null)
+            ->after(fn (Candidate $record) => app(AuditLogger::class)->log('candidate.deleted', null, $record->ballot->election, meta: $record->only(['number', 'name'])))
+            ->successNotificationTitle('Calon dihapus.');
     }
 
     public static function getPages(): array

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\BallotScope;
 use App\Enums\ElectionStatus;
 use App\Filament\Resources\Candidates\Pages\ListCandidates;
+use App\Models\AuditLog;
 use App\Models\Ballot;
 use App\Models\Candidate;
 use App\Models\Election;
@@ -14,6 +15,7 @@ use App\Services\Candidates\CandidateBulkImporter;
 use App\Services\Voting\ElectionLifecycle;
 use App\Services\Voting\VotingException;
 use Database\Seeders\DatabaseSeeder;
+use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -129,6 +131,37 @@ class CandidateBulkImportTest extends TestCase
         Livewire::test(ListCandidates::class)
             ->assertCanSeeTableRecords([$active])
             ->assertCanNotSeeTableRecords([$old]);
+    }
+
+    public function test_delete_from_list_removes_candidate_photo_and_is_audited(): void
+    {
+        Storage::fake('local');
+        Storage::fake(config('voting.photo.disk'));
+        $this->actingAs($this->superAdmin);
+        $candidate = Candidate::factory()->for($this->ballot)->create(['number' => 1, 'name' => 'Salah Ketik']);
+        $path = UploadedFile::fake()->image('1.jpg', 200, 200)->store('unggahan-sementara', 'local');
+        $this->importer()->attachPhotos($this->ballot, null, [$path => '1.jpg'], $this->superAdmin);
+        $this->assertNotEmpty(Storage::disk(config('voting.photo.disk'))->allFiles());
+
+        Livewire::test(ListCandidates::class)
+            ->assertActionVisible(TestAction::make('delete')->table($candidate))
+            ->callAction(TestAction::make('delete')->table($candidate))
+            ->assertNotified('Calon dihapus.');
+
+        $this->assertModelMissing($candidate);
+        $this->assertSame([], Storage::disk(config('voting.photo.disk'))->allFiles(), 'File foto ikut dihapus');
+        $this->assertTrue(AuditLog::query()->where('action', 'candidate.deleted')->exists());
+    }
+
+    public function test_delete_is_hidden_after_election_starts(): void
+    {
+        $this->actingAs($this->superAdmin);
+        $candidate = Candidate::factory()->for($this->ballot)->create(['number' => 1]);
+        app(ElectionLifecycle::class)->markReady($this->ballot->election, $this->superAdmin);
+        app(ElectionLifecycle::class)->start($this->ballot->election, $this->superAdmin);
+
+        Livewire::test(ListCandidates::class)
+            ->assertActionHidden(TestAction::make('delete')->table($candidate));
     }
 
     public function test_bulk_add_action_from_candidate_list(): void
