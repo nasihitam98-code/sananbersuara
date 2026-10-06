@@ -128,7 +128,7 @@ server {
     root /var/www/rtrw/public;
     index index.php;
     charset utf-8;
-    client_max_body_size 4M;
+    client_max_body_size 16M;   # foto calon langsung dari HP (maks. 10 MB per foto)
     autoindex off;
 
     # Status voting dibaca ratusan HP tiap ~3 detik: file statis, jangan di-cache lama.
@@ -173,6 +173,14 @@ opcache.enable=1
 opcache.memory_consumption=256
 opcache.max_accelerated_files=20000
 opcache.validate_timestamps=0
+```
+
+`/etc/php/8.3/fpm/conf.d/20-rtrw.ini` (unggah foto calon langsung dari HP, maks. 10 MB per foto; bawaan Ubuntu hanya 2 MB):
+
+```ini
+upload_max_filesize=12M
+post_max_size=16M
+memory_limit=256M
 ```
 
 Karena `validate_timestamps=0`, **setiap deploy** wajib diakhiri dengan `sudo systemctl reload php8.3-fpm`.

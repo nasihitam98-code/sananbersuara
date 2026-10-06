@@ -179,7 +179,7 @@ class CandidateResource extends Resource
                             ->visibleOn('edit'),
                     ]),
                 Section::make('Foto')
-                    ->description('JPG/PNG/WebP, maksimal 2 MB. Foto dipotong persegi (1:1) agar semua calon tampil seragam. Wajah di tengah.')
+                    ->description('JPG/PNG/WebP, maksimal '.intdiv((int) config('voting.photo.max_kilobytes'), 1024).' MB (foto langsung dari HP boleh). Foto dipotong persegi (1:1) agar semua calon tampil seragam. Wajah di tengah.')
                     ->schema([
                         FileUpload::make('photo_upload')
                             ->label('Unggah foto baru')

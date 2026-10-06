@@ -59,7 +59,8 @@ return [
     'photo' => [
         'disk' => 'public',
         'directory' => 'kandidat',
-        'max_kilobytes' => 2048,
+        // Foto langsung dari kamera HP sering 3–6 MB; tetap diperkecil saat disimpan.
+        'max_kilobytes' => 10240,
         'sizes' => [
             'thumb' => 160,
             'card' => 480,

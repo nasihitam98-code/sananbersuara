@@ -334,6 +334,24 @@ class CandidateBulkImportTest extends TestCase
         $this->assertNotNull($candidate->fresh()->photo_key);
     }
 
+    public function test_large_phone_photo_becomes_three_square_sizes(): void
+    {
+        Storage::fake('local');
+        Storage::fake(config('voting.photo.disk'));
+        $candidate = Candidate::factory()->for($this->ballot)->create(['number' => 1]);
+        $path = UploadedFile::fake()->image('01.jpg', 4000, 3000)->store('unggahan-sementara', 'local');
+
+        $this->importer()->attachPhotos($this->ballot, null, [$path => '01.jpg'], $this->superAdmin);
+
+        $key = $candidate->fresh()->photo_key;
+        $this->assertNotNull($key);
+
+        foreach (config('voting.photo.sizes') as $size => $pixels) {
+            $file = Storage::disk(config('voting.photo.disk'))->path(config('voting.photo.directory')."/{$key}-{$size}.webp");
+            $this->assertSame([$pixels, $pixels], array_slice(getimagesize($file) ?: [], 0, 2), "Ukuran {$size}");
+        }
+    }
+
     public function test_photos_are_matched_by_number_in_file_name(): void
     {
         Storage::fake('local');

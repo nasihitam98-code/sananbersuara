@@ -42,11 +42,15 @@ class CandidatePhotoProcessor
             $disk = Storage::disk(config('voting.photo.disk'));
             $manager = ImageManager::usingDriver(GdDriver::class);
 
-            foreach (config('voting.photo.sizes') as $size => $pixels) {
-                $encoded = $manager->decodePath($absolute)
-                    ->orient()
-                    ->cover($pixels, $pixels)
-                    ->encode(new WebpEncoder(quality: 82, strip: true));
+            // Foto HP bisa belasan megapiksel: baca sekali, potong persegi di ukuran terbesar,
+            // lalu ukuran lain diturunkan dari hasil itu (hemat memori dan waktu).
+            $sizes = config('voting.photo.sizes');
+            $largest = max($sizes);
+            $base = $manager->decodePath($absolute)->orient()->cover($largest, $largest);
+
+            foreach ($sizes as $size => $pixels) {
+                $image = $pixels === $largest ? $base : (clone $base)->resize($pixels, $pixels);
+                $encoded = $image->encode(new WebpEncoder(quality: 82, strip: true));
 
                 $disk->put(config('voting.photo.directory')."/{$newKey}-{$size}.webp", (string) $encoded);
             }
