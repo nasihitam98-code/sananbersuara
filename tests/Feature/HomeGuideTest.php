@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\ElectionMode;
 use App\Enums\StaffRole;
+use App\Filament\Resources\Elections\ElectionResource;
 use App\Filament\Support\Workspace;
 use App\Models\Ballot;
 use App\Models\Candidate;
@@ -76,6 +77,9 @@ class HomeGuideTest extends TestCase
             ->assertSee('Penjaringan Calon RW')
             ->assertSee('Sudah siap. Petugas pintu sudah bisa mendata')
             ->assertSee('Buka pengaturan (Mulai Pemilihan)')
+            ->assertSee('Surat suara:')
+            ->assertSee('Klik tahap yang sudah lewat')
+            ->assertSee(ElectionResource::getUrl('edit', ['record' => $this->election]), false)
             ->assertSee('Panduan langkah Mode Dadakan', false)
             ->assertSee('Meja Pintu')
             ->assertDontSee('Meja Izin')

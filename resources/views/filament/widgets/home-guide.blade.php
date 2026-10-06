@@ -47,17 +47,34 @@
                     </div>
 
                     <ol class="mt-5 grid grid-cols-3 gap-2 sm:grid-cols-6">
-                        @foreach (\App\Filament\Widgets\HomeGuide::STAGES as $index => $label)
-                            <li @class([
-                                'rounded-lg px-2 py-2 text-center text-xs font-semibold sm:text-sm',
+                        @foreach ($this->stages($primary) as $index => $item)
+                            @php($classes = \Illuminate\Support\Arr::toCssClasses([
+                                'block rounded-lg px-2 py-2 text-center text-xs font-semibold sm:text-sm',
                                 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300' => $index < $stage,
                                 'bg-primary-600 text-white' => $index === $stage,
                                 'bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-gray-400' => $index > $stage,
-                            ])>
-                                {{ $index < $stage ? '✓ ' : ($index + 1).'. ' }}{{ $label }}
+                                'underline-offset-2 hover:underline hover:ring-2 hover:ring-primary-500' => $item['url'] !== null,
+                            ]))
+                            <li>
+                                @if ($item['url'])
+                                    <a href="{{ $item['url'] }}" class="{{ $classes }}" title="{{ $item['description'] }} (klik untuk membuka)">
+                                        {{ $index < $stage ? '✓ ' : ($index + 1).'. ' }}{{ $item['label'] }}
+                                    </a>
+                                @else
+                                    <span class="{{ $classes }}" title="{{ $item['description'] }}">
+                                        {{ $index < $stage ? '✓ ' : ($index + 1).'. ' }}{{ $item['label'] }}
+                                    </span>
+                                @endif
                             </li>
                         @endforeach
                     </ol>
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Klik tahap yang sudah lewat (✓) atau tahap sekarang untuk membuka halamannya.</p>
+
+                    <div class="mt-4 flex flex-wrap gap-x-6 gap-y-1 text-sm">
+                        @foreach ($this->preparationSummary($primary) as $item)
+                            <span><span class="text-gray-500 dark:text-gray-400">{{ $item['label'] }}:</span> <strong>{{ $item['value'] }}</strong></span>
+                        @endforeach
+                    </div>
 
                     <div class="mt-5 rounded-xl bg-primary-50 p-4 dark:bg-primary-500/10">
                         <p class="text-sm font-semibold uppercase tracking-wide text-primary-700 dark:text-primary-300">Sekarang</p>

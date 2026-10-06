@@ -19,6 +19,7 @@ use App\Filament\Resources\Voters\VoterResource;
 use App\Filament\Support\Workspace;
 use App\Models\Election;
 use App\Models\User;
+use App\Models\Voter;
 use Filament\Widgets\Widget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -123,6 +124,64 @@ class HomeGuide extends Widget
             ElectionStatus::Verifikasi, ElectionStatus::Unpublished => 4,
             default => 5,
         };
+    }
+
+    /**
+     * Tautan per tahap untuk penanda kemajuan. Hanya tahap yang sudah lewat atau sedang
+     * berjalan yang bisa diklik, dan hanya bila halamannya boleh dibuka.
+     *
+     * @return array<int, array{label: string, url: ?string, description: string}>
+     */
+    public function stages(Election $election): array
+    {
+        $current = $this->stageIndex($election);
+        $dadakan = $election->mode === ElectionMode::Dadakan;
+        $query = ['pemilihan' => $election->public_id];
+        $edit = ElectionResource::canAccess() ? ElectionResource::getUrl('edit', ['record' => $election]) : null;
+        $page = fn (string $page): ?string => $page::canAccess() ? $page::getUrl($query) : null;
+
+        $targets = [
+            [$edit, 'Surat suara, calon, dan penugasan diisi.'],
+            [$edit ?? ($dadakan ? $page(DoorDesk::class) : $page(DevicesPage::class)), 'Data dikunci (Tandai Siap). Calon masih bisa diubah sampai Mulai.'],
+            [$dadakan ? ($page(ControlRoom::class) ?? $page(DoorDesk::class)) : ($page(DeskPage::class) ?? $page(ParticipationPage::class)), 'Pemilihan dimulai; voting bisa dibuka dan ditutup.'],
+            [$page(ResultScreen::class), 'Pemilihan ditutup; hasil boleh ditampilkan.'],
+            [$page(VerificationDesk::class), 'Panitia menetapkan yang terpilih/lolos.'],
+            [$election->status === ElectionStatus::Published ? route('public.show', $election->public_id) : null, 'Hasil tampil di halaman publik.'],
+        ];
+
+        return collect(self::STAGES)
+            ->map(fn (string $label, int $index): array => [
+                'label' => $label,
+                'url' => $index <= $current ? $targets[$index][0] : null,
+                'description' => $targets[$index][1],
+            ])
+            ->all();
+    }
+
+    /**
+     * Ringkasan isi persiapan agar terlihat apa yang sudah disiapkan.
+     *
+     * @return array<int, array{label: string, value: int}>
+     */
+    public function preparationSummary(Election $election): array
+    {
+        $summary = [
+            ['label' => 'Surat suara', 'value' => $election->ballots()->count()],
+            ['label' => 'Calon', 'value' => $election->ballots()->withCount('ballotCandidates')->get()->sum('ballot_candidates_count')],
+        ];
+
+        if ($election->mode === ElectionMode::Dadakan) {
+            $summary[] = ['label' => 'Panitia & petugas', 'value' => $election->staff()->count()];
+            $summary[] = ['label' => 'Peserta hadir', 'value' => $election->attendees()->count()];
+        } else {
+            $user = $this->user();
+            $summary[] = [
+                'label' => $user->isSuperAdmin() ? 'Pemilih terdaftar' : 'Pemilih terdaftar RT Anda',
+                'value' => Voter::query()->when(! $user->isSuperAdmin(), fn (Builder $query) => $query->where('unit_id', $user->unit_id))->count(),
+            ];
+        }
+
+        return $summary;
     }
 
     /**
