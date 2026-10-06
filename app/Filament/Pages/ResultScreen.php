@@ -2,15 +2,19 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
 use App\Enums\StaffRole;
 use App\Filament\Pages\Concerns\InteractsWithElection;
+use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\Results\ResultSlots;
 use App\Services\Voting\ResultsCalculator;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Carbon;
+use Livewire\Attributes\Locked;
 use UnitEnum;
 
 /**
@@ -36,6 +40,8 @@ class ResultScreen extends Page
 
     protected static ?int $navigationSort = 3;
 
+    /** Hanya bisa diubah lewat aksi server (tercatat di audit), tidak dari browser. */
+    #[Locked]
     public bool $revealed = false;
 
     protected static function allowedStaffRoles(): array
@@ -86,17 +92,24 @@ class ResultScreen extends Page
     {
         $election = $this->authorizedElection();
 
-        abort_unless($election->status->allowsResults(), 403);
+        abort_unless($election->status->allowsResults() && $this->revealed, 403);
 
         $calculator = app(ResultsCalculator::class);
+        /** @var User $user */
+        $user = auth()->user();
         $output = [];
 
+        // Admin RT (Mode Resmi): hanya surat suara RT-nya sendiri + total surat suara semua RT (K19).
+        $slots = app(ResultSlots::class)->slots($election)
+            ->filter(fn (array $slot): bool => $user->isSuperAdmin() || $election->isDadakan() || $slot['unit'] === null || $slot['unit']->id === $user->unit_id);
+
         foreach ($election->rounds as $round) {
-            foreach ($election->ballots as $ballot) {
+            foreach ($slots as $slot) {
                 $output[] = [
                     'round' => $round->number,
-                    'ballot' => $ballot,
-                    'tally' => $calculator->tally($ballot, $round),
+                    'ballot' => $slot['ballot'],
+                    'title' => $slot['ballot']->title.($slot['unit'] !== null ? ' — '.$slot['unit']->name : ''),
+                    'tally' => $calculator->tally($slot['ballot'], $round, $slot['unit']),
                 ];
             }
         }
@@ -105,12 +118,24 @@ class ResultScreen extends Page
     }
 
     /**
-     * @return array<string, mixed>
+     * Partisipasi Mode Dadakan (Mode Resmi memakai halaman Partisipasi per RT).
+     *
+     * @return array<string, mixed>|null
      */
-    public function participation(): array
+    public function participation(): ?array
     {
         $election = $this->authorizedElection();
 
-        return app(ResultsCalculator::class)->participation($election, $election->currentRound());
+        return $election->isDadakan()
+            ? app(ResultsCalculator::class)->participation($election, $election->currentRound())
+            : null;
+    }
+
+    /**
+     * @return array<int, ElectionMode>
+     */
+    protected static function allowedModes(): array
+    {
+        return [ElectionMode::Dadakan, ElectionMode::Resmi];
     }
 }

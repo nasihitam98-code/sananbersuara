@@ -3,10 +3,14 @@
 namespace Tests\Feature;
 
 use App\Filament\Pages\ControlRoom;
+use App\Filament\Pages\CorrectionsPage;
+use App\Filament\Pages\DevicesPage;
 use App\Filament\Pages\DoorDesk;
 use App\Filament\Pages\ImportVoters;
+use App\Filament\Pages\ParticipationPage;
 use App\Filament\Pages\ResultScreen;
 use App\Filament\Pages\VerificationDesk;
+use App\Filament\Pages\VoteDetailPage;
 use App\Filament\Resources\AuditLogs\AuditLogResource;
 use App\Filament\Resources\Candidates\CandidateResource;
 use App\Filament\Resources\Candidates\Pages\CreateCandidate;
@@ -67,6 +71,10 @@ class AdminPagesRenderTest extends TestCase
             ControlRoom::getUrl(),
             ResultScreen::getUrl(),
             VerificationDesk::getUrl(),
+            ParticipationPage::getUrl(),
+            CorrectionsPage::getUrl(),
+            VoteDetailPage::getUrl(),
+            DevicesPage::getUrl(),
             VoterResource::getUrl(),
             VoterResource::getUrl('create'),
             ImportVoters::getUrl(),

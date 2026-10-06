@@ -183,6 +183,7 @@ class OfficialReportService
                     'candidates' => $outcome->candidates->map(fn ($candidate): string => $candidate->displayNumber().' · '.$candidate->name)->all(),
                     'note' => $outcome->note,
                 ],
+                'participation' => $election->isDadakan() ? null : $this->calculator->ballotParticipation($slot['ballot'], $round, $slot['unit']?->id),
             ];
         }
 
@@ -195,16 +196,48 @@ class OfficialReportService
             ],
             'scope' => $scope?->name ?? 'Keseluruhan',
             'generated_at' => Carbon::now()->format('d-m-Y H:i:s'),
-            'participation' => [
+            'participation' => $election->isDadakan() ? [
                 'registered' => $participation['attendees'],
                 'voted' => $participation['voted'],
                 'percent' => $participation['percent'],
                 'assisted' => $participation['assisted'],
                 'late' => $participation['late'],
                 'headcount' => $election->setting('headcount'),
-            ],
+            ] : null,
+            'reconciliation' => $election->isDadakan() ? null : $this->calculator->reconciliation($election, $scope?->id),
             'ballots' => $ballots,
-            'incidents' => $this->incidents($election),
+            'incidents' => $election->isDadakan() ? $this->incidents($election) : $this->officialIncidents($election, $scope),
+        ];
+    }
+
+    /**
+     * Catatan kejadian Mode Resmi (angka saja): perangkat diganti, izin hangus/dibatalkan,
+     * pemilih ditambah saat berlangsung, suara dibatalkan lewat koreksi.
+     *
+     * @return array<string, int>
+     */
+    private function officialIncidents(Election $election, ?Unit $scope): array
+    {
+        $audit = fn (string $action): int => AuditLog::query()
+            ->where('election_id', $election->id)
+            ->where('action', $action)
+            ->when($scope !== null, fn ($query) => $query->where('meta', 'like', '%RT'.$scope->code.'-%'))
+            ->count();
+
+        return [
+            'Bilik/meja dilepas (laptop diganti, rusak, dll.)' => $audit('device.released'),
+            'Pemilih ditambah saat berlangsung' => (int) DB::table('ballot_voters')
+                ->whereIn('ballot_id', $election->ballots()->pluck('id'))
+                ->where('added_during_live', true)
+                ->when($scope !== null, fn ($query) => $query->where('unit_id', $scope->id))
+                ->distinct()
+                ->count('voter_id'),
+            'Suara dibatalkan lewat koreksi' => (int) DB::table('vote_cancellations')
+                ->join('votes', 'votes.id', '=', 'vote_cancellations.vote_id')
+                ->where('vote_cancellations.election_id', $election->id)
+                ->when($scope !== null, fn ($query) => $query->whereIn('votes.voter_id', DB::table('voters')->where('unit_id', $scope->id)->select('id')))
+                ->count(),
+            'Penayangan hasil' => AuditLog::query()->where('election_id', $election->id)->where('action', 'results.revealed')->count(),
         ];
     }
 

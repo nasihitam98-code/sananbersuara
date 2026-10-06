@@ -18,7 +18,9 @@ class OfficialReportController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        abort_unless($user->is_active && $user->hasElectionRole($report->election, StaffRole::Panitia), 403);
+        $isOwnRtReport = ! $report->election->isDadakan() && $user->isAdminRt() && $report->unit_id === $user->unit_id;
+
+        abort_unless($user->is_active && ($user->hasElectionRole($report->election, StaffRole::Panitia) || $isOwnRtReport), 403);
 
         return view('reports.show', [
             'report' => $report->load(['election', 'unit', 'creator', 'ratifier']),

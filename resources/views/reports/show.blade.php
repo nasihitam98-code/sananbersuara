@@ -31,6 +31,36 @@
             </table>
         </section>
 
+        @if ($data['participation'] === null)
+        <section>
+            <h2>B. Partisipasi dan rekonsiliasi</h2>
+            <table class="grid">
+                <thead><tr><th>Surat suara</th><th>Pemilih berhak</th><th>Memilih</th><th>%</th><th>Ditambah saat berlangsung</th></tr></thead>
+                <tbody>
+                    @foreach ($data['ballots'] as $ballot)
+                        <tr>
+                            <td>{{ $ballot['title'] }}</td>
+                            <td class="num">{{ $ballot['participation']['eligible'] ?? '-' }}</td>
+                            <td class="num">{{ $ballot['participation']['voted'] ?? '-' }}</td>
+                            <td class="num">{{ $ballot['participation']['percent'] ?? '-' }}</td>
+                            <td class="num">{{ $ballot['participation']['added_during_live'] ?? '-' }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+            @php($r = $data['reconciliation'])
+            <table class="kv">
+                <tr><th>Izin selesai (pemilih menyelesaikan semua surat suara)</th><td>{{ $r['permits_finished'] }}</td></tr>
+                <tr><th>Izin tidak selesai / terhenti</th><td>{{ $r['permits_incomplete'] }}</td></tr>
+                <tr><th>Izin hangus (tidak dipakai)</th><td>{{ $r['permits_expired'] }}</td></tr>
+                <tr><th>Izin dibatalkan petugas</th><td>{{ $r['permits_cancelled'] }}</td></tr>
+                <tr><th>Suara tanpa izin yang sah</th><td>{{ $r['votes_without_permit'] }} {{ $r['votes_without_permit'] === 0 ? '(cocok)' : '(PERIKSA)' }}</td></tr>
+                @foreach ($r['per_booth'] as $booth => $total)
+                    <tr><th>Suara masuk di {{ $booth }}</th><td>{{ $total }}</td></tr>
+                @endforeach
+            </table>
+        </section>
+        @else
         <section>
             <h2>B. Partisipasi</h2>
             @php($p = $data['participation'])
@@ -52,6 +82,7 @@
                 </tr>
             </table>
         </section>
+        @endif
 
         <section>
             <h2>C. Hasil per surat suara</h2>

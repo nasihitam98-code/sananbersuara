@@ -9,6 +9,7 @@ use App\Models\Election;
 use App\Models\User;
 use App\Models\Voter;
 use App\Services\AuditLogger;
+use App\Services\InternalNotifier;
 use App\Services\Voting\VotingException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -110,6 +111,14 @@ class VoterRegistry
             'unit_id' => $unitId,
             'confirmed_different_person' => $confirmedDifferentPerson && $check['similar'] !== [],
         ], actor: $actor);
+
+        if ($live !== null) {
+            app(InternalNotifier::class)->notifySuperAdmins(
+                'Pemilih ditambah saat berlangsung',
+                "{$actor->name} menambah {$voter->voter_number} di {$voter->unit->name} (alasan: {$emergencyReason}).",
+                $actor,
+            );
+        }
 
         return $voter;
     }

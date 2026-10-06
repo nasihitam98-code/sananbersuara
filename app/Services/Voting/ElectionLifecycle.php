@@ -10,6 +10,7 @@ use App\Models\Round;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\Devices\DeviceManager;
+use App\Services\InternalNotifier;
 use App\Services\Permits\PermitManager;
 use App\Services\Results\ResultPublication;
 use App\Services\Voters\EligibilitySnapshot;
@@ -207,11 +208,15 @@ class ElectionLifecycle
                 throw VotingException::invalidState(implode(' ', $problems));
             }
         });
+
+        app(InternalNotifier::class)->notifySuperAdmins('Hasil dipublikasikan', "{$actor->name} mempublikasikan hasil \"{$election->name}\".", $actor);
     }
 
     public function unpublish(Election $election, User $actor, string $note): void
     {
         $this->transition($election, [ElectionStatus::Published], ElectionStatus::Unpublished, $actor, note: $note);
+
+        app(InternalNotifier::class)->notifySuperAdmins('Hasil ditarik dari publik', "{$actor->name} menarik hasil \"{$election->name}\". Alasan: {$note}", $actor);
     }
 
     public function reopenVerification(Election $election, User $actor): void

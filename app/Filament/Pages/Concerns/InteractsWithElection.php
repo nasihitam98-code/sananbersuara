@@ -30,6 +30,17 @@ trait InteractsWithElection
      */
     abstract protected static function allowedStatuses(): array;
 
+    /**
+     * Mode Dadakan: akses lewat penugasan staf per pemilihan. Halaman yang juga melayani
+     * Mode Resmi mengizinkan Admin RT (dibatasi ke RT sendiri oleh halaman itu).
+     *
+     * @return array<int, ElectionMode>
+     */
+    protected static function allowedModes(): array
+    {
+        return [ElectionMode::Dadakan];
+    }
+
     public static function canAccess(): bool
     {
         $user = auth()->user();
@@ -38,7 +49,9 @@ trait InteractsWithElection
             return false;
         }
 
-        return $user->isSuperAdmin() || $user->electionAssignments()->whereIn('role', static::allowedStaffRoles())->exists();
+        return $user->isSuperAdmin()
+            || $user->electionAssignments()->whereIn('role', static::allowedStaffRoles())->exists()
+            || (in_array(ElectionMode::Resmi, static::allowedModes(), true) && $user->isAdminRt());
     }
 
     /**
@@ -48,14 +61,17 @@ trait InteractsWithElection
     {
         /** @var User $user */
         $user = auth()->user();
+        $allowsResmi = in_array(ElectionMode::Resmi, static::allowedModes(), true);
 
         return Election::query()
-            ->where('mode', ElectionMode::Dadakan)
+            ->whereIn('mode', static::allowedModes())
             ->whereIn('status', static::allowedStatuses())
-            ->when(! $user->isSuperAdmin(), fn (Builder $query) => $query->whereHas(
-                'staff',
-                fn (Builder $staff) => $staff->where('user_id', $user->id)->whereIn('role', static::allowedStaffRoles()),
-            ))
+            ->when(! $user->isSuperAdmin(), fn (Builder $query) => $query->where(fn (Builder $access) => $access
+                ->where(fn (Builder $dadakan) => $dadakan->where('mode', ElectionMode::Dadakan)->whereHas(
+                    'staff',
+                    fn (Builder $staff) => $staff->where('user_id', $user->id)->whereIn('role', static::allowedStaffRoles()),
+                ))
+                ->when($allowsResmi && $user->isAdminRt(), fn (Builder $resmi) => $resmi->orWhere('mode', ElectionMode::Resmi))))
             ->latest()
             ->get();
     }
@@ -81,7 +97,11 @@ trait InteractsWithElection
         /** @var User $user */
         $user = auth()->user();
 
-        abort_if($election === null || ! $user->hasElectionRole($election, ...static::allowedStaffRoles()), 403);
+        $allowed = $election !== null && ($election->isDadakan()
+            ? $user->hasElectionRole($election, ...static::allowedStaffRoles())
+            : $user->isSuperAdmin() || $user->isAdminRt());
+
+        abort_unless($allowed, 403);
 
         return $election;
     }

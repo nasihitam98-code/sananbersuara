@@ -72,4 +72,12 @@ return [
 
     'poll_seconds' => 3,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Penerima notifikasi internal tambahan (mis. Ketua Panitia), dipisah koma
+    |--------------------------------------------------------------------------
+    */
+
+    'alert_emails' => array_values(array_filter(array_map('trim', explode(',', (string) env('VOTING_ALERT_EMAILS', ''))))),
+
 ];

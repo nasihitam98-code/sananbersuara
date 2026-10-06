@@ -114,4 +114,74 @@ class ResultsCalculator
             'late' => $election->attendees()->where('is_late', true)->count(),
         ];
     }
+
+    /**
+     * Partisipasi Mode Resmi untuk satu surat suara (opsional satu RT). Penyebut = pemilih berhak
+     * di snapshot (termasuk tambahan darurat), bukan seluruh pemilih (bagian 5A).
+     *
+     * @return array{eligible: int, voted: int, not_voted: int, percent: float, added_during_live: int}
+     */
+    public function ballotParticipation(Ballot $ballot, ?Round $round, ?int $unitId = null): array
+    {
+        $entries = DB::table('ballot_voters')
+            ->where('ballot_id', $ballot->id)
+            ->whereNull('revoked_at')
+            ->when($unitId !== null, fn ($query) => $query->where('unit_id', $unitId));
+
+        $eligible = (clone $entries)->count();
+        $addedDuringLive = (clone $entries)->where('added_during_live', true)->count();
+
+        $voted = $round === null ? 0 : DB::table('votes')
+            ->where('ballot_id', $ballot->id)
+            ->where('round_id', $round->id)
+            ->where('status', VoteStatus::Sah->value)
+            ->whereIn('voter_id', (clone $entries)->select('voter_id'))
+            ->count();
+
+        return [
+            'eligible' => $eligible,
+            'voted' => $voted,
+            'not_voted' => max(0, $eligible - $voted),
+            'percent' => $eligible === 0 ? 0.0 : round($voted * 100 / $eligible, 1),
+            'added_during_live' => $addedDuringLive,
+        ];
+    }
+
+    /**
+     * Rekonsiliasi Mode Resmi (bagian 10): setiap suara harus berasal dari izin yang sah,
+     * dan jumlah suara per bilik dicatat untuk berita acara.
+     *
+     * @return array{votes_without_permit: int, per_booth: array<string, int>, permits_finished: int, permits_incomplete: int, permits_expired: int, permits_cancelled: int}
+     */
+    public function reconciliation(Election $election, ?int $unitId = null): array
+    {
+        $votes = DB::table('votes')
+            ->where('votes.election_id', $election->id)
+            ->when($unitId !== null, fn ($query) => $query->whereIn('votes.voter_id', DB::table('voters')->where('unit_id', $unitId)->select('id')));
+
+        $perBooth = (clone $votes)
+            ->join('devices', 'devices.id', '=', 'votes.device_id')
+            ->join('units', 'units.id', '=', 'devices.unit_id')
+            ->selectRaw("concat('RT', units.code, '-', lpad(devices.number, 2, '0')) as booth, count(*) as total")
+            ->groupBy('units.code', 'devices.number')
+            ->pluck('total', 'booth')
+            ->map(fn ($total): int => (int) $total)
+            ->all();
+
+        $permits = DB::table('permits')
+            ->where('election_id', $election->id)
+            ->when($unitId !== null, fn ($query) => $query->where('unit_id', $unitId))
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        return [
+            'votes_without_permit' => (clone $votes)->whereNull('votes.permit_id')->count(),
+            'per_booth' => $perBooth,
+            'permits_finished' => (int) ($permits['SELESAI'] ?? 0),
+            'permits_incomplete' => (int) (($permits['TIDAK_SELESAI'] ?? 0) + ($permits['TERHENTI'] ?? 0)),
+            'permits_expired' => (int) ($permits['HANGUS'] ?? 0),
+            'permits_cancelled' => (int) ($permits['DIBATALKAN'] ?? 0),
+        ];
+    }
 }

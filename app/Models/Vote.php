@@ -47,6 +47,16 @@ class Vote extends Model
     }
 
     /**
+     * Hanya Mode Resmi (Detail Suara Super Admin). Mode Dadakan tidak menyimpan ID pemilih.
+     *
+     * @return BelongsTo<Voter, $this>
+     */
+    public function voter(): BelongsTo
+    {
+        return $this->belongsTo(Voter::class);
+    }
+
+    /**
      * @return BelongsTo<Ballot, $this>
      */
     public function ballot(): BelongsTo

@@ -18,6 +18,7 @@
     @else
         @php($p = $this->participation())
 
+        @if ($p)
         <div class="grid gap-4 grid-cols-2 md:grid-cols-4">
             @foreach ([['Hadir terdata', $p['attendees']], ['Memilih', $p['voted']], ['Partisipasi', $p['percent'].'%'], ['Dibantu', $p['assisted']]] as [$label, $value])
                 <x-filament::section>
@@ -26,6 +27,7 @@
                 </x-filament::section>
             @endforeach
         </div>
+        @endif
 
         @foreach ($this->results() as $block)
             @php($tally = $block['tally'])
@@ -33,7 +35,7 @@
 
             <x-filament::section>
                 <x-slot name="heading">
-                    {{ $block['ballot']->title }}{{ count($election->rounds) > 1 ? ' · Putaran '.$block['round'] : '' }}
+                    {{ $block['title'] }}{{ count($election->rounds) > 1 ? ' · Putaran '.$block['round'] : '' }}
                 </x-slot>
                 <x-slot name="description">
                     Suara sah {{ $tally['valid'] }} · Dibatalkan {{ $tally['cancelled'] }}
@@ -75,6 +77,9 @@
         @endforeach
 
         <p class="text-sm text-gray-500">Sistem hanya menampilkan data. Penetapan calon yang lolos/terpilih dilakukan panitia.</p>
-        <div><x-filament::button color="gray" wire:click="hide">Sembunyikan hasil</x-filament::button></div>
+        <div class="flex flex-wrap gap-2">
+            <x-filament::button color="gray" wire:click="hide">Sembunyikan hasil</x-filament::button>
+            <x-filament::button color="gray" icon="heroicon-o-arrow-down-tray" tag="a" :href="route('recap.export', $election->public_id)">Unduh rekap Excel</x-filament::button>
+        </div>
     @endif
 </x-filament-panels::page>

@@ -3,6 +3,7 @@
 use App\Http\Controllers\BoothController;
 use App\Http\Controllers\OfficialReportController;
 use App\Http\Controllers\PublicResultController;
+use App\Http\Controllers\RecapExportController;
 use App\Http\Controllers\ScreenController;
 use App\Http\Controllers\VoterController;
 use App\Http\Controllers\VoterTemplateController;
@@ -78,3 +79,4 @@ Route::middleware('auth')->prefix('layar')->name('screens.')->group(function ():
 
 Route::middleware('auth')->get('/berita-acara/{report:public_id}', [OfficialReportController::class, 'show'])->name('reports.show');
 Route::middleware('auth')->get('/pemilih/template', VoterTemplateController::class)->name('voters.template');
+Route::middleware('auth')->get('/rekap/{election:public_id}', RecapExportController::class)->name('recap.export');
