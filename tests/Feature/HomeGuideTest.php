@@ -6,6 +6,7 @@ use App\Enums\ElectionMode;
 use App\Enums\StaffRole;
 use App\Filament\Pages\SiteSettings;
 use App\Filament\Resources\Elections\ElectionResource;
+use App\Filament\Resources\Elections\Pages\CreateElection;
 use App\Filament\Support\Workspace;
 use App\Models\AppSetting;
 use App\Models\AuditLog;
@@ -131,6 +132,19 @@ class HomeGuideTest extends TestCase
             ->assertSee('Isi data pemilih per RT')
             ->assertDontSee('Meja Pintu')
             ->assertDontSee('Ganti mode');
+    }
+
+    public function test_create_form_uses_current_mode_without_asking(): void
+    {
+        $this->actingAs($this->superAdmin)->withSession([Workspace::SESSION_KEY => ElectionMode::Resmi->value]);
+
+        Livewire::test(CreateElection::class)
+            ->assertFormFieldHidden('mode')
+            ->fillForm(['name' => 'Pemilihan RT dan RW 2026'])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame(ElectionMode::Resmi, Election::query()->where('name', 'Pemilihan RT dan RW 2026')->firstOrFail()->mode);
     }
 
     public function test_chosen_mode_is_remembered_in_a_cookie(): void
