@@ -2,11 +2,13 @@
 
 namespace App\Services\Voting;
 
+use App\Enums\BallotScope;
 use App\Enums\ElectionStatus;
 use App\Enums\RoundStatus;
 use App\Enums\WaveStatus;
 use App\Models\Election;
 use App\Models\Round;
+use App\Models\Unit;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\Devices\DeviceManager;
@@ -46,8 +48,26 @@ class ElectionLifecycle
                 $problems[] = "Surat suara \"{$ballot->title}\" belum punya kandidat.";
             }
 
-            if ($ballot->max_candidates !== null && $ballot->ballot_candidates_count > $ballot->max_candidates) {
-                $problems[] = "Surat suara \"{$ballot->title}\" melebihi batas {$ballot->max_candidates} kandidat.";
+            if ($ballot->max_candidates === null) {
+                continue;
+            }
+
+            if ($ballot->scope !== BallotScope::PerRt) {
+                if ($ballot->ballot_candidates_count > $ballot->max_candidates) {
+                    $problems[] = "Surat suara \"{$ballot->title}\" melebihi batas {$ballot->max_candidates} kandidat.";
+                }
+
+                continue;
+            }
+
+            // Surat suara per RT: batas berlaku untuk masing-masing RT, bukan total semua RT.
+            $overLimitUnitIds = $ballot->ballotCandidates()->reorder()->toBase()
+                ->groupBy('unit_id')
+                ->havingRaw('count(*) > ?', [$ballot->max_candidates])
+                ->pluck('unit_id');
+
+            foreach (Unit::query()->whereIn('id', $overLimitUnitIds)->orderBy('sort')->pluck('name') as $unitName) {
+                $problems[] = "Surat suara \"{$ballot->title}\" {$unitName} melebihi batas {$ballot->max_candidates} kandidat per RT.";
             }
         }
 
