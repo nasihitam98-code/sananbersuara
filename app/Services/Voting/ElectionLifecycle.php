@@ -10,6 +10,7 @@ use App\Models\Round;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\Results\ResultPublication;
+use App\Services\Voters\EligibilitySnapshot;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -107,6 +108,14 @@ class ElectionLifecycle
 
             $election->started_at = Carbon::now();
 
+            if (! $election->isDadakan()) {
+                $counts = app(EligibilitySnapshot::class)->freeze($election);
+
+                if (array_sum($counts) === 0) {
+                    throw VotingException::invalidState('Belum ada pemilih berhak untuk surat suara mana pun. Periksa data pemilih dan cakupan surat suara.');
+                }
+            }
+
             $round = new Round;
             $round->election()->associate($election);
             $round->number = 1;
@@ -116,6 +125,7 @@ class ElectionLifecycle
         }, meta: fn (Election $election): array => [
             'attendees' => $election->attendees()->count(),
             'ballots' => $election->ballots()->count(),
+            'eligible_per_ballot' => $election->ballots()->withCount('voterEntries')->pluck('voter_entries_count', 'title')->all(),
         ]);
     }
 

@@ -59,6 +59,8 @@ class EditUser extends EditRecord
     protected function mutateFormDataBeforeFill(array $data): array
     {
         $data['role'] = $this->record->roles->first()?->name;
+        $data['unit_id'] = $this->record->unit_id;
+        $data['permissions'] = $this->record->permissions->pluck('name')->all();
 
         return $data;
     }
@@ -81,11 +83,23 @@ class EditUser extends EditRecord
             throw new Halt;
         }
 
-        $before = ['role' => $record->roles->first()?->name, 'is_active' => $record->is_active, 'email' => $record->email];
+        $snapshot = fn (User $user): array => [
+            'role' => $user->roles()->first()?->name,
+            'unit_id' => $user->unit_id,
+            'permissions' => $user->permissions()->pluck('name')->all(),
+            'is_active' => $user->is_active,
+            'email' => $user->email,
+        ];
+        $before = $snapshot($record);
+        $isAdminRt = $data['role'] === User::ROLE_ADMIN_RT;
 
         $record->fill(['name' => $data['name'], 'email' => $data['email']]);
-        $record->forceFill(['is_active' => (bool) ($data['is_active'] ?? true)])->save();
+        $record->forceFill([
+            'is_active' => (bool) ($data['is_active'] ?? true),
+            'unit_id' => $isAdminRt ? $data['unit_id'] : null,
+        ])->save();
         $record->syncRoles([$data['role']]);
+        $record->syncPermissions($isAdminRt ? ($data['permissions'] ?? []) : []);
 
         if (! $record->is_active) {
             DB::table('sessions')->where('user_id', $record->id)->delete();
@@ -93,7 +107,7 @@ class EditUser extends EditRecord
 
         app(AuditLogger::class)->log('user.updated', $record, meta: [
             'before' => $before,
-            'after' => ['role' => $data['role'], 'is_active' => $record->is_active, 'email' => $record->email],
+            'after' => $snapshot($record->refresh()),
         ]);
 
         return $record;

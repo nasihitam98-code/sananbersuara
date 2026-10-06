@@ -5,14 +5,17 @@ namespace App\Filament\Resources\Users;
 use App\Filament\Resources\Users\Pages\CreateUser;
 use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
+use App\Models\Unit;
 use App\Models\User;
 use BackedEnum;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -43,7 +46,18 @@ class UserResource extends Resource
         return [
             User::ROLE_SUPER_ADMIN => 'Super Admin',
             User::ROLE_STAFF => 'Staf pemilihan (Panitia / Petugas Pintu, ditugaskan per pemilihan)',
-            User::ROLE_ADMIN_RT => 'Admin RT (Mode Resmi, menyusul)',
+            User::ROLE_ADMIN_RT => 'Admin RT (Mode Resmi, satu akun = satu RT)',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function permissionOptions(): array
+    {
+        return [
+            User::PERMISSION_MANAGE_VOTERS => 'Kelola data pemilih RT',
+            User::PERMISSION_DESK => 'Petugas Meja Izin (hanya dari laptop meja RT-nya)',
         ];
     }
 
@@ -67,8 +81,18 @@ class UserResource extends Resource
                         Select::make('role')
                             ->label('Peran')
                             ->options(static::roleOptions())
-                            ->disableOptionWhen(fn (string $value): bool => $value === User::ROLE_ADMIN_RT)
+                            ->live()
                             ->required(),
+                        Select::make('unit_id')
+                            ->label('RT')
+                            ->options(fn (): array => Unit::query()->orderBy('sort')->pluck('name', 'id')->all())
+                            ->visible(fn (Get $get): bool => $get('role') === User::ROLE_ADMIN_RT)
+                            ->required(fn (Get $get): bool => $get('role') === User::ROLE_ADMIN_RT),
+                        CheckboxList::make('permissions')
+                            ->label('Izin Admin RT')
+                            ->options(static::permissionOptions())
+                            ->visible(fn (Get $get): bool => $get('role') === User::ROLE_ADMIN_RT)
+                            ->helperText('Boleh keduanya (K07). Petugas meja relawan cukup diberi izin Petugas Meja saja.'),
                         Toggle::make('is_active')->label('Aktif')->default(true)->visibleOn('edit'),
                     ]),
             ]);
@@ -82,6 +106,7 @@ class UserResource extends Resource
                 TextColumn::make('email')->label('Email')->searchable(),
                 TextColumn::make('roles.name')->label('Peran')->badge()
                     ->formatStateUsing(fn (string $state): string => static::roleOptions()[$state] ?? $state),
+                TextColumn::make('unit.name')->label('RT')->placeholder('-'),
                 IconColumn::make('is_active')->label('Aktif')->boolean(),
                 IconColumn::make('app_authentication_secret')->label('2FA')->boolean()
                     ->state(fn (User $record): bool => filled($record->app_authentication_secret)),

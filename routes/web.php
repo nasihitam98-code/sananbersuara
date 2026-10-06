@@ -4,6 +4,7 @@ use App\Http\Controllers\OfficialReportController;
 use App\Http\Controllers\PublicResultController;
 use App\Http\Controllers\ScreenController;
 use App\Http\Controllers\VoterController;
+use App\Http\Controllers\VoterTemplateController;
 use App\Http\Middleware\NoStore;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -58,3 +59,4 @@ Route::middleware('auth')->prefix('layar')->name('screens.')->group(function ():
 });
 
 Route::middleware('auth')->get('/berita-acara/{report:public_id}', [OfficialReportController::class, 'show'])->name('reports.show');
+Route::middleware('auth')->get('/pemilih/template', VoterTemplateController::class)->name('voters.template');

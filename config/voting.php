@@ -38,6 +38,13 @@ return [
         'search_max_results' => 5,
         'voter_session_minutes' => 15,
         'headcount' => null,
+
+        // Mode Resmi (K05, K06)
+        'max_booths_per_unit' => 3,
+        'permit_expiry_minutes' => 5,
+        'booth_idle_minutes' => 3,
+        'booth_token_minutes' => 10,
+        'desk_token_hours' => 24,
     ],
 
     /*

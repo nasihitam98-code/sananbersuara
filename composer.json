@@ -12,6 +12,7 @@
         "intervention/image": "^4.3",
         "laravel/framework": "^13.17",
         "laravel/tinker": "^3.0",
+        "openspout/openspout": "4.32",
         "spatie/laravel-permission": "^8.3"
     },
     "require-dev": {

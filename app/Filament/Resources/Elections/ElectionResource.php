@@ -16,6 +16,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -57,14 +58,47 @@ class ElectionResource extends Resource
                             ->label('Mode')
                             ->options(ElectionMode::class)
                             ->default(ElectionMode::Dadakan)
-                            ->disableOptionWhen(fn (string $value): bool => $value === ElectionMode::Resmi->value)
-                            ->helperText('Mode Resmi (meja + bilik) sedang dibuat dan menyusul setelah penjaringan.')
+                            ->helperText('Dadakan: QR + nama + PIN (rapat). Resmi: Meja Izin + laptop bilik per RT.')
                             ->required()
+                            ->live()
                             ->disabled(fn (?Election $record): bool => $record !== null && $record->status !== ElectionStatus::Draft),
                     ]),
+                Section::make('Pengaturan Mode Resmi')
+                    ->description('Bisa diubah selama status Draf atau Siap.')
+                    ->columns(3)
+                    ->visible(fn (Get $get): bool => in_array($get('mode'), [ElectionMode::Resmi, ElectionMode::Resmi->value], true))
+                    ->schema([
+                        TextInput::make('settings.max_booths_per_unit')
+                            ->label('Jumlah bilik per RT')
+                            ->numeric()->minValue(1)->maxValue(10)
+                            ->default(config('voting.defaults.max_booths_per_unit'))
+                            ->required(),
+                        TextInput::make('settings.permit_expiry_minutes')
+                            ->label('Izin hangus jika bilik tidak disentuh (menit)')
+                            ->numeric()->minValue(1)->maxValue(30)
+                            ->default(config('voting.defaults.permit_expiry_minutes'))
+                            ->required(),
+                        TextInput::make('settings.booth_idle_minutes')
+                            ->label('Sesi bilik berakhir jika diam (menit)')
+                            ->numeric()->minValue(1)->maxValue(30)
+                            ->default(config('voting.defaults.booth_idle_minutes'))
+                            ->required(),
+                        TextInput::make('settings.booth_token_minutes')
+                            ->label('Masa berlaku token bilik (menit)')
+                            ->numeric()->minValue(1)->maxValue(60)
+                            ->default(config('voting.defaults.booth_token_minutes'))
+                            ->required(),
+                        TextInput::make('settings.desk_token_hours')
+                            ->label('Masa berlaku token meja (jam)')
+                            ->numeric()->minValue(1)->maxValue(72)
+                            ->default(config('voting.defaults.desk_token_hours'))
+                            ->required(),
+                    ])
+                    ->disabled($locked),
                 Section::make('Pengaturan Mode Dadakan')
                     ->description('Bisa diubah selama status Draf atau Siap.')
                     ->columns(3)
+                    ->visible(fn (Get $get): bool => ! in_array($get('mode'), [ElectionMode::Resmi, ElectionMode::Resmi->value], true))
                     ->schema([
                         TextInput::make('settings.wave_minutes')
                             ->label('Durasi gelombang (menit)')

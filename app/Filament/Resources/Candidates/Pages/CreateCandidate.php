@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Candidates\Pages;
 
+use App\Enums\BallotScope;
 use App\Filament\Resources\Candidates\CandidateResource;
 use App\Models\Ballot;
 use App\Models\Candidate;
@@ -32,8 +33,20 @@ class CreateCandidate extends CreateRecord
             throw new Halt;
         }
 
-        if ($ballot->max_candidates !== null && $ballot->candidates()->count() >= $ballot->max_candidates) {
-            Notification::make()->title("Batas {$ballot->max_candidates} calon untuk surat suara ini sudah tercapai.")->danger()->send();
+        $perUnit = $ballot->scope === BallotScope::PerRt;
+        $data['unit_id'] = $perUnit ? ($data['unit_id'] ?? null) : null;
+
+        if ($perUnit && $data['unit_id'] === null) {
+            Notification::make()->title('Pilih RT calon untuk surat suara per RT.')->danger()->send();
+
+            throw new Halt;
+        }
+
+        $existing = $ballot->candidates()->when($perUnit, fn ($query) => $query->where('unit_id', $data['unit_id']))->count();
+
+        if ($ballot->max_candidates !== null && $existing >= $ballot->max_candidates) {
+            $scopeLabel = $perUnit ? 'per RT untuk RT ini' : 'untuk surat suara ini';
+            Notification::make()->title("Batas {$ballot->max_candidates} calon {$scopeLabel} sudah tercapai.")->danger()->send();
 
             throw new Halt;
         }

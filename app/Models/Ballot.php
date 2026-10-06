@@ -64,6 +64,16 @@ class Ballot extends Model
     }
 
     /**
+     * Snapshot hak pilih (Mode Resmi).
+     *
+     * @return HasMany<BallotVoter, $this>
+     */
+    public function voterEntries(): HasMany
+    {
+        return $this->hasMany(BallotVoter::class);
+    }
+
+    /**
      * @return BelongsToMany<Unit, $this>
      */
     public function units(): BelongsToMany

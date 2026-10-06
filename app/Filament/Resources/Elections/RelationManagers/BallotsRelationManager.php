@@ -11,8 +11,10 @@ use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -28,15 +30,35 @@ class BallotsRelationManager extends RelationManager
 
     public function form(Schema $schema): Schema
     {
+        /** @var Election $election */
+        $election = $this->getOwnerRecord();
+
         return $schema
             ->components([
                 TextInput::make('title')
                     ->label('Judul surat suara')
-                    ->placeholder('Contoh: Calon Ketua RW')
+                    ->placeholder($election->isDadakan() ? 'Contoh: Calon Ketua RW' : 'Contoh: Ketua RT / Ketua RW')
                     ->required()
                     ->maxLength(150),
+                Select::make('scope')
+                    ->label('Siapa yang berhak memilih')
+                    ->options(collect(BallotScope::cases())
+                        ->reject(fn (BallotScope $scope): bool => $scope === BallotScope::DaftarHadir)
+                        ->mapWithKeys(fn (BallotScope $scope): array => [$scope->value => $scope->getLabel()])
+                        ->all())
+                    ->helperText('Per RT: tiap RT punya calon sendiri (mis. Ketua RT). Semua RT: calon sama untuk semua (mis. Ketua RW).')
+                    ->visible(! $election->isDadakan())
+                    ->required(! $election->isDadakan())
+                    ->live(),
+                Select::make('units')
+                    ->label('RT yang berhak')
+                    ->relationship('units', 'name')
+                    ->multiple()
+                    ->preload()
+                    ->visible(fn (Get $get): bool => in_array($get('scope'), [BallotScope::RtTertentu, BallotScope::RtTertentu->value], true))
+                    ->required(fn (Get $get): bool => in_array($get('scope'), [BallotScope::RtTertentu, BallotScope::RtTertentu->value], true)),
                 TextInput::make('max_candidates')
-                    ->label('Batas jumlah calon (opsional)')
+                    ->label(fn (Get $get): string => in_array($get('scope'), [BallotScope::PerRt, BallotScope::PerRt->value], true) ? 'Batas jumlah calon per RT (opsional)' : 'Batas jumlah calon (opsional)')
                     ->numeric()->minValue(1)->maxValue(100),
                 TextInput::make('sort')
                     ->label('Urutan')
@@ -51,6 +73,7 @@ class BallotsRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('sort')->label('#'),
                 TextColumn::make('title')->label('Judul')->weight('bold'),
+                TextColumn::make('scope')->label('Cakupan')->badge(),
                 TextColumn::make('candidates_count')->label('Calon')->counts('candidates'),
                 TextColumn::make('max_candidates')->label('Batas')->placeholder('-'),
             ])
@@ -61,7 +84,7 @@ class BallotsRelationManager extends RelationManager
                         /** @var Election $election */
                         $election = $this->getOwnerRecord();
                         $ballot = new Ballot($data);
-                        $ballot->scope = $election->isDadakan() ? BallotScope::DaftarHadir : BallotScope::SemuaRt;
+                        $ballot->scope = $election->isDadakan() ? BallotScope::DaftarHadir : ($data['scope'] ?? BallotScope::SemuaRt);
                         $ballot->election()->associate($election);
                         $ballot->save();
 

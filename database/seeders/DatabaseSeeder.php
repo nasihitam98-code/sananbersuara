@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -20,6 +21,10 @@ class DatabaseSeeder extends Seeder
 
         foreach ([User::ROLE_SUPER_ADMIN, User::ROLE_ADMIN_RT, User::ROLE_STAFF] as $role) {
             Role::findOrCreate($role, 'web');
+        }
+
+        foreach ([User::PERMISSION_MANAGE_VOTERS, User::PERMISSION_DESK] as $permission) {
+            Permission::findOrCreate($permission, 'web');
         }
 
         $unitCount = (int) env('SEED_UNIT_COUNT', 9);

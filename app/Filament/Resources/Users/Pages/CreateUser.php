@@ -17,11 +17,22 @@ class CreateUser extends CreateRecord
      */
     protected function handleRecordCreation(array $data): Model
     {
-        $user = new User($data);
-        $user->forceFill(['must_change_password' => true, 'is_active' => true])->save();
-        $user->syncRoles([$data['role']]);
+        $isAdminRt = $data['role'] === User::ROLE_ADMIN_RT;
 
-        app(AuditLogger::class)->log('user.created', $user, meta: ['role' => $data['role']]);
+        $user = new User($data);
+        $user->forceFill([
+            'must_change_password' => true,
+            'is_active' => true,
+            'unit_id' => $isAdminRt ? $data['unit_id'] : null,
+        ])->save();
+        $user->syncRoles([$data['role']]);
+        $user->syncPermissions($isAdminRt ? ($data['permissions'] ?? []) : []);
+
+        app(AuditLogger::class)->log('user.created', $user, meta: [
+            'role' => $data['role'],
+            'unit_id' => $user->unit_id,
+            'permissions' => $isAdminRt ? ($data['permissions'] ?? []) : [],
+        ]);
 
         return $user;
     }

@@ -4,13 +4,16 @@ namespace Tests\Feature;
 
 use App\Filament\Pages\ControlRoom;
 use App\Filament\Pages\DoorDesk;
+use App\Filament\Pages\ImportVoters;
 use App\Filament\Pages\ResultScreen;
+use App\Filament\Pages\VerificationDesk;
 use App\Filament\Resources\AuditLogs\AuditLogResource;
 use App\Filament\Resources\Candidates\CandidateResource;
 use App\Filament\Resources\Candidates\Pages\CreateCandidate;
 use App\Filament\Resources\Elections\ElectionResource;
 use App\Filament\Resources\Elections\Pages\CreateElection;
 use App\Filament\Resources\Users\UserResource;
+use App\Filament\Resources\Voters\VoterResource;
 use App\Models\Ballot;
 use App\Models\Candidate;
 use App\Models\Election;
@@ -63,6 +66,11 @@ class AdminPagesRenderTest extends TestCase
             DoorDesk::getUrl(),
             ControlRoom::getUrl(),
             ResultScreen::getUrl(),
+            VerificationDesk::getUrl(),
+            VoterResource::getUrl(),
+            VoterResource::getUrl('create'),
+            ImportVoters::getUrl(),
+            route('voters.template'),
             '/admin/profile',
         ];
 

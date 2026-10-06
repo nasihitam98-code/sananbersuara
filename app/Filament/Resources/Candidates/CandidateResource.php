@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Candidates;
 
+use App\Enums\BallotScope;
 use App\Enums\CandidateStatus;
 use App\Enums\ElectionStatus;
 use App\Filament\Resources\Candidates\Pages\CreateCandidate;
@@ -9,6 +10,7 @@ use App\Filament\Resources\Candidates\Pages\EditCandidate;
 use App\Filament\Resources\Candidates\Pages\ListCandidates;
 use App\Models\Ballot;
 use App\Models\Candidate;
+use App\Models\Unit;
 use BackedEnum;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
@@ -58,6 +60,11 @@ class CandidateResource extends Resource
             ->all();
     }
 
+    public static function ballotIsPerUnit(mixed $ballotId): bool
+    {
+        return filled($ballotId) && Ballot::query()->whereKey($ballotId)->where('scope', BallotScope::PerRt)->exists();
+    }
+
     public static function form(Schema $schema): Schema
     {
         return $schema
@@ -73,6 +80,14 @@ class CandidateResource extends Resource
                             ->in(fn (): array => array_keys(static::editableBallotOptions()))
                             ->live()
                             ->visibleOn('create'),
+                        Select::make('unit_id')
+                            ->label('RT calon')
+                            ->options(fn (): array => Unit::query()->orderBy('sort')->pluck('name', 'id')->all())
+                            ->helperText('Surat suara per RT: calon hanya tampil untuk pemilih RT ini.')
+                            ->visible(fn (Get $get, ?Candidate $record): bool => static::ballotIsPerUnit($record?->ballot_id ?? $get('ballot_id')))
+                            ->required(fn (Get $get, ?Candidate $record): bool => static::ballotIsPerUnit($record?->ballot_id ?? $get('ballot_id')))
+                            ->disabledOn('edit')
+                            ->live(),
                         TextInput::make('number')
                             ->label('Nomor urut')
                             ->numeric()->minValue(1)->maxValue(999)
@@ -81,9 +96,11 @@ class CandidateResource extends Resource
                                 table: 'candidates',
                                 column: 'number',
                                 ignoreRecord: true,
-                                modifyRuleUsing: fn (Unique $rule, Get $get, ?Candidate $record): Unique => $rule->where('ballot_id', $record?->ballot_id ?? $get('ballot_id')),
+                                modifyRuleUsing: fn (Unique $rule, Get $get, ?Candidate $record): Unique => $rule
+                                    ->where('ballot_id', $record?->ballot_id ?? $get('ballot_id'))
+                                    ->where('unit_id', $record?->unit_id ?? ($get('unit_id') ?: null)),
                             )
-                            ->validationMessages(['unique' => 'Nomor urut ini sudah dipakai calon lain di surat suara yang sama.']),
+                            ->validationMessages(['unique' => 'Nomor urut ini sudah dipakai calon lain di surat suara (dan RT) yang sama.']),
                         TextInput::make('name')
                             ->label('Nama lengkap (tampil di surat suara)')
                             ->required()
@@ -129,6 +146,7 @@ class CandidateResource extends Resource
                 TextColumn::make('number')->label('No.')->sortable(),
                 TextColumn::make('name')->label('Nama')->searchable()->weight('bold'),
                 TextColumn::make('ballot.title')->label('Surat suara'),
+                TextColumn::make('unit.name')->label('RT')->placeholder('-'),
                 TextColumn::make('ballot.election.name')->label('Pemilihan')->toggleable(),
                 TextColumn::make('status')->label('Status')->badge(),
                 TextColumn::make('photo_key')
