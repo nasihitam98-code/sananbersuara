@@ -21,7 +21,7 @@
                     <p class="error" role="alert">{{ $message }}</p>
                 @enderror
 
-                <fieldset class="candidates">
+                <fieldset class="candidates candidates--grid">
                     <legend class="sr-only">Daftar calon {{ $ballot->title }}</legend>
 
                     @foreach ($candidates as $candidate)
@@ -34,15 +34,15 @@
                         >
                             <input type="radio" name="candidate" value="{{ $candidate->public_id }}" required>
                             <span class="candidate__body">
-                                @include('voter.partials.photo', ['candidate' => $candidate, 'size' => 'thumb'])
-                                <span>
-                                    <span class="candidate__number">Nomor {{ $candidate->displayNumber() }}</span><br>
+                                <span class="candidate__check" aria-hidden="true">✓</span>
+                                @include('voter.partials.photo', ['candidate' => $candidate, 'responsive' => true])
+                                <span class="candidate__text">
+                                    <span class="candidate__number">Nomor {{ $candidate->displayNumber() }}</span>
                                     <span class="candidate__name">{{ $candidate->name }}</span>
                                     @if ($candidate->status->value === 'MUNDUR')
-                                        <br><span class="tag">Mengundurkan diri</span>
+                                        <span class="tag">Mengundurkan diri</span>
                                     @endif
                                 </span>
-                                <span class="candidate__check" aria-hidden="true">✓</span>
                             </span>
                         </label>
                     @endforeach
