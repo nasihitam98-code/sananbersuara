@@ -101,6 +101,13 @@ class GalleryTest extends TestCase
             ->callAction('assign', ['candidate_id' => $first->id], ['photo' => $photoA->public_id])
             ->assertNotified("Foto dipasang ke 01 {$first->name}.");
 
+        // Grid pemilih foto yang sama dipakai di modal tombol Foto dan di form calon.
+        Livewire::test(CreateCandidate::class)
+            ->assertSee('Cari nama file')
+            ->assertSee('a.jpg')
+            ->assertSee('dipakai 01')
+            ->assertSee('belum dipakai');
+
         Livewire::test(ListCandidates::class)
             ->callAction(TestAction::make('galleryPhoto')->table($second), ['gallery_photo_id' => $photoB->id])
             ->assertNotified("Foto dipasang ke 02 {$second->name}.");

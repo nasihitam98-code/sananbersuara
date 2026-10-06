@@ -27,12 +27,14 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\ViewField;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\SelectColumn;
@@ -132,25 +134,15 @@ class CandidateResource extends Resource
     }
 
     /**
-     * Pilihan foto galeri dengan gambar kecil (untuk Select allowHtml).
-     *
-     * @return array<int, string>
+     * Pemilih foto galeri berbentuk grid gambar (klik untuk memilih), dengan pencarian nama file.
      */
-    public static function galleryOptions(): array
+    public static function galleryPickerField(string $name, string $label): ViewField
     {
-        return GalleryPhoto::query()
-            ->with('candidates')
-            ->latest()
-            ->limit(300)
-            ->get()
-            ->mapWithKeys(fn (GalleryPhoto $photo): array => [
-                $photo->id => '<span style="display:flex;align-items:center;gap:.5rem">'
-                    .'<img src="'.e($photo->previewUrl()).'" alt="" style="width:2.5rem;height:2.5rem;border-radius:.375rem;object-fit:cover">'
-                    .'<span>'.e($photo->original_name)
-                    .($photo->candidates->isNotEmpty() ? ' <small style="opacity:.6">(dipakai '.e($photo->candidates->map(fn (Candidate $candidate): string => $candidate->displayNumber())->implode(', ')).')</small>' : '')
-                    .'</span></span>',
-            ])
-            ->all();
+        return ViewField::make($name)
+            ->label($label)
+            ->view('filament.forms.gallery-picker')
+            ->viewData(fn (): array => ['photos' => GalleryPhoto::query()->with('candidates')->latest()->limit(300)->get()])
+            ->rule('exists:gallery_photos,id');
     }
 
     public static function ballotIsPerUnit(mixed $ballotId): bool
@@ -243,13 +235,8 @@ class CandidateResource extends Resource
                             ->directory('unggahan-sementara')
                             ->visibility('private')
                             ->helperText('Kosongkan jika tidak ingin mengganti foto.'),
-                        Select::make('gallery_photo_pick')
-                            ->label('Atau pilih dari Galeri Foto')
-                            ->options(fn (): array => static::galleryOptions())
-                            ->allowHtml()
-                            ->searchable()
-                            ->placeholder('Tidak memilih dari galeri')
-                            ->helperText('Dipakai bila tidak mengunggah foto baru di atas. Isi galeri lewat menu Galeri Foto.'),
+                        static::galleryPickerField('gallery_photo_pick', 'Atau pilih dari Galeri Foto')
+                            ->helperText('Klik salah satu foto. Dipakai bila tidak mengunggah foto baru di atas.'),
                     ]),
             ]);
     }
@@ -266,14 +253,9 @@ class CandidateResource extends Resource
             ->visible(fn (Candidate $record): bool => static::canEdit($record))
             ->modalHeading(fn (Candidate $record): string => "Pilih foto untuk {$record->displayNumber()} {$record->name}")
             ->modalSubmitActionLabel('Pasang')
+            ->modalWidth(Width::SevenExtraLarge)
             ->schema([
-                Select::make('gallery_photo_id')
-                    ->label('Foto dari galeri')
-                    ->options(fn (): array => static::galleryOptions())
-                    ->allowHtml()
-                    ->searchable()
-                    ->required()
-                    ->helperText('Galeri kosong? Unggah dulu lewat menu Galeri Foto.'),
+                static::galleryPickerField('gallery_photo_id', 'Klik foto yang akan dipasang')->required(),
             ])
             ->action(function (Candidate $record, array $data): void {
                 /** @var User $user */
