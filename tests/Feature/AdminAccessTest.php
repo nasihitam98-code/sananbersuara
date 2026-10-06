@@ -180,6 +180,23 @@ class AdminAccessTest extends TestCase
         $this->actingAs($committee)->get(ElectionResource::getUrl('edit', ['record' => $this->election]))->assertForbidden();
     }
 
+    public function test_saving_with_empty_advanced_settings_keeps_defaults_and_other_settings(): void
+    {
+        $draft = Election::factory()->create(['name' => 'Draf lama', 'settings' => ['headcount' => 42, 'wave_minutes' => 7]]);
+        $this->actingAs($this->superAdmin);
+
+        Livewire::test(EditElection::class, ['record' => $draft->public_id])
+            ->assertSee('Langkah:')
+            ->fillForm(['name' => 'Draf baru', 'settings.wave_minutes' => null])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $draft->refresh();
+        $this->assertSame('Draf baru', $draft->name);
+        $this->assertSame(42, $draft->setting('headcount'), 'Pengaturan di luar form tidak boleh hilang');
+        $this->assertSame(config('voting.defaults.wave_minutes'), $draft->setting('wave_minutes'), 'Kotak kosong memakai nilai bawaan');
+    }
+
     public function test_committee_opens_wave_from_control_room(): void
     {
         $committee = $this->makeUser(User::ROLE_STAFF, StaffRole::Panitia);

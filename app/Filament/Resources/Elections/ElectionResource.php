@@ -46,6 +46,22 @@ class ElectionResource extends Resource
         return Workspace::shows();
     }
 
+    /**
+     * Isian pengaturan yang dikosongkan dibuang agar nilai bawaan yang dipakai, dan kunci
+     * pengaturan lain yang tidak ada di form (mis. hitung kepala) tetap dipertahankan.
+     *
+     * @param  array<string, mixed>|null  $submitted
+     * @param  array<string, mixed>|null  $existing
+     * @return array<string, mixed>
+     */
+    public static function mergeSettings(?array $submitted, ?array $existing = null): array
+    {
+        $filled = array_filter($submitted ?? [], fn (mixed $value): bool => $value !== null && $value !== '');
+        $formKeys = array_keys($submitted ?? []);
+
+        return array_merge(array_diff_key($existing ?? [], array_flip($formKeys)), $filled);
+    }
+
     public static function form(Schema $schema): Schema
     {
         $locked = fn (?Election $record): bool => $record !== null && ! $record->status->allowsConfigurationChanges();
@@ -70,40 +86,39 @@ class ElectionResource extends Resource
                             ->live()
                             ->disabled(fn (?Election $record): bool => $record !== null && $record->status !== ElectionStatus::Draft),
                     ]),
-                Section::make('Pengaturan Mode Resmi')
-                    ->description('Bisa diubah selama status Draf atau Siap.')
+                Section::make('Pengaturan lanjutan Mode Resmi (boleh dibiarkan)')
+                    ->description('Kosongkan untuk memakai nilai bawaan. Bisa diubah selama status Draf atau Siap.')
+                    ->collapsible()
+                    ->collapsed()
                     ->columns(3)
                     ->visible(fn (Get $get): bool => in_array($get('mode'), [ElectionMode::Resmi, ElectionMode::Resmi->value], true))
                     ->schema([
                         TextInput::make('settings.max_booths_per_unit')
                             ->label('Jumlah bilik per RT')
                             ->numeric()->minValue(1)->maxValue(10)
-                            ->default(config('voting.defaults.max_booths_per_unit'))
-                            ->required(),
+                            ->placeholder('Bawaan: '.config('voting.defaults.max_booths_per_unit')),
                         TextInput::make('settings.permit_expiry_minutes')
                             ->label('Izin hangus jika bilik tidak disentuh (menit)')
                             ->numeric()->minValue(1)->maxValue(30)
-                            ->default(config('voting.defaults.permit_expiry_minutes'))
-                            ->required(),
+                            ->placeholder('Bawaan: '.config('voting.defaults.permit_expiry_minutes')),
                         TextInput::make('settings.booth_idle_minutes')
                             ->label('Sesi bilik berakhir jika diam (menit)')
                             ->numeric()->minValue(1)->maxValue(30)
-                            ->default(config('voting.defaults.booth_idle_minutes'))
-                            ->required(),
+                            ->placeholder('Bawaan: '.config('voting.defaults.booth_idle_minutes')),
                         TextInput::make('settings.booth_token_minutes')
                             ->label('Masa berlaku token bilik (menit)')
                             ->numeric()->minValue(1)->maxValue(60)
-                            ->default(config('voting.defaults.booth_token_minutes'))
-                            ->required(),
+                            ->placeholder('Bawaan: '.config('voting.defaults.booth_token_minutes')),
                         TextInput::make('settings.desk_token_hours')
                             ->label('Masa berlaku token meja (jam)')
                             ->numeric()->minValue(1)->maxValue(72)
-                            ->default(config('voting.defaults.desk_token_hours'))
-                            ->required(),
+                            ->placeholder('Bawaan: '.config('voting.defaults.desk_token_hours')),
                     ])
                     ->disabled($locked),
-                Section::make('Pengaturan Mode Dadakan')
-                    ->description('Bisa diubah selama status Draf atau Siap.')
+                Section::make('Pengaturan lanjutan Mode Dadakan (boleh dibiarkan)')
+                    ->description('Kosongkan untuk memakai nilai bawaan. Bisa diubah selama status Draf atau Siap.')
+                    ->collapsible()
+                    ->collapsed()
                     ->columns(3)
                     ->visible(fn (Get $get): bool => ! in_array($get('mode'), [ElectionMode::Resmi, ElectionMode::Resmi->value], true))
                     ->schema([
@@ -111,20 +126,17 @@ class ElectionResource extends Resource
                             ->label('Durasi gelombang (menit)')
                             ->helperText('Surat suara dengan ≤ 10 calon.')
                             ->numeric()->minValue(1)->maxValue(60)
-                            ->default(config('voting.defaults.wave_minutes'))
-                            ->required(),
+                            ->placeholder('Bawaan: '.config('voting.defaults.wave_minutes')),
                         TextInput::make('settings.wave_minutes_many_candidates')
                             ->label('Durasi gelombang, calon banyak (menit)')
                             ->helperText('Surat suara dengan > 10 calon, mis. penjaringan.')
                             ->numeric()->minValue(1)->maxValue(60)
-                            ->default(config('voting.defaults.wave_minutes_many_candidates'))
-                            ->required(),
+                            ->placeholder('Bawaan: '.config('voting.defaults.wave_minutes_many_candidates')),
                         TextInput::make('settings.late_grace_seconds')
                             ->label('Toleransi telat kirim (detik)')
                             ->helperText('Konfirmasi yang tiba sesaat setelah timer habis tetap diterima.')
                             ->numeric()->minValue(0)->maxValue(60)
-                            ->default(config('voting.defaults.late_grace_seconds'))
-                            ->required(),
+                            ->placeholder('Bawaan: '.config('voting.defaults.late_grace_seconds')),
                     ])
                     ->disabled($locked),
             ]);

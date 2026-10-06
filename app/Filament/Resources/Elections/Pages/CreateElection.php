@@ -16,6 +16,7 @@ class CreateElection extends CreateRecord
      */
     protected function handleRecordCreation(array $data): Model
     {
+        $data['settings'] = ElectionResource::mergeSettings($data['settings'] ?? null);
         $record = new ($this->getModel())($data);
         $record->created_by = auth()->id();
         $record->save();

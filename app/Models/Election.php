@@ -72,7 +72,7 @@ class Election extends Model
      */
     public function setting(string $key): mixed
     {
-        return data_get($this->settings, $key, config("voting.defaults.{$key}"));
+        return data_get($this->settings, $key) ?? config("voting.defaults.{$key}");
     }
 
     public function isDadakan(): bool

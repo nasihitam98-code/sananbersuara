@@ -34,6 +34,23 @@ class EditElection extends EditRecord
         abort_unless(static::getResource()::canView($this->getRecord()), 403);
     }
 
+    /**
+     * Penjelasan singkat di bawah judul: apa yang dilakukan di tahap ini.
+     */
+    public function getSubheading(): ?string
+    {
+        $dadakan = $this->record->isDadakan();
+
+        return match ($this->record->status) {
+            ElectionStatus::Draft => $dadakan
+                ? 'Langkah: ① tambah surat suara di bawah → ② isi calon lewat "Kelola calon" → ③ tab "Panitia & Petugas Pintu": tugaskan orangnya → ④ tekan Tandai Siap di kanan atas.'
+                : 'Langkah: ① tambah surat suara Ketua RT (per RT) dan Ketua RW (semua RT) di bawah → ② isi calon lewat "Kelola calon" → ③ tekan Tandai Siap di kanan atas.',
+            ElectionStatus::Ready => 'Sudah Siap. Calon masih bisa diubah. Saat acara benar-benar dimulai, tekan Mulai Pemilihan di kanan atas.',
+            ElectionStatus::Berlangsung, ElectionStatus::Paused => 'Pemilihan sedang berlangsung, jadi isian di halaman ini dikunci agar tidak berubah di tengah acara. Untuk menjeda atau menutup: tombol Status di kanan atas.',
+            default => 'Pemilihan sudah ditutup; isian dikunci. Lanjutkan dari menu Layar Hasil dan Verifikasi & Publikasi.',
+        };
+    }
+
     protected function getFormActions(): array
     {
         return $this->isConfigurable() ? parent::getFormActions() : [];
@@ -133,6 +150,7 @@ class EditElection extends EditRecord
         abort_unless(static::getResource()::canEdit($record), 403);
 
         $before = $record->only(['name', 'settings']);
+        $data['settings'] = ElectionResource::mergeSettings($data['settings'] ?? null, $record->settings);
         $record->update($data);
 
         app(AuditLogger::class)->log('election.updated', $record, $record, meta: [
