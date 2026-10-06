@@ -16,6 +16,7 @@ use App\Models\Unit;
 use App\Services\AuditLogger;
 use App\Services\CandidatePhotoProcessor;
 use BackedEnum;
+use Closure;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
@@ -146,6 +147,14 @@ class CandidateResource extends Resource
                         TextInput::make('name')
                             ->label('Nama lengkap (tampil di surat suara)')
                             ->required()
+                            ->rule(fn (Get $get, ?Candidate $record): Closure => function (string $attribute, mixed $value, Closure $fail) use ($get, $record): void {
+                                $ballotId = $record?->ballot_id ?? $get('ballot_id');
+                                $unitId = $record?->unit_id ?? ($get('unit_id') ?: null);
+
+                                if (filled($ballotId) && is_string($value) && Candidate::nameTaken((int) $ballotId, $unitId === null ? null : (int) $unitId, $value, $record?->id)) {
+                                    $fail('Nama ini sudah ada di surat suara ini. Bila memang orang berbeda, tambahkan keterangan, mis. "(RT 03)".');
+                                }
+                            })
                             ->maxLength(120)
                             ->columnSpanFull(),
                         Select::make('status')

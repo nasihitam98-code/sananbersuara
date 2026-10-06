@@ -80,14 +80,15 @@ class CandidateBulkImporter
         }
 
         return DB::transaction(function () use ($ballot, $unitId, $rows): int {
-            $existing = Candidate::query()
+            $current = Candidate::query()
                 ->where('ballot_id', $ballot->id)
                 ->where('unit_id', $unitId)
                 ->lockForUpdate()
-                ->pluck('number')
-                ->all();
+                ->get(['number', 'name']);
 
+            $existing = $current->pluck('number')->all();
             $used = array_flip($existing);
+            $names = $current->mapWithKeys(fn (Candidate $candidate): array => [Candidate::normalizeName($candidate->name) => 'sudah ada'])->all();
             $next = ($existing === [] ? 0 : max($existing)) + 1;
             $problems = [];
             $prepared = [];
@@ -105,8 +106,11 @@ class CandidateBulkImporter
                     $problems[] = "baris {$row['line']}: nomor {$number} tidak valid";
                 } elseif (isset($used[$number])) {
                     $problems[] = "baris {$row['line']}: nomor {$number} sudah dipakai";
+                } elseif (isset($names[Candidate::normalizeName($row['name'])])) {
+                    $problems[] = "baris {$row['line']}: nama \"{$row['name']}\" ".$names[Candidate::normalizeName($row['name'])];
                 }
 
+                $names[Candidate::normalizeName($row['name'])] ??= "sudah ditulis di baris {$row['line']}";
                 $used[$number] = true;
                 $next = max($next, $number + 1);
                 $prepared[] = ['number' => $number, 'name' => $row['name']];
@@ -189,15 +193,15 @@ class CandidateBulkImporter
             return [$candidate, $candidate === null ? "tidak ada calon nomor {$match[1]}" : ''];
         }
 
-        $fileName = $this->normalizeName(pathinfo($originalName, PATHINFO_FILENAME));
+        $fileName = Candidate::normalizeName(pathinfo($originalName, PATHINFO_FILENAME));
 
         if (mb_strlen($fileName) < 3) {
             return [null, 'nama file tidak berisi nomor atau nama calon'];
         }
 
-        $exact = $candidates->filter(fn (Candidate $candidate): bool => $this->normalizeName($candidate->name) === $fileName);
+        $exact = $candidates->filter(fn (Candidate $candidate): bool => Candidate::normalizeName($candidate->name) === $fileName);
         $found = $exact->isNotEmpty() ? $exact : $candidates->filter(function (Candidate $candidate) use ($fileName): bool {
-            $name = $this->normalizeName($candidate->name);
+            $name = Candidate::normalizeName($candidate->name);
 
             // "Bapak Sutrisno 2026.jpg" atau cukup "Sutrisno.jpg" untuk calon "Bapak Sutrisno".
             return str_contains($fileName, $name) || str_contains($name, $fileName);
@@ -208,11 +212,6 @@ class CandidateBulkImporter
             0 => [null, 'tidak ada calon dengan nama ini'],
             default => [null, 'cocok dengan lebih dari satu calon; beri nomor di nama file'],
         };
-    }
-
-    private function normalizeName(string $value): string
-    {
-        return Str::of($value)->ascii()->lower()->replaceMatches('/[^a-z0-9]+/', ' ')->squish()->toString();
     }
 
     private function assertEditable(Ballot $ballot): void

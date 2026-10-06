@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\BallotScope;
 use App\Enums\ElectionStatus;
+use App\Filament\Resources\Candidates\Pages\CreateCandidate;
 use App\Filament\Resources\Candidates\Pages\ListCandidates;
 use App\Models\AuditLog;
 use App\Models\Ballot;
@@ -97,6 +98,32 @@ class CandidateBulkImportTest extends TestCase
         }
 
         $this->assertSame(1, $this->ballot->candidates()->count());
+    }
+
+    public function test_duplicate_names_are_rejected_in_bulk_and_single_form(): void
+    {
+        Candidate::factory()->for($this->ballot)->create(['number' => 1, 'name' => 'Bapak Hartono']);
+
+        try {
+            $this->importer()->import($this->ballot, null, "Ibu Sumiati\nbapak  HARTONO\nIbu Sumiati", $this->superAdmin);
+            $this->fail('Nama kembar harus ditolak.');
+        } catch (VotingException $exception) {
+            $this->assertStringContainsString('baris 2: nama "bapak HARTONO" sudah ada', $exception->getMessage());
+            $this->assertStringContainsString('baris 3: nama "Ibu Sumiati" sudah ditulis di baris 1', $exception->getMessage());
+        }
+
+        $this->assertSame(1, $this->ballot->candidates()->count());
+
+        $this->actingAs($this->superAdmin);
+        Livewire::test(CreateCandidate::class)
+            ->fillForm(['ballot_id' => $this->ballot->id, 'number' => 2, 'name' => 'Bapak Hartono'])
+            ->call('create')
+            ->assertHasFormErrors(['name']);
+
+        Livewire::test(CreateCandidate::class)
+            ->fillForm(['ballot_id' => $this->ballot->id, 'number' => 2, 'name' => 'Bapak Hartono (RT 03)'])
+            ->call('create')
+            ->assertHasNoFormErrors();
     }
 
     public function test_per_rt_ballot_needs_rt_and_started_election_is_locked(): void

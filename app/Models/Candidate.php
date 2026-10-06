@@ -75,6 +75,29 @@ class Candidate extends Model
     /**
      * Inisial untuk placeholder netral jika foto belum ada.
      */
+    /**
+     * Bentuk baku nama untuk membandingkan (huruf besar/kecil, tanda baca, spasi ganda diabaikan).
+     */
+    public static function normalizeName(string $name): string
+    {
+        return Str::of($name)->ascii()->lower()->replaceMatches('/[^a-z0-9]+/', ' ')->squish()->toString();
+    }
+
+    /**
+     * Apakah nama ini sudah dipakai calon lain di surat suara (dan RT) yang sama.
+     */
+    public static function nameTaken(int $ballotId, ?int $unitId, string $name, ?int $ignoreId = null): bool
+    {
+        $normalized = static::normalizeName($name);
+
+        return static::query()
+            ->where('ballot_id', $ballotId)
+            ->where('unit_id', $unitId)
+            ->when($ignoreId !== null, fn ($query) => $query->whereKeyNot($ignoreId))
+            ->pluck('name')
+            ->contains(fn (string $existing): bool => static::normalizeName($existing) === $normalized);
+    }
+
     public function initials(): string
     {
         return Str::of($this->name)
