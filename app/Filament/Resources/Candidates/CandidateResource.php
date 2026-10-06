@@ -177,6 +177,8 @@ class CandidateResource extends Resource
         return $table
             ->defaultSort('number')
             ->modifyQueryUsing(fn (Builder $query) => $query->with('ballot.election')
+                // Calon dari pemilihan yang dibatalkan/diarsipkan tidak ikut ditampilkan.
+                ->whereHas('ballot.election', fn (Builder $election): Builder => $election->whereNotIn('status', [ElectionStatus::Cancelled, ElectionStatus::Archived]))
                 ->when(Workspace::current(), fn (Builder $query, ElectionMode $mode): Builder => $query->whereHas('ballot.election', fn (Builder $election): Builder => $election->where('mode', $mode))))
             ->columns([
                 ImageColumn::make('photo')

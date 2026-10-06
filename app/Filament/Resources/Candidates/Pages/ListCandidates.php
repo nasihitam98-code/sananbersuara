@@ -62,7 +62,7 @@ class ListCandidates extends ListRecords
                 ->color('gray')
                 ->visible(fn (): bool => CandidateResource::canCreate())
                 ->modalHeading('Unggah banyak foto sekaligus')
-                ->modalDescription('Beri nama file dengan nomor urut calon di depan: 01.jpg, 2.png, "3 - Bapak Ahmad.jpg", dst. Foto otomatis dipotong persegi dan menggantikan foto lama.')
+                ->modalDescription('Foto dicocokkan otomatis lewat nama file: nomor urut di depan (01.jpg, "3 - Bapak Ahmad.jpg") atau nama calon ("Ibu Sumiati.jpg", "sutrisno.png"). Foto dipotong persegi dan menggantikan foto lama. Yang tidak cocok dilewati dan disebutkan.')
                 ->modalSubmitActionLabel('Pasang foto')
                 ->schema([
                     ...$this->ballotFields(),

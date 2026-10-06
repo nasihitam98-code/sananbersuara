@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\CandidatePhotoProcessor;
 use App\Services\Voting\VotingException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -132,7 +133,8 @@ class CandidateBulkImporter
     }
 
     /**
-     * Pasangkan foto ke calon berdasarkan angka di awal nama file (mis. "01.jpg", "2 - Siti.png").
+     * Pasangkan foto ke calon berdasarkan nomor di awal nama file (mis. "01.jpg", "2 - Siti.png")
+     * atau nama calon di nama file (mis. "Ibu Sumiati.jpg").
      *
      * @param  array<string, string>  $files  path sementara (disk local) => nama file asli
      * @return array{matched: array<int, string>, skipped: array<int, string>}
@@ -152,12 +154,11 @@ class CandidateBulkImporter
         $skipped = [];
 
         foreach ($files as $path => $originalName) {
-            $number = preg_match('/^\s*0*(\d{1,3})(?!\d)/', (string) $originalName, $match) === 1 ? (int) $match[1] : null;
-            $candidate = $number !== null ? $candidates->get($number) : null;
+            [$candidate, $reason] = $this->matchPhoto((string) $originalName, $candidates);
 
             if ($candidate === null) {
                 Storage::disk('local')->delete($path);
-                $skipped[] = "{$originalName} (tidak ada calon nomor ".($number ?? '?').')';
+                $skipped[] = "{$originalName} ({$reason})";
 
                 continue;
             }
@@ -171,6 +172,47 @@ class CandidateBulkImporter
         }
 
         return ['matched' => $matched, 'skipped' => $skipped];
+    }
+
+    /**
+     * Cocokkan satu file foto: nomor di depan nama file dulu, lalu nama calon di nama file
+     * (huruf besar/kecil dan tanda baca diabaikan). Nama yang cocok ke lebih dari satu calon dilewati.
+     *
+     * @param  Collection<int, Candidate>  $candidates  calon dengan kunci nomor urut
+     * @return array{0: ?Candidate, 1: string}
+     */
+    private function matchPhoto(string $originalName, Collection $candidates): array
+    {
+        if (preg_match('/^\s*0*(\d{1,3})(?!\d)/', $originalName, $match) === 1) {
+            $candidate = $candidates->get((int) $match[1]);
+
+            return [$candidate, $candidate === null ? "tidak ada calon nomor {$match[1]}" : ''];
+        }
+
+        $fileName = $this->normalizeName(pathinfo($originalName, PATHINFO_FILENAME));
+
+        if (mb_strlen($fileName) < 3) {
+            return [null, 'nama file tidak berisi nomor atau nama calon'];
+        }
+
+        $exact = $candidates->filter(fn (Candidate $candidate): bool => $this->normalizeName($candidate->name) === $fileName);
+        $found = $exact->isNotEmpty() ? $exact : $candidates->filter(function (Candidate $candidate) use ($fileName): bool {
+            $name = $this->normalizeName($candidate->name);
+
+            // "Bapak Sutrisno 2026.jpg" atau cukup "Sutrisno.jpg" untuk calon "Bapak Sutrisno".
+            return str_contains($fileName, $name) || str_contains($name, $fileName);
+        });
+
+        return match ($found->count()) {
+            1 => [$found->first(), ''],
+            0 => [null, 'tidak ada calon dengan nama ini'],
+            default => [null, 'cocok dengan lebih dari satu calon; beri nomor di nama file'],
+        };
+    }
+
+    private function normalizeName(string $value): string
+    {
+        return Str::of($value)->ascii()->lower()->replaceMatches('/[^a-z0-9]+/', ' ')->squish()->toString();
     }
 
     private function assertEditable(Ballot $ballot): void

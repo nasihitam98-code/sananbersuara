@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\BallotScope;
+use App\Enums\ElectionStatus;
 use App\Filament\Resources\Candidates\Pages\ListCandidates;
 use App\Models\Ballot;
 use App\Models\Candidate;
@@ -117,6 +118,19 @@ class CandidateBulkImportTest extends TestCase
         $this->importer()->import($this->ballot->fresh(), null, 'Penyusup', $this->superAdmin);
     }
 
+    public function test_candidate_list_hides_candidates_of_cancelled_elections(): void
+    {
+        $this->actingAs($this->superAdmin);
+        $active = Candidate::factory()->for($this->ballot)->create(['number' => 1, 'name' => 'Calon Aktif']);
+        $cancelledElection = Election::factory()->create();
+        $old = Candidate::factory()->for(Ballot::factory()->for($cancelledElection))->create(['number' => 1, 'name' => 'Calon Lama']);
+        $cancelledElection->forceFill(['status' => ElectionStatus::Cancelled])->save();
+
+        Livewire::test(ListCandidates::class)
+            ->assertCanSeeTableRecords([$active])
+            ->assertCanNotSeeTableRecords([$old]);
+    }
+
     public function test_bulk_add_action_from_candidate_list(): void
     {
         $this->actingAs($this->superAdmin);
@@ -127,6 +141,33 @@ class CandidateBulkImportTest extends TestCase
             ->assertNotified('3 calon ditambahkan.');
 
         $this->assertSame(3, $this->ballot->candidates()->count());
+    }
+
+    public function test_photos_without_number_are_matched_by_candidate_name(): void
+    {
+        Storage::fake('local');
+        Storage::fake(config('voting.photo.disk'));
+        $sutrisno = Candidate::factory()->for($this->ballot)->create(['number' => 1, 'name' => 'Bapak Sutrisno']);
+        $sumiati = Candidate::factory()->for($this->ballot)->create(['number' => 2, 'name' => 'Ibu Sumiati']);
+        Candidate::factory()->for($this->ballot)->create(['number' => 3, 'name' => 'Bapak Joko Susilo']);
+        Candidate::factory()->for($this->ballot)->create(['number' => 4, 'name' => 'Ibu Joko Lestari']);
+
+        $files = [];
+
+        foreach (['IBU_SUMIATI.jpg', 'sutrisno.png', 'Joko.jpg', 'Orang Lain.jpg'] as $name) {
+            $path = UploadedFile::fake()->image($name, 200, 200)->store('unggahan-sementara', 'local');
+            $files[$path] = $name;
+        }
+
+        $result = $this->importer()->attachPhotos($this->ballot, null, $files, $this->superAdmin);
+
+        $this->assertCount(2, $result['matched']);
+        $this->assertNotNull($sumiati->fresh()->photo_key);
+        $this->assertNotNull($sutrisno->fresh()->photo_key);
+        $this->assertSame([
+            'Joko.jpg (cocok dengan lebih dari satu calon; beri nomor di nama file)',
+            'Orang Lain.jpg (tidak ada calon dengan nama ini)',
+        ], $result['skipped']);
     }
 
     public function test_bulk_photo_action_keeps_original_file_names_for_matching(): void
