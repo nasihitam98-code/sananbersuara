@@ -2,11 +2,13 @@
 
 namespace App\Providers;
 
+use App\Models\AppSetting;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Throwable;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -24,11 +26,30 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureRateLimits();
+        $this->applyDisplaySettings();
 
         Password::defaults(fn (): Password => Password::min(12)
             ->letters()
             ->numbers()
             ->when($this->app->isProduction(), fn (Password $rule): Password => $rule->uncompromised()));
+    }
+
+    /**
+     * Nama aplikasi dari menu Pengaturan Tampilan menggantikan APP_NAME, sehingga panel, halaman
+     * publik, HP pemilih, bilik, dan email ikut berubah. Sebelum tabelnya ada (mis. sebelum
+     * migrate di server baru) tetap memakai APP_NAME.
+     */
+    private function applyDisplaySettings(): void
+    {
+        try {
+            $siteName = AppSetting::get(AppSetting::SITE_NAME);
+        } catch (Throwable) {
+            return;
+        }
+
+        if ($siteName !== null) {
+            config(['app.name' => $siteName]);
+        }
     }
 
     /**

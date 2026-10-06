@@ -4,6 +4,7 @@ namespace App\Filament\Support;
 
 use App\Enums\ElectionMode;
 use App\Models\User;
+use Illuminate\Support\Facades\Cookie;
 
 /**
  * Mode kerja panel (Dadakan / Resmi) agar menu hanya berisi yang relevan.
@@ -51,7 +52,7 @@ class Workspace
             return $allowed[0];
         }
 
-        $chosen = ElectionMode::tryFrom((string) session(static::SESSION_KEY));
+        $chosen = ElectionMode::tryFrom((string) (session(static::SESSION_KEY) ?? request()->cookie(static::SESSION_KEY)));
 
         return in_array($chosen, $allowed, true) ? $chosen : null;
     }
@@ -65,6 +66,7 @@ class Workspace
     {
         if ($mode === null) {
             session()->forget(static::SESSION_KEY);
+            Cookie::queue(Cookie::forget(static::SESSION_KEY));
 
             return;
         }
@@ -72,6 +74,8 @@ class Workspace
         abort_unless(in_array($mode, static::allowedModes(), true), 403);
 
         session([static::SESSION_KEY => $mode->value]);
+        // Diingat di browser ini agar tidak perlu memilih ulang setiap login.
+        Cookie::queue(static::SESSION_KEY, $mode->value, 60 * 24 * 365);
     }
 
     /**

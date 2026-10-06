@@ -4,18 +4,23 @@ namespace Tests\Feature;
 
 use App\Enums\ElectionMode;
 use App\Enums\StaffRole;
+use App\Filament\Pages\SiteSettings;
 use App\Filament\Resources\Elections\ElectionResource;
 use App\Filament\Support\Workspace;
+use App\Models\AppSetting;
+use App\Models\AuditLog;
 use App\Models\Ballot;
 use App\Models\Candidate;
 use App\Models\Election;
 use App\Models\ElectionStaff;
 use App\Models\Unit;
 use App\Models\User;
+use App\Providers\AppServiceProvider;
 use App\Services\Voting\ElectionLifecycle;
 use Database\Seeders\DatabaseSeeder;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class HomeGuideTest extends TestCase
@@ -126,6 +131,42 @@ class HomeGuideTest extends TestCase
             ->assertSee('Isi data pemilih per RT')
             ->assertDontSee('Meja Pintu')
             ->assertDontSee('Ganti mode');
+    }
+
+    public function test_chosen_mode_is_remembered_in_a_cookie(): void
+    {
+        $this->actingAs($this->superAdmin)->get(route('workspace.switch', 'dadakan'))
+            ->assertCookie(Workspace::SESSION_KEY, ElectionMode::Dadakan->value);
+
+        $this->actingAs($this->superAdmin)->get(route('workspace.switch', 'pilih'))
+            ->assertCookieExpired(Workspace::SESSION_KEY);
+    }
+
+    public function test_display_settings_change_texts_and_are_super_admin_only(): void
+    {
+        $this->actingAs($this->superAdmin);
+
+        Livewire::test(SiteSettings::class)
+            ->fillForm([
+                AppSetting::SITE_NAME => 'Pemilihan Warga RW 05',
+                AppSetting::AREA_NAME => 'RW 05 Kelurahan Sukamaju',
+                AppSetting::PUBLIC_NOTICE => 'Pemilihan Ketua RW tanggal 10 Oktober.',
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertTrue(AuditLog::query()->where('action', 'settings.display_updated')->exists());
+
+        // Nama aplikasi diterapkan saat aplikasi dimulai; tiru dengan menjalankan ulang boot provider.
+        (new AppServiceProvider($this->app))->boot();
+        $this->get(route('public.index'))
+            ->assertOk()
+            ->assertSee('Pemilihan Warga RW 05')
+            ->assertSee('RW 05 Kelurahan Sukamaju')
+            ->assertSee('Pemilihan Ketua RW tanggal 10 Oktober.');
+
+        $committee = $this->makeUser(User::ROLE_STAFF, StaffRole::Panitia);
+        $this->actingAs($committee)->get(SiteSettings::getUrl())->assertForbidden();
     }
 
     public function test_public_portal_links_to_admin_and_lists_running_elections(): void

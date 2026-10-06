@@ -10,7 +10,7 @@
 <body>
     <header class="topbar topbar--portal">
         <div>
-            <p class="topbar__label"><a href="{{ route('public.index') }}">Portal pemilihan</a></p>
+            <p class="topbar__label"><a href="{{ route('public.index') }}">{{ \App\Models\AppSetting::get(\App\Models\AppSetting::AREA_NAME, 'Portal pemilihan') }}</a></p>
             <p class="topbar__title">@yield('heading')</p>
         </div>
         <a class="topbar__lock" href="{{ url('/admin') }}" aria-label="Masuk panitia dan pengurus" title="Masuk panitia dan pengurus">
