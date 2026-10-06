@@ -215,10 +215,12 @@ class HomeGuide extends Widget
                     fn () => $page(ControlRoom::class, 'Buka Ruang Kendali'),
                     fn () => $page(DoorDesk::class, 'Buka Meja Pintu'),
                     fn () => $page(AttendanceList::class, 'Daftar Hadir'),
+                    fn () => $edit('Status: Jeda / Tutup Pemilihan'),
                 ]]
                 : ['Pemilihan berjalan. Petugas meja mengizinkan pemilih ke bilik.', [
                     fn () => $page(DeskPage::class, 'Buka Meja Izin'),
                     fn () => $page(ParticipationPage::class, 'Lihat Partisipasi'),
+                    fn () => $edit('Status: Jeda / Tutup Pemilihan'),
                 ]],
             ElectionStatus::Ditutup => ['Pemilihan sudah ditutup. Tampilkan hasil, lalu lanjut ke Verifikasi & Publikasi.', [
                 fn () => $page(ResultScreen::class, 'Buka Layar Hasil'),

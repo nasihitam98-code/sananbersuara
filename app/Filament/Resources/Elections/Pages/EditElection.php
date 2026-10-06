@@ -25,6 +25,25 @@ class EditElection extends EditRecord
 {
     protected static string $resource = ElectionResource::class;
 
+    /**
+     * Halaman ini juga tempat tombol Status (Jeda/Tutup/Batalkan), jadi Super Admin harus tetap
+     * bisa membukanya setelah pemilihan dimulai. Isian konfigurasi tetap terkunci sesuai status.
+     */
+    protected function authorizeAccess(): void
+    {
+        abort_unless(static::getResource()::canView($this->getRecord()), 403);
+    }
+
+    protected function getFormActions(): array
+    {
+        return $this->isConfigurable() ? parent::getFormActions() : [];
+    }
+
+    private function isConfigurable(): bool
+    {
+        return $this->record->status->allowsConfigurationChanges();
+    }
+
     protected function getHeaderActions(): array
     {
         return [
@@ -111,6 +130,8 @@ class EditElection extends EditRecord
      */
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
+        abort_unless(static::getResource()::canEdit($record), 403);
+
         $before = $record->only(['name', 'settings']);
         $record->update($data);
 

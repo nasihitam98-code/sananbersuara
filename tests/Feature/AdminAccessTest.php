@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ElectionStatus;
 use App\Enums\StaffRole;
 use App\Enums\WaveKind;
 use App\Filament\Pages\ControlRoom;
 use App\Filament\Pages\DoorDesk;
 use App\Filament\Pages\ResultScreen;
 use App\Filament\Resources\Elections\ElectionResource;
+use App\Filament\Resources\Elections\Pages\EditElection;
 use App\Models\Attendee;
 use App\Models\AuditLog;
 use App\Models\Ballot;
@@ -158,6 +160,24 @@ class AdminAccessTest extends TestCase
             ->assertForbidden();
 
         $this->assertSame(0, Attendee::query()->count());
+    }
+
+    public function test_super_admin_can_open_live_election_page_and_close_it_but_not_edit_config(): void
+    {
+        app(ElectionLifecycle::class)->start($this->election, $this->superAdmin);
+        $this->actingAs($this->superAdmin);
+
+        $this->get(ElectionResource::getUrl('edit', ['record' => $this->election]))->assertOk()->assertSee('Status');
+
+        Livewire::test(EditElection::class, ['record' => $this->election->public_id])
+            ->assertFormFieldDisabled('name')
+            ->callAction('close', ['current_password' => 'password'])
+            ->assertHasNoFormErrors();
+
+        $this->assertSame(ElectionStatus::Ditutup, $this->election->fresh()->status);
+
+        $committee = $this->makeUser(User::ROLE_STAFF, StaffRole::Panitia);
+        $this->actingAs($committee)->get(ElectionResource::getUrl('edit', ['record' => $this->election]))->assertForbidden();
     }
 
     public function test_committee_opens_wave_from_control_room(): void
