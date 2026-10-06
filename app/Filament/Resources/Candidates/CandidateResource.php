@@ -38,6 +38,7 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\SelectColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -309,7 +310,7 @@ class CandidateResource extends Resource
                     ->label('No.')
                     ->sortable()
                     ->type('number')
-                    ->width('6rem')
+                    ->extraInputAttributes(['style' => 'width: 4.5rem'])
                     ->rules(fn (Candidate $record): array => [
                         'required', 'integer', 'min:1', 'max:999',
                         Rule::unique('candidates', 'number')
@@ -323,6 +324,7 @@ class CandidateResource extends Resource
                 TextInputColumn::make('name')
                     ->label('Nama')
                     ->searchable()
+                    ->extraInputAttributes(['style' => 'min-width: 13rem'])
                     ->rules(fn (Candidate $record): array => [
                         'required', 'string', 'max:120',
                         function (string $attribute, mixed $value, Closure $fail) use ($record): void {
@@ -336,31 +338,33 @@ class CandidateResource extends Resource
                     ->disabled(fn (Candidate $record): bool => ! static::canEdit($record))
                     ->afterStateUpdated(fn (Candidate $record, mixed $state) => static::auditInlineEdit($record, 'name', $state)),
                 TextColumn::make('ballot.title')->label('Surat suara'),
-                TextColumn::make('unit.name')->label('RT')->placeholder('-'),
+                // RT calon hanya bermakna untuk surat suara per RT (Mode Resmi).
+                TextColumn::make('unit.name')->label('RT')->placeholder('-')
+                    ->visible(fn (): bool => Workspace::current() !== ElectionMode::Dadakan),
                 SelectColumn::make('origin_unit_id')
                     ->label('Asal RT')
                     ->options(fn (): array => Unit::query()->orderBy('sort')->pluck('name', 'id')->all())
                     ->placeholder('-')
+                    ->extraInputAttributes(['style' => 'width: 7.5rem'])
                     // Surat suara per RT tidak memakai asal RT.
                     ->disabled(fn (Candidate $record): bool => ! static::canEdit($record) || $record->ballot->scope === BallotScope::PerRt)
                     ->afterStateUpdated(fn (Candidate $record, mixed $state) => static::auditInlineEdit($record, 'origin_unit_id', $state)),
-                TextColumn::make('ballot.election.name')->label('Pemilihan')->toggleable(),
+                TextColumn::make('ballot.election.name')->label('Pemilihan')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('status')->label('Status')->badge(),
-                TextColumn::make('photo_key')
-                    ->label('Foto ada?')
-                    ->state(fn (Candidate $record): string => $record->photo_key ? 'Ada' : 'Belum')
-                    ->badge()
-                    ->color(fn (string $state): string => $state === 'Ada' ? 'success' : 'warning'),
             ])
             ->filters([
+                Filter::make('without_photo')
+                    ->label('Belum ada foto')
+                    ->query(fn (Builder $query): Builder => $query->whereNull('photo_key')),
                 SelectFilter::make('ballot_id')
                     ->label('Surat suara')
                     ->options(fn (): array => Ballot::query()->with('election')->get()->mapWithKeys(fn (Ballot $ballot): array => [$ballot->id => "{$ballot->election->name} — {$ballot->title}"])->all()),
             ])
+            // Tombol ikon agar tabel tidak perlu digeser; keterangan muncul saat kursor diarahkan.
             ->recordActions([
-                static::galleryPhotoAction(),
-                EditAction::make(),
-                static::deleteAction(),
+                static::galleryPhotoAction()->iconButton()->tooltip('Pilih foto dari galeri'),
+                EditAction::make()->iconButton()->tooltip('Ubah (ganti/hapus foto, dll.)'),
+                static::deleteAction()->iconButton()->tooltip('Hapus calon'),
             ]);
     }
 
