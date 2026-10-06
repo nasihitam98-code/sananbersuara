@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Elections\Pages;
 use App\Enums\ElectionStatus;
 use App\Filament\Pages\ControlRoom;
 use App\Filament\Resources\Elections\ElectionResource;
+use App\Filament\Support\ElectionChecklist;
 use App\Filament\Support\Reauthenticate;
 use App\Models\Election;
 use App\Services\AuditLogger;
@@ -16,6 +17,8 @@ use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Schemas\Components\View;
+use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -42,18 +45,53 @@ class EditElection extends EditRecord
         $dadakan = $this->record->isDadakan();
 
         return match ($this->record->status) {
-            ElectionStatus::Draft => $dadakan
-                ? 'Langkah: ① tambah surat suara di bawah → ② isi calon lewat "Kelola calon" → ③ tab "Panitia & Petugas Pintu": tugaskan orangnya → ④ tekan Tandai Siap di kanan atas.'
-                : 'Langkah: ① tambah surat suara Ketua RT (per RT) dan Ketua RW (semua RT) di bawah → ② isi calon lewat "Kelola calon" → ③ tekan Tandai Siap di kanan atas.',
-            ElectionStatus::Ready => 'Sudah Siap. Calon masih bisa diubah. Saat acara benar-benar dimulai, tekan Mulai Pemilihan di kanan atas.',
-            ElectionStatus::Berlangsung, ElectionStatus::Paused => 'Pemilihan sedang berlangsung, jadi isian di halaman ini dikunci agar tidak berubah di tengah acara. Untuk menjeda atau menutup: tombol Status di kanan atas.',
-            default => 'Pemilihan sudah ditutup; isian dikunci. Lanjutkan dari menu Layar Hasil dan Verifikasi & Publikasi.',
+            // Draf/Siap: langkah-langkahnya tampil sebagai daftar periksa di bawah judul.
+            ElectionStatus::Draft, ElectionStatus::Ready => null,
+            ElectionStatus::Berlangsung, ElectionStatus::Paused => 'Pemilihan sedang berlangsung, jadi pengaturan dikunci agar tidak berubah di tengah acara. Untuk menjeda atau menutup: tombol Status di kanan atas.'
+                .($dadakan ? ' Buka/tutup voting dari Ruang Kendali.' : ''),
+            ElectionStatus::Cancelled => 'Pemilihan ini dibatalkan. Datanya tetap tersimpan; lihat tab Riwayat.',
+            default => 'Pemilihan sudah ditutup; pengaturan dikunci. Lanjutkan dari menu Layar Hasil dan Verifikasi & Publikasi.',
         };
+    }
+
+    /**
+     * Isi halaman: daftar periksa persiapan (Draf/Siap). Nama dan pengaturan diubah lewat tombol
+     * "Nama & pengaturan"; surat suara, panitia, dan riwayat ada di tab di bawah.
+     */
+    public function form(Schema $schema): Schema
+    {
+        return $schema->components([
+            View::make('filament.elections.checklist')
+                ->viewData(fn (): array => ['steps' => ElectionChecklist::steps($this->record)])
+                ->visible(fn (): bool => $this->isConfigurable()),
+        ]);
     }
 
     protected function getFormActions(): array
     {
-        return $this->isConfigurable() ? parent::getFormActions() : [];
+        return [];
+    }
+
+    private function settingsAction(): Action
+    {
+        return Action::make('settings')
+            ->label('Nama & pengaturan')
+            ->icon('heroicon-o-pencil-square')
+            ->color('gray')
+            ->visible(fn (): bool => $this->isConfigurable())
+            ->modalHeading('Nama & pengaturan pemilihan')
+            ->modalSubmitActionLabel('Simpan')
+            ->fillForm(fn (): array => [
+                'name' => $this->record->name,
+                'mode' => $this->record->mode,
+                'settings' => $this->record->settings ?? [],
+            ])
+            ->schema(ElectionResource::settingsComponents())
+            ->action(function (array $data): void {
+                $this->handleRecordUpdate($this->record, $data);
+                $this->record->refresh();
+                Notification::make()->title('Pengaturan disimpan.')->success()->send();
+            });
     }
 
     private function isConfigurable(): bool
@@ -64,6 +102,8 @@ class EditElection extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            $this->settingsAction(),
+
             Action::make('controlRoom')
                 ->label('Buka Ruang Kendali')
                 ->icon('heroicon-o-play-circle')

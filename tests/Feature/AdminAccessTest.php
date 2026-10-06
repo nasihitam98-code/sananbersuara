@@ -177,7 +177,7 @@ class AdminAccessTest extends TestCase
         $this->get(ElectionResource::getUrl('edit', ['record' => $this->election]))->assertOk()->assertSee('Status');
 
         Livewire::test(EditElection::class, ['record' => $this->election->public_id])
-            ->assertFormFieldDisabled('name')
+            ->assertActionHidden('settings')
             ->callAction('close', ['current_password' => 'password'])
             ->assertHasNoFormErrors();
 
@@ -187,15 +187,38 @@ class AdminAccessTest extends TestCase
         $this->actingAs($committee)->get(ElectionResource::getUrl('edit', ['record' => $this->election]))->assertForbidden();
     }
 
+    public function test_checklist_shows_progress_of_each_preparation_step(): void
+    {
+        $draft = Election::factory()->create(['name' => 'Penjaringan baru']);
+        Candidate::factory()->for(Ballot::factory()->for($draft))->create(['number' => 1]);
+        $this->actingAs($this->superAdmin);
+
+        Livewire::test(EditElection::class, ['record' => $draft->public_id])
+            ->assertSee('1 surat suara: Calon Ketua RW')
+            ->assertSee('1 calon (1 belum berfoto)')
+            ->assertSee('0 Panitia, 0 Petugas Pintu')
+            ->assertSee('Lengkapi langkah di atas dulu');
+
+        foreach ([StaffRole::Panitia, StaffRole::PetugasPintu] as $role) {
+            $staff = new ElectionStaff(['user_id' => $this->superAdmin->id, 'role' => $role]);
+            $staff->election()->associate($draft);
+            $staff->save();
+        }
+
+        Livewire::test(EditElection::class, ['record' => $draft->public_id])
+            ->assertSee('1 Panitia, 1 Petugas Pintu')
+            ->assertSee('Semua langkah di atas lengkap. Tekan tombol Tandai Siap');
+    }
+
     public function test_saving_with_empty_advanced_settings_keeps_defaults_and_other_settings(): void
     {
         $draft = Election::factory()->create(['name' => 'Draf lama', 'settings' => ['headcount' => 42, 'wave_minutes' => 7]]);
         $this->actingAs($this->superAdmin);
 
         Livewire::test(EditElection::class, ['record' => $draft->public_id])
-            ->assertSee('Langkah:')
-            ->fillForm(['name' => 'Draf baru', 'settings.wave_minutes' => null])
-            ->call('save')
+            ->assertSee('Persiapan')
+            ->assertSee('Belum ada. Tambah satu')
+            ->callAction('settings', ['name' => 'Draf baru', 'settings.wave_minutes' => null])
             ->assertHasNoFormErrors();
 
         $draft->refresh();

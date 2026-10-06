@@ -66,84 +66,94 @@ class ElectionResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
+        return $schema->components(static::settingsComponents());
+    }
+
+    /**
+     * Isian nama, mode, dan pengaturan lanjutan. Dipakai form Buat pemilihan dan jendela
+     * "Nama & pengaturan" di halaman pemilihan.
+     *
+     * @return array<int, Section>
+     */
+    public static function settingsComponents(): array
+    {
         $locked = fn (?Election $record): bool => $record !== null && ! $record->status->allowsConfigurationChanges();
 
-        return $schema
-            ->components([
-                Section::make('Data pemilihan')
-                    ->columns(2)
-                    ->schema([
-                        TextInput::make('name')
-                            ->label('Nama pemilihan')
-                            ->placeholder('Contoh: Penjaringan Calon Ketua RW 2026')
-                            ->required()
-                            ->maxLength(150)
-                            ->disabled($locked),
-                        Select::make('mode')
-                            ->label('Mode')
-                            ->options(ElectionMode::class)
-                            ->default(fn (): ElectionMode => Workspace::current() ?? ElectionMode::Dadakan)
-                            ->helperText('Dadakan: QR + nama + PIN (rapat). Resmi: Meja Izin + laptop bilik per RT.')
-                            // Di dalam mode kerja, mode sudah jelas: tidak perlu ditampilkan atau dipilih lagi.
-                            ->visible(fn (): bool => Workspace::current() === null)
-                            ->required()
-                            ->live()
-                            ->disabled(fn (?Election $record): bool => $record !== null && $record->status !== ElectionStatus::Draft),
-                    ]),
-                Section::make('Pengaturan lanjutan Mode Resmi (boleh dibiarkan)')
-                    ->description('Kosongkan untuk memakai nilai bawaan. Bisa diubah selama status Draf atau Siap.')
-                    ->collapsible()
-                    ->collapsed()
-                    ->columns(3)
-                    ->visible(fn (Get $get): bool => in_array($get('mode') ?? Workspace::current(), [ElectionMode::Resmi, ElectionMode::Resmi->value], true))
-                    ->schema([
-                        TextInput::make('settings.max_booths_per_unit')
-                            ->label('Jumlah bilik per RT')
-                            ->numeric()->minValue(1)->maxValue(10)
-                            ->placeholder('Bawaan: '.config('voting.defaults.max_booths_per_unit')),
-                        TextInput::make('settings.permit_expiry_minutes')
-                            ->label('Izin hangus jika bilik tidak disentuh (menit)')
-                            ->numeric()->minValue(1)->maxValue(30)
-                            ->placeholder('Bawaan: '.config('voting.defaults.permit_expiry_minutes')),
-                        TextInput::make('settings.booth_idle_minutes')
-                            ->label('Sesi bilik berakhir jika diam (menit)')
-                            ->numeric()->minValue(1)->maxValue(30)
-                            ->placeholder('Bawaan: '.config('voting.defaults.booth_idle_minutes')),
-                        TextInput::make('settings.booth_token_minutes')
-                            ->label('Masa berlaku token bilik (menit)')
-                            ->numeric()->minValue(1)->maxValue(60)
-                            ->placeholder('Bawaan: '.config('voting.defaults.booth_token_minutes')),
-                        TextInput::make('settings.desk_token_hours')
-                            ->label('Masa berlaku token meja (jam)')
-                            ->numeric()->minValue(1)->maxValue(72)
-                            ->placeholder('Bawaan: '.config('voting.defaults.desk_token_hours')),
-                    ])
-                    ->disabled($locked),
-                Section::make('Pengaturan lanjutan Mode Dadakan (boleh dibiarkan)')
-                    ->description('Kosongkan untuk memakai nilai bawaan. Bisa diubah selama status Draf atau Siap.')
-                    ->collapsible()
-                    ->collapsed()
-                    ->columns(3)
-                    ->visible(fn (Get $get): bool => ! in_array($get('mode') ?? Workspace::current(), [ElectionMode::Resmi, ElectionMode::Resmi->value], true))
-                    ->schema([
-                        TextInput::make('settings.wave_minutes')
-                            ->label('Durasi gelombang (menit)')
-                            ->helperText('Surat suara dengan ≤ 10 calon.')
-                            ->numeric()->minValue(1)->maxValue(60)
-                            ->placeholder('Bawaan: '.config('voting.defaults.wave_minutes')),
-                        TextInput::make('settings.wave_minutes_many_candidates')
-                            ->label('Durasi gelombang, calon banyak (menit)')
-                            ->helperText('Surat suara dengan > 10 calon, mis. penjaringan.')
-                            ->numeric()->minValue(1)->maxValue(60)
-                            ->placeholder('Bawaan: '.config('voting.defaults.wave_minutes_many_candidates')),
-                        TextInput::make('settings.late_grace_seconds')
-                            ->label('Toleransi telat kirim (detik)')
-                            ->helperText('Konfirmasi yang tiba sesaat setelah timer habis tetap diterima.')
-                            ->numeric()->minValue(0)->maxValue(60)
-                            ->placeholder('Bawaan: '.config('voting.defaults.late_grace_seconds')),
-                    ])
-                    ->disabled($locked),
-            ]);
+        return [
+            Section::make('Data pemilihan')
+                ->columns(2)
+                ->schema([
+                    TextInput::make('name')
+                        ->label('Nama pemilihan')
+                        ->placeholder('Contoh: Penjaringan Calon Ketua RW 2026')
+                        ->required()
+                        ->maxLength(150)
+                        ->disabled($locked),
+                    Select::make('mode')
+                        ->label('Mode')
+                        ->options(ElectionMode::class)
+                        ->default(fn (): ElectionMode => Workspace::current() ?? ElectionMode::Dadakan)
+                        ->helperText('Dadakan: QR + nama + PIN (rapat). Resmi: Meja Izin + laptop bilik per RT.')
+                        // Di dalam mode kerja, mode sudah jelas: tidak perlu ditampilkan atau dipilih lagi.
+                        ->visible(fn (): bool => Workspace::current() === null)
+                        ->required()
+                        ->live()
+                        ->disabled(fn (?Election $record): bool => $record !== null && $record->status !== ElectionStatus::Draft),
+                ]),
+            Section::make('Pengaturan lanjutan Mode Resmi (boleh dibiarkan)')
+                ->description('Kosongkan untuk memakai nilai bawaan. Bisa diubah selama status Draf atau Siap.')
+                ->collapsible()
+                ->collapsed()
+                ->columns(3)
+                ->visible(fn (Get $get): bool => in_array($get('mode') ?? Workspace::current(), [ElectionMode::Resmi, ElectionMode::Resmi->value], true))
+                ->schema([
+                    TextInput::make('settings.max_booths_per_unit')
+                        ->label('Jumlah bilik per RT')
+                        ->numeric()->minValue(1)->maxValue(10)
+                        ->placeholder('Bawaan: '.config('voting.defaults.max_booths_per_unit')),
+                    TextInput::make('settings.permit_expiry_minutes')
+                        ->label('Izin hangus jika bilik tidak disentuh (menit)')
+                        ->numeric()->minValue(1)->maxValue(30)
+                        ->placeholder('Bawaan: '.config('voting.defaults.permit_expiry_minutes')),
+                    TextInput::make('settings.booth_idle_minutes')
+                        ->label('Sesi bilik berakhir jika diam (menit)')
+                        ->numeric()->minValue(1)->maxValue(30)
+                        ->placeholder('Bawaan: '.config('voting.defaults.booth_idle_minutes')),
+                    TextInput::make('settings.booth_token_minutes')
+                        ->label('Masa berlaku token bilik (menit)')
+                        ->numeric()->minValue(1)->maxValue(60)
+                        ->placeholder('Bawaan: '.config('voting.defaults.booth_token_minutes')),
+                    TextInput::make('settings.desk_token_hours')
+                        ->label('Masa berlaku token meja (jam)')
+                        ->numeric()->minValue(1)->maxValue(72)
+                        ->placeholder('Bawaan: '.config('voting.defaults.desk_token_hours')),
+                ])
+                ->disabled($locked),
+            Section::make('Pengaturan lanjutan Mode Dadakan (boleh dibiarkan)')
+                ->description('Kosongkan untuk memakai nilai bawaan. Bisa diubah selama status Draf atau Siap.')
+                ->collapsible()
+                ->collapsed()
+                ->columns(3)
+                ->visible(fn (Get $get): bool => ! in_array($get('mode') ?? Workspace::current(), [ElectionMode::Resmi, ElectionMode::Resmi->value], true))
+                ->schema([
+                    TextInput::make('settings.wave_minutes')
+                        ->label('Durasi gelombang (menit)')
+                        ->helperText('Surat suara dengan ≤ 10 calon.')
+                        ->numeric()->minValue(1)->maxValue(60)
+                        ->placeholder('Bawaan: '.config('voting.defaults.wave_minutes')),
+                    TextInput::make('settings.wave_minutes_many_candidates')
+                        ->label('Durasi gelombang, calon banyak (menit)')
+                        ->helperText('Surat suara dengan > 10 calon, mis. penjaringan.')
+                        ->numeric()->minValue(1)->maxValue(60)
+                        ->placeholder('Bawaan: '.config('voting.defaults.wave_minutes_many_candidates')),
+                    TextInput::make('settings.late_grace_seconds')
+                        ->label('Toleransi telat kirim (detik)')
+                        ->helperText('Konfirmasi yang tiba sesaat setelah timer habis tetap diterima.')
+                        ->numeric()->minValue(0)->maxValue(60)
+                        ->placeholder('Bawaan: '.config('voting.defaults.late_grace_seconds')),
+                ])
+                ->disabled($locked),
+        ];
     }
 
     public static function table(Table $table): Table
