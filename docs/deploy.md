@@ -13,7 +13,7 @@ Target pemakaian pertama: rapat penjaringan **10 Oktober 2026**, 300–600 HP be
 | OPcache | **Wajib aktif** (tanpa OPcache satu request bisa sekitar 1,4 detik; dengan OPcache sekitar 85 ms) |
 | Database | MySQL 8 (atau MariaDB 10.11+) |
 | Cache & sesi | Redis |
-| Lainnya | Composer 2, Node.js 20+ (untuk build aset), Certbot (HTTPS) |
+| Lainnya | Composer 2, Node.js 20+ (untuk build aset), Certbot (HTTPS), `mysql-client` (berisi `mysqldump` dan `mysql`, dipakai menu Backup) |
 
 ## 2. Database
 
@@ -71,6 +71,23 @@ VOTE_LINK_KEY=
 
 # Jika memakai Cloudflare, isi dengan rentang IP Cloudflare atau "*" bila hanya bisa diakses lewat Cloudflare
 TRUSTED_PROXIES=
+
+# Notifikasi internal lewat email (tidak memakai WhatsApp). Isi dengan SMTP yang dipakai.
+MAIL_MAILER=smtp
+MAIL_HOST=
+MAIL_PORT=587
+MAIL_USERNAME=
+MAIL_PASSWORD=
+MAIL_FROM_ADDRESS=
+VOTING_ALERT_EMAILS=<email-ketua-panitia>
+
+# Backup (menu Sistem > Backup & Restore). Password zip WAJIB diisi.
+# Simpan juga password ini di luar server (mis. dicatat pemilik); tanpa password, backup tidak bisa dibuka.
+BACKUP_PASSWORD=
+BACKUP_MYSQLDUMP_PATH=mysqldump
+BACKUP_MYSQL_PATH=mysql
+# Opsional: nama disk di config/filesystems.php untuk salinan di luar server (sftp/s3)
+BACKUP_OFFSITE_DISK=
 ```
 
 Lanjutkan:
@@ -85,7 +102,7 @@ sudo chown -R www-data:www-data storage bootstrap/cache public/status
 sudo chmod -R 775 storage bootstrap/cache public/status
 ```
 
-Pasang cron untuk tugas terjadwal (menghanguskan izin bilik yang tidak dipakai, Mode Resmi):
+Pasang cron untuk tugas terjadwal. Isinya: menghanguskan izin bilik yang tidak dipakai (tiap menit), menghapus keterkaitan pemilih–pilihan 30 hari setelah publikasi (harian 02:00), dan backup otomatis (tiap 6 jam; tiap 15 menit saat ada pemilihan berlangsung; disimpan 30 hari):
 
 ```bash
 sudo crontab -u www-data -e
@@ -222,3 +239,5 @@ php artisan test                   # opsional di server staging (butuh database 
 ```
 
 Lalu login di `https://<domain>/admin`. Saat login pertama akan diminta memasang 2FA (Google Authenticator/sejenis) dan mengganti password.
+
+Terakhir, buka **Sistem > Backup & Restore**, lalu klik **Backup Sekarang**. Statusnya harus **BERHASIL**. Kalau GAGAL, pesan error di tabel biasanya menunjukkan path `mysqldump` atau password database yang salah.

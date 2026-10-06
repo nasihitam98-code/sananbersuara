@@ -60,17 +60,28 @@ Verifikasi → penetapan → berita acara per RT + keseluruhan → Publish
 | D15 | Detail Suara: setiap ganti filter juga tercatat di audit log | "Data apa yang dilihat" terekam lengkap |
 | D16 | Status yang membuka data sensitif (Tampilkan Hasil, Detail Suara) dikunci di server (`#[Locked]`) | Tidak bisa diubah dari browser |
 
-## 5. Belum dikerjakan
+## 5. Status item lanjutan
 
-- Jeda per TPS RT (K15). Yang ada sekarang hanya jeda seluruh pemilihan.
-- Notifikasi WhatsApp (K23). Yang ada sekarang email + lonceng panel.
-- Penghapusan otomatis keterkaitan pemilih–pilihan 30 hari setelah publish (K26).
-- Menu Backup & Restore di panel. Backup server diatur saat deployment.
-- Putaran 2 lewat menu, peran Auditor (Fase 3), unggah foto calon oleh Admin RT.
+Sudah dikerjakan:
+- Jeda per TPS RT (K15), di menu Meja Izin dan Perangkat.
+- Penghapusan otomatis keterkaitan pemilih–pilihan 30 hari setelah publish (K26), dijalankan tiap hari pukul 02:00.
+- Putaran 2 lewat menu Verifikasi & Publikasi (K22). Penutupan melepas semua perangkat, jadi **laptop meja dan bilik perlu dipasang ulang** sebelum putaran 2 dimulai.
+- Menu Backup & Restore (K27), hanya untuk Super Admin. Isinya:
+  - Backup otomatis berupa zip terenkripsi.
+  - Unduh lewat tautan khusus akun sendiri yang berlaku 2 menit.
+  - Restore dengan mengetik PULIHKAN.
+  - Backup pengaman dibuat otomatis sebelum restore.
+
+Diputuskan tidak dipakai:
+- Notifikasi WhatsApp (K23). Final: email + lonceng panel.
+
+Belum dikerjakan (tidak dibutuhkan untuk 10 Oktober maupun hari H):
+- Peran Auditor (Fase 3).
+- Unggah foto calon oleh Admin RT.
 
 ## 6. Uji otomatis
 
-82 tes lulus. Untuk Mode Resmi, yang dicakup:
+94 tes lulus. Untuk Mode Resmi, yang dicakup:
 - Alur bilik RT lalu RW.
 - Calon RT lain ditolak walaupun request dipalsukan.
 - Kirim ulang tidak membuat suara kedua.
