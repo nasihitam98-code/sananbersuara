@@ -82,8 +82,8 @@ class ElectionResource extends Resource
                             ->options(ElectionMode::class)
                             ->default(fn (): ElectionMode => Workspace::current() ?? ElectionMode::Dadakan)
                             ->helperText('Dadakan: QR + nama + PIN (rapat). Resmi: Meja Izin + laptop bilik per RT.')
-                            // Saat membuat dari dalam mode kerja, mode sudah jelas: tidak perlu dipilih lagi.
-                            ->visible(fn (?Election $record): bool => $record !== null || Workspace::current() === null)
+                            // Di dalam mode kerja, mode sudah jelas: tidak perlu ditampilkan atau dipilih lagi.
+                            ->visible(fn (): bool => Workspace::current() === null)
                             ->required()
                             ->live()
                             ->disabled(fn (?Election $record): bool => $record !== null && $record->status !== ElectionStatus::Draft),
