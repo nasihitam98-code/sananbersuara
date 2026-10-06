@@ -204,6 +204,32 @@ class CandidateBulkImportTest extends TestCase
         $this->assertTrue(AuditLog::query()->where('action', 'candidate.deleted')->exists());
     }
 
+    public function test_quick_edit_in_table_validates_and_is_audited(): void
+    {
+        $this->actingAs($this->superAdmin);
+        $first = Candidate::factory()->for($this->ballot)->create(['number' => 1, 'name' => 'Salah Ketik']);
+        Candidate::factory()->for($this->ballot)->create(['number' => 2, 'name' => 'Ibu Sumiati']);
+        $rt03 = Unit::query()->where('code', '03')->firstOrFail();
+
+        $page = Livewire::test(ListCandidates::class);
+        $page->call('updateTableColumnState', 'name', (string) $first->getKey(), 'Bapak Sutrisno');
+        $page->call('updateTableColumnState', 'origin_unit_id', (string) $first->getKey(), (string) $rt03->id);
+        $page->call('updateTableColumnState', 'name', (string) $first->getKey(), 'ibu  SUMIATI');
+        $page->call('updateTableColumnState', 'number', (string) $first->getKey(), '2');
+
+        $first->refresh();
+        $this->assertSame('Bapak Sutrisno', $first->name, 'Nama kembar ditolak, nama sebelumnya tetap');
+        $this->assertSame(1, $first->number, 'Nomor kembar ditolak');
+        $this->assertSame($rt03->id, $first->origin_unit_id);
+        $this->assertSame(2, AuditLog::query()->where('action', 'candidate.updated')->count());
+
+        app(ElectionLifecycle::class)->markReady($this->ballot->election, $this->superAdmin);
+        app(ElectionLifecycle::class)->start($this->ballot->election, $this->superAdmin);
+
+        Livewire::test(ListCandidates::class)->call('updateTableColumnState', 'name', (string) $first->getKey(), 'Penyusup');
+        $this->assertSame('Bapak Sutrisno', $first->fresh()->name, 'Setelah dimulai, edit di tabel ditolak server');
+    }
+
     public function test_delete_is_hidden_after_election_starts(): void
     {
         $this->actingAs($this->superAdmin);

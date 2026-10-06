@@ -29,10 +29,13 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Columns\SelectColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\TextInputColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Unique;
 use UnitEnum;
 
@@ -204,11 +207,44 @@ class CandidateResource extends Resource
                     ->circular()
                     ->state(fn (Candidate $record): ?string => $record->photoUrl('thumb'))
                     ->defaultImageUrl(fn (Candidate $record): string => 'data:image/svg+xml;utf8,'.rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="#dcdbe9"/><text x="40" y="50" font-size="28" text-anchor="middle" fill="#2e2a86" font-family="sans-serif" font-weight="700">'.e($record->initials()).'</text></svg>')),
-                TextColumn::make('number')->label('No.')->sortable(),
-                TextColumn::make('name')->label('Nama')->searchable()->weight('bold'),
+                // Edit cepat langsung di tabel; dikunci (dan ditolak di server) setelah pemilihan dimulai.
+                TextInputColumn::make('number')
+                    ->label('No.')
+                    ->sortable()
+                    ->type('number')
+                    ->width('6rem')
+                    ->rules(fn (Candidate $record): array => [
+                        'required', 'integer', 'min:1', 'max:999',
+                        Rule::unique('candidates', 'number')
+                            ->where('ballot_id', $record->ballot_id)
+                            ->where('unit_id', $record->unit_id)
+                            ->ignore($record->id),
+                    ])
+                    ->validationMessages(['unique' => 'Nomor urut ini sudah dipakai calon lain.'])
+                    ->disabled(fn (Candidate $record): bool => ! static::canEdit($record))
+                    ->afterStateUpdated(fn (Candidate $record, mixed $state) => static::auditInlineEdit($record, 'number', $state)),
+                TextInputColumn::make('name')
+                    ->label('Nama')
+                    ->searchable()
+                    ->rules(fn (Candidate $record): array => [
+                        'required', 'string', 'max:120',
+                        function (string $attribute, mixed $value, Closure $fail) use ($record): void {
+                            if (is_string($value) && Candidate::nameTaken($record->ballot_id, $record->unit_id, $value, $record->id)) {
+                                $fail('Nama ini sudah ada di surat suara ini.');
+                            }
+                        },
+                    ])
+                    ->disabled(fn (Candidate $record): bool => ! static::canEdit($record))
+                    ->afterStateUpdated(fn (Candidate $record, mixed $state) => static::auditInlineEdit($record, 'name', $state)),
                 TextColumn::make('ballot.title')->label('Surat suara'),
                 TextColumn::make('unit.name')->label('RT')->placeholder('-'),
-                TextColumn::make('originUnit.name')->label('Asal RT')->placeholder('-'),
+                SelectColumn::make('origin_unit_id')
+                    ->label('Asal RT')
+                    ->options(fn (): array => Unit::query()->orderBy('sort')->pluck('name', 'id')->all())
+                    ->placeholder('-')
+                    // Surat suara per RT tidak memakai asal RT.
+                    ->disabled(fn (Candidate $record): bool => ! static::canEdit($record) || $record->ballot->scope === BallotScope::PerRt)
+                    ->afterStateUpdated(fn (Candidate $record, mixed $state) => static::auditInlineEdit($record, 'origin_unit_id', $state)),
                 TextColumn::make('ballot.election.name')->label('Pemilihan')->toggleable(),
                 TextColumn::make('status')->label('Status')->badge(),
                 TextColumn::make('photo_key')
@@ -226,6 +262,18 @@ class CandidateResource extends Resource
                 EditAction::make(),
                 static::deleteAction(),
             ]);
+    }
+
+    /**
+     * Catat perubahan dari edit cepat di tabel.
+     */
+    public static function auditInlineEdit(Candidate $record, string $field, mixed $value): void
+    {
+        app(AuditLogger::class)->log('candidate.updated', $record, $record->ballot->election, meta: [
+            'field' => $field,
+            'after' => $value,
+            'via' => 'tabel',
+        ]);
     }
 
     /**
