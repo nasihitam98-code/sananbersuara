@@ -11,12 +11,18 @@
         @if ($issued)
             <x-filament::section>
                 <div class="text-center space-y-3" role="status">
-                    <p class="text-base text-gray-600 dark:text-gray-300">Tuliskan di kertas dan berikan kepada:</p>
+                    <p class="text-base text-gray-600 dark:text-gray-300">Cetak kartu atau tuliskan di kertas, lalu berikan kepada:</p>
                     <p class="text-2xl font-bold">{{ $issued['name'] }}</p>
                     <p class="text-gray-600 dark:text-gray-300">No. hadir {{ $issued['number'] }}</p>
                     <p class="text-sm font-semibold uppercase tracking-wide text-gray-500">PIN</p>
                     <p class="font-mono font-black tracking-[0.4em] text-7xl text-primary-700 dark:text-primary-300">{{ $issued['pin'] }}</p>
                     <p class="text-sm text-danger-600 font-semibold">PIN hanya tampil sekali. Setelah ditekan "Sudah dicatat", PIN tidak bisa dilihat lagi.</p>
+                    @include('filament.pages.partials.pin-card-print', ['card' => [
+                        'name' => $issued['name'],
+                        'number' => $issued['number'],
+                        'pin' => $issued['pin'],
+                        'election' => $election->name,
+                    ]])
                     <x-filament::button size="xl" color="success" wire:click="acknowledge" class="w-full">
                         Sudah dicatat, lanjut orang berikutnya
                     </x-filament::button>

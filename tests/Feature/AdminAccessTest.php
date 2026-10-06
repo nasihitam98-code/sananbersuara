@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\BallotScope;
 use App\Enums\ElectionStatus;
+use App\Enums\RestoreReason;
 use App\Enums\StaffRole;
 use App\Enums\WaveKind;
 use App\Filament\Pages\AttendanceList;
@@ -143,13 +144,15 @@ class AdminAccessTest extends TestCase
         $component = Livewire::test(DoorDesk::class)
             ->fillForm(['name' => 'Budi Santoso'])
             ->call('register')
-            ->assertSet('issued.name', 'Budi Santoso');
+            ->assertSet('issued.name', 'Budi Santoso')
+            ->assertSee('Cetak kartu PIN');
 
         $pin = $component->get('issued.pin');
         $this->assertMatchesRegularExpression('/^\d{4}$/', $pin);
         $this->assertSame(1, Attendee::query()->count());
+        $component->assertSeeHtml('<div class="pin">'.$pin.'</div>')->assertSee($this->election->name);
 
-        $component->call('acknowledge')->assertSet('issued', null);
+        $component->call('acknowledge')->assertSet('issued', null)->assertDontSee('Cetak kartu PIN');
     }
 
     public function test_duplicate_name_requires_confirmation(): void
@@ -303,6 +306,24 @@ class AdminAccessTest extends TestCase
 
         $this->assertNotNull($this->election->fresh()->openWave());
         $this->actingAs($committee)->get(route('screens.qr', $this->election->public_id))->assertOk();
+    }
+
+    public function test_restored_pin_can_be_printed_as_a_new_card(): void
+    {
+        $committee = $this->makeUser(User::ROLE_STAFF, StaffRole::Panitia);
+        app(ElectionLifecycle::class)->start($this->election, $this->superAdmin);
+        $attendee = app(AttendeeRegistrar::class)->register($this->election, 'Budi Santoso', null, $this->superAdmin)['attendee'];
+        $this->actingAs($committee);
+
+        $component = Livewire::test(ControlRoom::class)
+            ->callAction(TestAction::make('restore')->arguments(['attendee' => $attendee->public_id]), ['reason' => RestoreReason::PinHilang->value])
+            ->assertHasNoFormErrors()
+            ->assertSee('Cetak kartu PIN')
+            ->assertSee('PIN BARU. PIN lama tidak berlaku.');
+
+        $component->assertSeeHtml('<div class="pin">'.$component->get('reissued.pin').'</div>');
+
+        $component->call('acknowledgeReissue')->assertDontSee('Cetak kartu PIN');
     }
 
     public function test_results_are_unavailable_until_closed_and_reveal_is_audited(): void
