@@ -161,8 +161,12 @@ class CandidateResource extends Resource
                                 $ballotId = $record?->ballot_id ?? $get('ballot_id');
                                 $unitId = $record?->unit_id ?? ($get('unit_id') ?: null);
 
-                                if (filled($ballotId) && is_string($value) && Candidate::nameTaken((int) $ballotId, $unitId === null ? null : (int) $unitId, $value, $record?->id)) {
-                                    $fail('Nama ini sudah ada di surat suara ini. Bila memang orang berbeda, tambahkan keterangan, mis. "(RT 03)".');
+                                $same = filled($ballotId) && is_string($value)
+                                    ? Candidate::sameNameAs((int) $ballotId, $unitId === null ? null : (int) $unitId, $value, $record?->id)
+                                    : null;
+
+                                if ($same !== null) {
+                                    $fail("Nama ini sama/mirip dengan \"{$same->name}\" (nomor {$same->displayNumber()}). Bila memang orang berbeda, tambahkan keterangan, mis. \"(RT 03)\".");
                                 }
                             })
                             ->maxLength(120)
@@ -230,8 +234,10 @@ class CandidateResource extends Resource
                     ->rules(fn (Candidate $record): array => [
                         'required', 'string', 'max:120',
                         function (string $attribute, mixed $value, Closure $fail) use ($record): void {
-                            if (is_string($value) && Candidate::nameTaken($record->ballot_id, $record->unit_id, $value, $record->id)) {
-                                $fail('Nama ini sudah ada di surat suara ini.');
+                            $same = is_string($value) ? Candidate::sameNameAs($record->ballot_id, $record->unit_id, $value, $record->id) : null;
+
+                            if ($same !== null) {
+                                $fail("Sama/mirip dengan \"{$same->name}\" (nomor {$same->displayNumber()}).");
                             }
                         },
                     ])

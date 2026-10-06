@@ -32,20 +32,32 @@ class ListCandidates extends ListRecords
                 ->color('gray')
                 ->visible(fn (): bool => CandidateResource::canCreate())
                 ->modalHeading('Tambah banyak calon sekaligus')
-                ->modalDescription('Tempel daftar nama, satu calon per baris (bisa disalin dari Excel, WhatsApp, atau Word). Nomor urut otomatis, atau tulis nomornya di depan, mis. "5. Bapak Joko". Untuk calon RW, asal RT bisa ditambahkan sebagai kolom ketiga: "5 | Bapak Joko | RT 03" (atau tempel 3 kolom dari Excel).')
+                ->modalDescription('Tempel daftar calon, satu calon per baris (bisa disalin dari Excel, WhatsApp, atau Word). Nomor urut otomatis. Nama yang sama/mirip dengan calon lain ditolak.')
                 ->modalSubmitActionLabel('Simpan semua')
                 ->schema([
                     ...$this->ballotFields(),
+                    Select::make('default_origin_unit_id')
+                        ->label('Asal RT untuk semua baris (opsional)')
+                        ->helperText('Dipakai untuk baris yang tidak menulis RT sendiri.')
+                        ->options(fn (): array => Unit::query()->orderBy('sort')->pluck('name', 'id')->all())
+                        ->placeholder('Tidak diisi')
+                        ->visible(fn (Get $get): bool => filled($get('ballot_id')) && ! CandidateResource::ballotIsPerUnit($get('ballot_id'))),
                     Textarea::make('names')
                         ->label('Daftar calon')
-                        ->placeholder("Bapak Sutrisno\nIbu Sumiati\nBapak Ahmad Fauzi")
-                        ->helperText('Satu nama per baris. Baris kosong diabaikan.')
+                        ->placeholder("Bapak Sutrisno | RT 01\nIbu Sumiati | RT 02\nBapak Ahmad Fauzi\n10. Bapak Joko | RT 05")
+                        ->helperText('Format per baris: Nama, atau Nama | RT 03, atau Nomor | Nama | RT 03. Bisa juga tempel 2–3 kolom langsung dari Excel. RT boleh ditulis "RT 03", "03", atau "3".')
                         ->rows(12)
                         ->required(),
                 ])
                 ->action(function (array $data, Action $action): void {
                     try {
-                        $count = app(CandidateBulkImporter::class)->import($this->ballot($data), $data['unit_id'] ?? null, $data['names'], auth()->user());
+                        $count = app(CandidateBulkImporter::class)->import(
+                            $this->ballot($data),
+                            $data['unit_id'] ?? null,
+                            $data['names'],
+                            auth()->user(),
+                            filled($data['default_origin_unit_id'] ?? null) ? (int) $data['default_origin_unit_id'] : null,
+                        );
                     } catch (VotingException $exception) {
                         Notification::make()->title($exception->getMessage())->danger()->persistent()->send();
                         $action->halt();
@@ -97,7 +109,7 @@ class ListCandidates extends ListRecords
                         ->title(count($result['matched']).' foto terpasang.')
                         ->body($result['skipped'] === [] ? null : 'Dilewati: '.Str::limit(implode(', ', $result['skipped']), 400))
                         ->color($result['skipped'] === [] ? 'success' : 'warning')
-                        ->persistent($result['skipped'] !== [])
+                        ->duration($result['skipped'] === [] ? 6000 : 'persistent')
                         ->send();
                 }),
 

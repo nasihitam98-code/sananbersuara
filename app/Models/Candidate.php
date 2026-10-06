@@ -106,8 +106,15 @@ class Candidate extends Model
     }
 
     /**
-     * Inisial untuk placeholder netral jika foto belum ada.
+     * Sapaan/gelar di depan nama yang diabaikan saat mencari nama kembar,
+     * agar "Sutrisno" dan "Bapak Sutrisno" dianggap orang yang sama.
      */
+    private const HONORIFICS = [
+        'bapak', 'bpk', 'bp', 'pak', 'ibu', 'ibuk', 'bu', 'sdr', 'sdri', 'saudara', 'saudari',
+        'h', 'hj', 'haji', 'hajah', 'hajjah', 'kh', 'ust', 'ustad', 'ustadz', 'ustadzah',
+        'mbah', 'mas', 'mbak', 'dr', 'drs', 'dra', 'ir', 'prof',
+    ];
+
     /**
      * Bentuk baku nama untuk membandingkan (huruf besar/kecil, tanda baca, spasi ganda diabaikan).
      */
@@ -117,20 +124,42 @@ class Candidate extends Model
     }
 
     /**
-     * Apakah nama ini sudah dipakai calon lain di surat suara (dan RT) yang sama.
+     * Inti nama untuk deteksi kembar: bentuk baku tanpa sapaan/gelar di depan.
      */
-    public static function nameTaken(int $ballotId, ?int $unitId, string $name, ?int $ignoreId = null): bool
+    public static function coreName(string $name): string
     {
-        $normalized = static::normalizeName($name);
+        $words = explode(' ', static::normalizeName($name));
+
+        while (count($words) > 1 && in_array($words[0], self::HONORIFICS, true)) {
+            array_shift($words);
+        }
+
+        return implode(' ', $words);
+    }
+
+    /**
+     * Calon lain di surat suara (dan RT) yang sama dengan nama yang dianggap sama, bila ada.
+     */
+    public static function sameNameAs(int $ballotId, ?int $unitId, string $name, ?int $ignoreId = null): ?self
+    {
+        $core = static::coreName($name);
 
         return static::query()
             ->where('ballot_id', $ballotId)
             ->where('unit_id', $unitId)
             ->when($ignoreId !== null, fn ($query) => $query->whereKeyNot($ignoreId))
-            ->pluck('name')
-            ->contains(fn (string $existing): bool => static::normalizeName($existing) === $normalized);
+            ->get()
+            ->first(fn (self $existing): bool => static::coreName($existing->name) === $core);
     }
 
+    public static function nameTaken(int $ballotId, ?int $unitId, string $name, ?int $ignoreId = null): bool
+    {
+        return static::sameNameAs($ballotId, $unitId, $name, $ignoreId) !== null;
+    }
+
+    /**
+     * Inisial untuk placeholder netral jika foto belum ada.
+     */
     public function initials(): string
     {
         return Str::of($this->name)

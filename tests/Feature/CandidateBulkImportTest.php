@@ -124,6 +124,41 @@ class CandidateBulkImportTest extends TestCase
         $this->assertNull($perRt->candidates()->firstOrFail()->origin_unit_id, 'Surat suara per RT tidak memakai asal RT');
     }
 
+    public function test_names_with_or_without_honorifics_count_as_the_same_person(): void
+    {
+        $this->assertSame('sutrisno', Candidate::coreName('Bapak Sutrisno'));
+        $this->assertSame('sutrisno', Candidate::coreName('H. Sutrisno'));
+        $this->assertSame('sutrisno', Candidate::coreName('PAK  sutrisno'));
+        $this->assertSame('bapak', Candidate::coreName('Bapak'), 'Nama yang hanya berupa sapaan tetap utuh');
+        $this->assertSame('sutrisno rt 03', Candidate::coreName('Ibu Sutrisno (RT 03)'));
+
+        Candidate::factory()->for($this->ballot)->create(['number' => 1, 'name' => 'Bapak Sutrisno']);
+
+        foreach (['Sutrisno', 'Pak Sutrisno', 'H. Sutrisno'] as $variant) {
+            try {
+                $this->importer()->import($this->ballot, null, $variant, $this->superAdmin);
+                $this->fail("\"{$variant}\" harus dianggap sama dengan Bapak Sutrisno.");
+            } catch (VotingException $exception) {
+                $this->assertStringContainsString('sama/mirip dengan "Bapak Sutrisno" (nomor 01)', $exception->getMessage());
+            }
+        }
+
+        $this->assertSame(1, $this->importer()->import($this->ballot, null, 'Ibu Sutrisno (RT 03)', $this->superAdmin));
+    }
+
+    public function test_default_origin_rt_applies_to_rows_without_rt(): void
+    {
+        $rt02 = Unit::query()->where('code', '02')->firstOrFail();
+        $rt07 = Unit::query()->where('code', '07')->firstOrFail();
+
+        $this->importer()->import($this->ballot, null, "Bapak Joko\nIbu Dewi | RT 07", $this->superAdmin, $rt02->id);
+
+        $this->assertSame(
+            ['Bapak Joko' => $rt02->id, 'Ibu Dewi' => $rt07->id],
+            $this->ballot->candidates()->pluck('origin_unit_id', 'name')->all(),
+        );
+    }
+
     public function test_duplicate_names_are_rejected_in_bulk_and_single_form(): void
     {
         Candidate::factory()->for($this->ballot)->create(['number' => 1, 'name' => 'Bapak Hartono']);
@@ -132,8 +167,8 @@ class CandidateBulkImportTest extends TestCase
             $this->importer()->import($this->ballot, null, "Ibu Sumiati\nbapak  HARTONO\nIbu Sumiati", $this->superAdmin);
             $this->fail('Nama kembar harus ditolak.');
         } catch (VotingException $exception) {
-            $this->assertStringContainsString('baris 2: nama "bapak HARTONO" sudah ada', $exception->getMessage());
-            $this->assertStringContainsString('baris 3: nama "Ibu Sumiati" sudah ditulis di baris 1', $exception->getMessage());
+            $this->assertStringContainsString('baris 2: nama "bapak HARTONO" sama/mirip dengan "Bapak Hartono" (nomor 01)', $exception->getMessage());
+            $this->assertStringContainsString('baris 3: nama "Ibu Sumiati" sama/mirip dengan baris 1', $exception->getMessage());
         }
 
         $this->assertSame(1, $this->ballot->candidates()->count());

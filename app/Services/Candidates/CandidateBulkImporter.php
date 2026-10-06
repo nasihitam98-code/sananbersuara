@@ -84,9 +84,10 @@ class CandidateBulkImporter
     }
 
     /**
+     * @param  ?int  $defaultOriginUnitId  asal RT untuk baris yang tidak menulis RT sendiri
      * @return int jumlah calon yang ditambahkan
      */
-    public function import(Ballot $ballot, ?int $unitId, string $text, User $actor): int
+    public function import(Ballot $ballot, ?int $unitId, string $text, User $actor, ?int $defaultOriginUnitId = null): int
     {
         abort_unless($actor->isSuperAdmin(), 403);
         $this->assertEditable($ballot);
@@ -106,7 +107,7 @@ class CandidateBulkImporter
 
         $units = Unit::query()->get(['id', 'code']);
 
-        return DB::transaction(function () use ($ballot, $unitId, $rows, $perUnit, $units): int {
+        return DB::transaction(function () use ($ballot, $unitId, $rows, $perUnit, $units, $defaultOriginUnitId): int {
             $current = Candidate::query()
                 ->where('ballot_id', $ballot->id)
                 ->where('unit_id', $unitId)
@@ -115,7 +116,10 @@ class CandidateBulkImporter
 
             $existing = $current->pluck('number')->all();
             $used = array_flip($existing);
-            $names = $current->mapWithKeys(fn (Candidate $candidate): array => [Candidate::normalizeName($candidate->name) => 'sudah ada'])->all();
+            // Inti nama (tanpa sapaan/gelar) → keterangan untuk pesan kembar.
+            $names = $current->mapWithKeys(fn (Candidate $candidate): array => [
+                Candidate::coreName($candidate->name) => "sama/mirip dengan \"{$candidate->name}\" (nomor {$candidate->displayNumber()})",
+            ])->all();
             $next = ($existing === [] ? 0 : max($existing)) + 1;
             $problems = [];
             $prepared = [];
@@ -133,12 +137,12 @@ class CandidateBulkImporter
                     $problems[] = "baris {$row['line']}: nomor {$number} tidak valid";
                 } elseif (isset($used[$number])) {
                     $problems[] = "baris {$row['line']}: nomor {$number} sudah dipakai";
-                } elseif (isset($names[Candidate::normalizeName($row['name'])])) {
-                    $problems[] = "baris {$row['line']}: nama \"{$row['name']}\" ".$names[Candidate::normalizeName($row['name'])];
+                } elseif (isset($names[Candidate::coreName($row['name'])])) {
+                    $problems[] = "baris {$row['line']}: nama \"{$row['name']}\" ".$names[Candidate::coreName($row['name'])];
                 }
 
                 // Asal RT hanya untuk surat suara yang bukan per RT (mis. calon RW).
-                $originUnitId = null;
+                $originUnitId = $perUnit ? null : $defaultOriginUnitId;
 
                 if ($row['rt'] !== null && ! $perUnit) {
                     $originUnitId = $this->resolveUnitId($row['rt'], $units);
@@ -148,7 +152,7 @@ class CandidateBulkImporter
                     }
                 }
 
-                $names[Candidate::normalizeName($row['name'])] ??= "sudah ditulis di baris {$row['line']}";
+                $names[Candidate::coreName($row['name'])] ??= "sama/mirip dengan baris {$row['line']}";
                 $used[$number] = true;
                 $next = max($next, $number + 1);
                 $prepared[] = ['number' => $number, 'name' => $row['name'], 'origin_unit_id' => $originUnitId];
