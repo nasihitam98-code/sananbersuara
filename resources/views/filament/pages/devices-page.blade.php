@@ -24,6 +24,15 @@
 
             @foreach ($this->devicesByUnit() as $unitName => $devices)
                 <x-filament::section :heading="$unitName">
+                    @php($unitId = $devices->first()->unit_id)
+                    <div class="mb-3 flex flex-wrap items-center gap-2">
+                        @if ($pause = $this->pauseFor($unitName))
+                            <x-filament::badge color="warning" icon="heroicon-o-pause">TPS DIJEDA: {{ $pause->reason_code->getLabel() }} sejak {{ $pause->paused_at->format('H:i') }}</x-filament::badge>
+                            {{ ($this->resumeTpsAction)(['unit' => $unitId]) }}
+                        @elseif ($election->status === \App\Enums\ElectionStatus::Berlangsung)
+                            {{ ($this->pauseTpsAction)(['unit' => $unitId]) }}
+                        @endif
+                    </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm">
                             <thead class="text-left text-gray-500">

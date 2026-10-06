@@ -7,21 +7,25 @@ use App\Enums\DeviceReleaseReason;
 use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
 use App\Enums\PermitCancelReason;
+use App\Enums\TpsPauseReason;
 use App\Enums\VoteStatus;
 use App\Models\Attendee;
 use App\Models\BallotVoter;
 use App\Models\Device;
 use App\Models\Election;
 use App\Models\Permit;
+use App\Models\TpsPause;
 use App\Models\User;
 use App\Models\Vote;
 use App\Models\Voter;
 use App\Services\Devices\DeviceManager;
 use App\Services\Permits\PermitManager;
+use App\Services\Permits\TpsPauseService;
 use App\Services\Voting\VotingException;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -254,6 +258,48 @@ class DeskPage extends Page
                 $reason = $data['reason'] instanceof DeviceReleaseReason ? $data['reason'] : DeviceReleaseReason::from($data['reason']);
 
                 $this->run(fn () => app(DeviceManager::class)->release($booth, $reason, $this->user()), 'Bilik dilepas.');
+            });
+    }
+
+    public function tpsPause(): ?TpsPause
+    {
+        $election = $this->election();
+
+        return $election === null ? null : app(TpsPauseService::class)->active($election, (int) $this->user()->unit_id);
+    }
+
+    public function pauseTpsAction(): Action
+    {
+        return Action::make('pauseTps')
+            ->label('Jeda TPS')
+            ->icon('heroicon-o-pause')
+            ->color('warning')
+            ->visible(fn (): bool => $this->desk() !== null && $this->election()?->status === ElectionStatus::Berlangsung && $this->tpsPause() === null)
+            ->modalDescription('Izin baru di RT ini ditolak sampai TPS dilanjutkan. Pemilih yang sudah di bilik tetap bisa menyelesaikan.')
+            ->schema([
+                Select::make('reason')->label('Alasan')->options(TpsPauseReason::class)->required(),
+                Textarea::make('note')->label('Catatan')->maxLength(500),
+            ])
+            ->action(function (array $data): void {
+                $desk = $this->requireDesk();
+                $reason = $data['reason'] instanceof TpsPauseReason ? $data['reason'] : TpsPauseReason::from($data['reason']);
+
+                $this->run(fn () => app(TpsPauseService::class)->pause($this->election(), $desk->unit, $reason, $data['note'] ?? null, $this->user()), 'TPS dijeda.');
+            });
+    }
+
+    public function resumeTpsAction(): Action
+    {
+        return Action::make('resumeTps')
+            ->label('Lanjutkan TPS')
+            ->icon('heroicon-o-play')
+            ->color('success')
+            ->visible(fn (): bool => $this->desk() !== null && $this->tpsPause() !== null)
+            ->requiresConfirmation()
+            ->action(function (): void {
+                $desk = $this->requireDesk();
+
+                $this->run(fn () => app(TpsPauseService::class)->resume($this->election(), $desk->unit, $this->user()), 'TPS dilanjutkan.');
             });
     }
 

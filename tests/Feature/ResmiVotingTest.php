@@ -8,6 +8,7 @@ use App\Enums\DeviceReleaseReason;
 use App\Enums\ElectionMode;
 use App\Enums\PermitCancelReason;
 use App\Enums\PermitStatus;
+use App\Enums\TpsPauseReason;
 use App\Enums\VoteStatus;
 use App\Models\Ballot;
 use App\Models\Candidate;
@@ -20,6 +21,7 @@ use App\Models\Vote;
 use App\Models\Voter;
 use App\Services\Devices\DeviceManager;
 use App\Services\Permits\PermitManager;
+use App\Services\Permits\TpsPauseService;
 use App\Services\Voting\ElectionLifecycle;
 use App\Services\Voting\VotingException;
 use Database\Seeders\DatabaseSeeder;
@@ -317,6 +319,36 @@ class ResmiVotingTest extends TestCase
         $this->assertSame(PermitStatus::Terhenti, $permit->fresh()->status);
         $this->assertSame(0, Device::query()->whereNotNull('session_secret_hash')->count());
         $this->assertNull(Permit::query()->whereNotNull('active_voter_id')->first());
+    }
+
+    public function test_paused_tps_blocks_new_permits_but_voter_inside_can_finish(): void
+    {
+        $booth = $this->pair(DeviceKind::Bilik, 1);
+        $this->pair(DeviceKind::Bilik, 2);
+        $this->start();
+        $permits = app(PermitManager::class);
+        $pauses = app(TpsPauseService::class);
+        $permit = $permits->grant($this->voter, $this->deskOfficer, $this->desk);
+
+        $pauses->pause($this->election, $this->rt03, TpsPauseReason::InternetMati, null, $this->deskOfficer);
+
+        try {
+            $permits->grant(Voter::query()->where('unit_id', $this->rt03->id)->whereKeyNot($this->voter->id)->first(), $this->deskOfficer, $this->desk);
+            $this->fail('Izin baru seharusnya ditolak saat TPS dijeda.');
+        } catch (VotingException $exception) {
+            $this->assertStringContainsString('dijeda', $exception->getMessage());
+        }
+
+        $this->withCookie(DeviceManager::COOKIE, $booth['cookie'])
+            ->post('/bilik/pilih', ['ballot' => $this->rtBallot->public_id, 'candidate' => $this->candidates['rt03']->public_id])
+            ->assertRedirect(route('booth.ballot'));
+
+        $pauses->resume($this->election, $this->rt03, $this->superAdmin);
+        $this->assertSame(PermitStatus::Dipakai, $permit->fresh()->status);
+        $permits->grant(Voter::query()->where('unit_id', $this->rt03->id)->whereKeyNot($this->voter->id)->first(), $this->deskOfficer, $this->desk);
+
+        $this->expectException(VotingException::class);
+        $pauses->resume($this->election, $this->rt03, $this->superAdmin);
     }
 
     public function test_unknown_or_forged_device_cookie_is_rejected(): void

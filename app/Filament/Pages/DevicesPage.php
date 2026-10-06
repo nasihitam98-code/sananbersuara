@@ -6,15 +6,20 @@ use App\Enums\DeviceKind;
 use App\Enums\DeviceReleaseReason;
 use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
+use App\Enums\TpsPauseReason;
 use App\Filament\Support\Reauthenticate;
 use App\Models\Device;
 use App\Models\Election;
+use App\Models\TpsPause;
+use App\Models\Unit;
 use App\Models\User;
 use App\Services\Devices\DeviceManager;
+use App\Services\Permits\TpsPauseService;
 use App\Services\Voting\VotingException;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -122,6 +127,59 @@ class DevicesPage extends Page
                 app(DeviceManager::class)->release($device, $reason, auth()->user());
                 Notification::make()->title($device->code().' dilepas.')->success()->send();
             });
+    }
+
+    public function pauseFor(string $unitName): ?TpsPause
+    {
+        $election = $this->election();
+        $unit = Unit::query()->where('name', $unitName)->first();
+
+        return $election === null || $unit === null ? null : app(TpsPauseService::class)->active($election, $unit->id);
+    }
+
+    public function pauseTpsAction(): Action
+    {
+        return Action::make('pauseTps')
+            ->label('Jeda TPS')
+            ->color('warning')
+            ->size('sm')
+            ->schema([
+                Select::make('reason')->label('Alasan')->options(TpsPauseReason::class)->required(),
+                Textarea::make('note')->label('Catatan')->maxLength(500),
+            ])
+            ->action(function (array $data, array $arguments): void {
+                $unit = Unit::query()->findOrFail((int) ($arguments['unit'] ?? 0));
+                $reason = $data['reason'] instanceof TpsPauseReason ? $data['reason'] : TpsPauseReason::from($data['reason']);
+
+                $this->run(fn () => app(TpsPauseService::class)->pause($this->election(), $unit, $reason, $data['note'] ?? null, auth()->user()), "TPS {$unit->name} dijeda.");
+            });
+    }
+
+    public function resumeTpsAction(): Action
+    {
+        return Action::make('resumeTps')
+            ->label('Lanjutkan TPS')
+            ->color('success')
+            ->size('sm')
+            ->requiresConfirmation()
+            ->action(function (array $arguments): void {
+                $unit = Unit::query()->findOrFail((int) ($arguments['unit'] ?? 0));
+
+                $this->run(fn () => app(TpsPauseService::class)->resume($this->election(), $unit, auth()->user()), "TPS {$unit->name} dilanjutkan.");
+            });
+    }
+
+    private function run(callable $callback, string $success): void
+    {
+        try {
+            $callback();
+        } catch (VotingException $exception) {
+            Notification::make()->title($exception->getMessage())->danger()->send();
+
+            return;
+        }
+
+        Notification::make()->title($success)->success()->send();
     }
 
     public function dismissToken(): void

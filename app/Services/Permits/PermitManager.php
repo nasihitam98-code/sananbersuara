@@ -46,6 +46,10 @@ class PermitManager
             throw VotingException::invalidState('Pemilihan tidak sedang berlangsung.');
         }
 
+        if (app(TpsPauseService::class)->active($election, $voter->unit_id) !== null) {
+            throw VotingException::invalidState('TPS RT ini sedang dijeda. Lanjutkan TPS dulu untuk memberi izin baru.');
+        }
+
         $this->expireStale($election);
 
         for ($attempt = 1; ; $attempt++) {

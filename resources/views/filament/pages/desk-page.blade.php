@@ -15,6 +15,11 @@
                     <x-filament::badge size="lg" color="danger" icon="heroicon-o-x-circle">Bukan laptop Meja RT Anda: tombol aksi nonaktif</x-filament::badge>
                     <a href="{{ route('desk.pair') }}" class="text-sm text-primary-600 underline">Pasang laptop ini sebagai Meja (butuh token dari Super Admin)</a>
                 @endif
+                @if ($pause = $this->tpsPause())
+                    <x-filament::badge size="lg" color="warning" icon="heroicon-o-pause">TPS DIJEDA: {{ $pause->reason_code->getLabel() }} sejak {{ $pause->paused_at->format('H:i') }}</x-filament::badge>
+                @endif
+                {{ $this->pauseTpsAction }}
+                {{ $this->resumeTpsAction }}
             </div>
 
             @if ($lastAssignment)
