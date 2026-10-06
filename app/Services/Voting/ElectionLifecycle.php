@@ -9,6 +9,8 @@ use App\Models\Election;
 use App\Models\Round;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\Devices\DeviceManager;
+use App\Services\Permits\PermitManager;
 use App\Services\Results\ResultPublication;
 use App\Services\Voters\EligibilitySnapshot;
 use Illuminate\Support\Carbon;
@@ -80,6 +82,11 @@ class ElectionLifecycle
             if ($problems !== []) {
                 throw VotingException::invalidState(implode(' ', $problems));
             }
+
+            // Slot Meja/Bilik dibuat saat Siap agar laptop bisa dipasang sebelum hari H.
+            if (! $election->isDadakan()) {
+                app(DeviceManager::class)->ensureSlots($election);
+            }
         });
     }
 
@@ -114,6 +121,8 @@ class ElectionLifecycle
                 if (array_sum($counts) === 0) {
                     throw VotingException::invalidState('Belum ada pemilih berhak untuk surat suara mana pun. Periksa data pemilih dan cakupan surat suara.');
                 }
+
+                app(DeviceManager::class)->ensureSlots($election);
             }
 
             $round = new Round;
@@ -171,6 +180,10 @@ class ElectionLifecycle
             if ($election->isDadakan()) {
                 DB::table('votes')->where('election_id', $election->id)->update(['voter_link' => null]);
                 $election->vote_links_destroyed_at = $now;
+            } else {
+                // Mode Resmi: suara yang belum dikonfirmasi tidak tersimpan; semua laptop dilepas (K14, K29).
+                app(PermitManager::class)->stopAll($election, 'PEMILIHAN_DITUTUP');
+                app(DeviceManager::class)->releaseAll($election);
             }
         }, meta: fn (Election $election): array => [
             'valid_votes' => $election->votes()->where('status', 'SAH')->count(),

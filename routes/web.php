@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BoothController;
 use App\Http\Controllers\OfficialReportController;
 use App\Http\Controllers\PublicResultController;
 use App\Http\Controllers\ScreenController;
@@ -47,6 +48,23 @@ Route::prefix('v/{accessCode}')
         Route::get('/selesai', 'done')->name('done');
         Route::post('/keluar', 'leave')->name('leave');
     });
+
+/*
+|--------------------------------------------------------------------------
+| Mode Resmi: laptop Bilik dan pemasangan laptop Meja (sesi perangkat lewat cookie)
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware(NoStore::class)->controller(BoothController::class)->group(function (): void {
+    Route::get('/bilik', 'show')->name('booth.show');
+    Route::get('/bilik/status', 'status')->name('booth.status');
+    Route::get('/bilik/surat-suara', 'ballot')->name('booth.ballot');
+    Route::post('/bilik/sentuh', 'touch')->name('booth.touch');
+    Route::post('/bilik/pilih', 'cast')->name('booth.cast');
+    Route::get('/bilik/selesai', 'done')->name('booth.done');
+    Route::get('/meja/pasang', 'pairForm')->name('desk.pair');
+    Route::post('/{kind}/pasang', 'pair')->name('booth.pair')->whereIn('kind', ['bilik', 'meja'])->middleware('throttle:device-pair');
+});
 
 /*
 |--------------------------------------------------------------------------

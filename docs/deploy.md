@@ -85,6 +85,14 @@ sudo chown -R www-data:www-data storage bootstrap/cache public/status
 sudo chmod -R 775 storage bootstrap/cache public/status
 ```
 
+Pasang cron untuk tugas terjadwal (menghanguskan izin bilik yang tidak dipakai, Mode Resmi):
+
+```bash
+sudo crontab -u www-data -e
+# tambahkan baris:
+* * * * * cd /var/www/rtrw && php artisan schedule:run >> /dev/null 2>&1
+```
+
 Buat akun Super Admin pertama (password sementara tampil sekali, **serahkan langsung ke pemilik, jangan lewat chat**):
 
 ```bash

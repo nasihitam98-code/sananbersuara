@@ -53,6 +53,8 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(3000)->by('search-ip:'.$request->ip()),
         ]);
 
+        RateLimiter::for('device-pair', fn (Request $request): Limit => Limit::perMinute(10)->by('device-pair:'.$request->ip()));
+
         RateLimiter::for('voter-pin', fn (Request $request): array => [
             Limit::perMinute(8)->by('pin:'.$perDevice($request)),
             Limit::perMinute(1500)->by('pin-ip:'.$request->ip()),

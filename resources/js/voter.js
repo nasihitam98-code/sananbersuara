@@ -207,6 +207,66 @@ if (page === 'ballot') {
         }
     });
 
+    initBallotSteps(() => {});
+}
+
+/* Bilik (Mode Resmi): status dari server; tidak ada data pemilih yang disimpan di laptop. */
+async function boothStatus() {
+    const response = await fetch(statusUrl, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+
+    return response.json();
+}
+
+function pollBooth(onStatus, intervalMs = 2000) {
+    const tick = async () => {
+        try {
+            onStatus(await boothStatus());
+        } catch (error) {
+            // Koneksi putus: coba lagi; layar tetap seperti semula.
+        }
+
+        setTimeout(tick, intervalMs);
+    };
+
+    setTimeout(tick, intervalMs);
+}
+
+if (page === 'booth-wait') {
+    pollBooth((status) => {
+        if (status.state === 'voting') {
+            window.location.replace(body.dataset.ballotUrl);
+        } else if (status.state === 'unpaired') {
+            window.location.replace(body.dataset.startUrl);
+        }
+    });
+}
+
+if (page === 'booth-ballot') {
+    const csrf = document.querySelector('meta[name="csrf-token"]').content;
+    let touched = false;
+
+    initBallotSteps(() => {
+        if (touched) {
+            return;
+        }
+
+        touched = true;
+        fetch(body.dataset.touchUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrf, Accept: 'application/json' } }).catch(() => {});
+    });
+
+    // Izin dibatalkan petugas / hangus / bilik dilepas: kembali ke layar tunggu.
+    pollBooth((status) => {
+        if (status.state !== 'voting') {
+            window.location.replace(body.dataset.startUrl);
+        }
+    }, 3000);
+}
+
+if (page === 'booth-done') {
+    setTimeout(() => window.location.replace(body.dataset.startUrl), 5000);
+}
+
+function initBallotSteps(onChoose) {
     const form = document.querySelector('[data-ballot-form]');
     const choose = document.querySelector('[data-step="choose"]');
     const review = document.querySelector('[data-step="review"]');
@@ -217,6 +277,7 @@ if (page === 'ballot') {
 
     form.addEventListener('change', () => {
         next.disabled = !form.querySelector('input[name="candidate"]:checked');
+        onChoose();
     });
 
     next.addEventListener('click', () => {
