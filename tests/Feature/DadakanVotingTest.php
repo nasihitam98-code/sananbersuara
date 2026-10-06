@@ -257,6 +257,37 @@ class DadakanVotingTest extends TestCase
         $this->assertSame(3, $tally['candidates'][2]['rank']);
     }
 
+    public function test_open_and_assisted_waves_share_one_tally_and_block_repeat_voters(): void
+    {
+        ['attendee' => $first, 'pin' => $firstPin] = $this->register('Ahmad Sudah');
+        ['attendee' => $elder, 'pin' => $elderPin] = $this->register('Mbah Karto');
+        $this->startAndOpenWave();
+        $box = app(BallotBox::class);
+        $waves = app(WaveManager::class);
+
+        $box->cast($this->election, $first, $box->verifyPin($this->election, $first, $firstPin), $this->ballot, $this->candidates[0]);
+        $waves->close($this->election, $this->admin);
+
+        $waves->open($this->election, WaveKind::Bantuan, null, $this->admin);
+        $this->assertSame(['Mbah Karto'], $box->search($this->election, 'mbah')->pluck('name')->all());
+        $this->assertCount(0, $box->search($this->election, 'ahmad'), 'Yang sudah memilih di gelombang 1 tidak muncul lagi');
+
+        try {
+            $box->verifyPin($this->election, $first, $firstPin);
+            $this->fail('Pemilih gelombang 1 tidak boleh memilih lagi di gelombang 2.');
+        } catch (VotingException $exception) {
+            $this->assertSame(VotingException::ALREADY_VOTED, $exception->reason);
+        }
+
+        $box->cast($this->election, $elder, $box->verifyPin($this->election, $elder, $elderPin), $this->ballot, $this->candidates[0]);
+        $waves->close($this->election, $this->admin);
+        app(ElectionLifecycle::class)->close($this->election, $this->admin);
+
+        $tally = app(ResultsCalculator::class)->tally($this->ballot, $this->election->rounds()->first());
+        $this->assertSame(2, $tally['valid'], 'Suara dua gelombang digabung dalam satu hasil');
+        $this->assertSame(2, $tally['candidates'][0]['votes']);
+    }
+
     public function test_assisted_wave_marks_participation_not_vote(): void
     {
         ['attendee' => $attendee, 'pin' => $pin] = $this->register();
