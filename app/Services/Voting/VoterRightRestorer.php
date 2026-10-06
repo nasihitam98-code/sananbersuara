@@ -31,9 +31,10 @@ class VoterRightRestorer
     ) {}
 
     /**
+     * @param  bool  $onlyIfNotVoted  Tombol "PIN baru": tolak bila peserta ternyata sudah memilih, agar tidak ada suara yang ikut dibatalkan.
      * @return array{pin: string, cancelled_votes: int}
      */
-    public function restore(Election $election, Attendee $attendee, RestoreReason $reason, ?string $note, User $actor): array
+    public function restore(Election $election, Attendee $attendee, RestoreReason $reason, ?string $note, User $actor, bool $onlyIfNotVoted = false): array
     {
         if (! $election->status->isLive()) {
             throw VotingException::invalidState('Pulihkan Hak Pilih hanya bisa saat pemilihan berlangsung.');
@@ -49,7 +50,7 @@ class VoterRightRestorer
 
         $round = $election->currentRound();
 
-        $result = DB::transaction(function () use ($election, $attendee, $reason, $note, $actor, $round): array {
+        $result = DB::transaction(function () use ($election, $attendee, $reason, $note, $actor, $round, $onlyIfNotVoted): array {
             $locked = Attendee::query()->whereKey($attendee->id)->lockForUpdate()->firstOrFail();
             $cancelled = 0;
 
@@ -59,6 +60,10 @@ class VoterRightRestorer
                 ->where('active_key', 1)
                 ->lockForUpdate()
                 ->get();
+
+            if ($onlyIfNotVoted && $participations->isNotEmpty()) {
+                throw VotingException::invalidState("{$locked->name} sudah tercatat memilih. Bila memang perlu, pakai tombol Pulihkan.");
+            }
 
             foreach ($participations as $participation) {
                 $link = $this->linker->link($locked, $participation->ballot_id, $participation->round_id);

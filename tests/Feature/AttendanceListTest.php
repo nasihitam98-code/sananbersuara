@@ -2,19 +2,25 @@
 
 namespace Tests\Feature;
 
+use App\Enums\RestoreReason;
 use App\Enums\StaffRole;
+use App\Enums\VoteStatus;
 use App\Enums\WaveKind;
 use App\Filament\Pages\AttendanceList;
+use App\Models\Attendee;
 use App\Models\AuditLog;
 use App\Models\Ballot;
 use App\Models\Candidate;
 use App\Models\Election;
 use App\Models\ElectionStaff;
 use App\Models\User;
+use App\Models\Vote;
 use App\Services\Exports\SpreadsheetSanitizer;
 use App\Services\Voting\AttendeeRegistrar;
 use App\Services\Voting\BallotBox;
 use App\Services\Voting\ElectionLifecycle;
+use App\Services\Voting\VoterRightRestorer;
+use App\Services\Voting\VotingException;
 use App\Services\Voting\WaveManager;
 use Database\Seeders\DatabaseSeeder;
 use Filament\Actions\Testing\TestAction;
@@ -119,5 +125,80 @@ class AttendanceListTest extends TestCase
 
         $this->assertTrue(AuditLog::query()->where('action', 'attendance.exported')->exists());
         $this->assertSame(["'=HYPERLINK(\"http://x\")", 'Budi', 3], SpreadsheetSanitizer::row(['=HYPERLINK("http://x")', 'Budi', 3]));
+    }
+
+    /**
+     * @return array{voted: Attendee, waiting: Attendee}
+     */
+    private function startWithOneVoter(): array
+    {
+        $registrar = app(AttendeeRegistrar::class);
+        ['attendee' => $voted, 'pin' => $pin] = $registrar->register($this->election, 'Budi Santoso', null, $this->superAdmin);
+        ['attendee' => $waiting] = $registrar->register($this->election, 'Mbah Karto', null, $this->superAdmin);
+        app(ElectionLifecycle::class)->start($this->election, $this->superAdmin);
+        app(WaveManager::class)->open($this->election, WaveKind::Terbuka, 5, $this->superAdmin);
+        $box = app(BallotBox::class);
+        $box->cast($this->election, $voted, $box->verifyPin($this->election, $voted, $pin), $this->ballot, $this->candidate);
+
+        return ['voted' => $voted, 'waiting' => $waiting];
+    }
+
+    public function test_new_pin_for_attendee_who_has_not_voted_shows_printable_card_without_cancelling_votes(): void
+    {
+        ['voted' => $voted, 'waiting' => $waiting] = $this->startWithOneVoter();
+        $oldHash = $waiting->fresh()->pin_hash;
+        $this->actingAs($this->makeUser(User::ROLE_STAFF, StaffRole::Panitia));
+
+        $component = Livewire::test(AttendanceList::class)
+            ->assertSee('Diberikan')
+            ->assertTableActionEnabled('newPin', $waiting)
+            ->assertTableActionDisabled('newPin', $voted)
+            ->assertTableActionDisabled('restore', $waiting)
+            ->assertTableActionEnabled('restore', $voted)
+            ->callAction(TestAction::make('newPin')->table($waiting))
+            ->assertSet('reissued.name', 'Mbah Karto')
+            ->assertSet('reissued.cancelled', 0)
+            ->assertSee('Cetak kartu PIN');
+
+        $component->assertSeeHtml('<div class="pin">'.$component->get('reissued.pin').'</div>');
+        $this->assertNotSame($oldHash, $waiting->fresh()->pin_hash);
+        $this->assertSame(1, Vote::query()->where('status', VoteStatus::Sah)->count());
+        $this->assertTrue(AuditLog::query()->where('action', 'attendee.voting_right_restored')->where('reason_code', RestoreReason::PinHilang->value)->exists());
+
+        $component->call('acknowledgeReissue')->assertSet('reissued', null)->assertDontSee('Cetak kartu PIN');
+    }
+
+    public function test_new_pin_service_refuses_attendee_who_already_voted(): void
+    {
+        ['voted' => $voted] = $this->startWithOneVoter();
+
+        $this->expectException(VotingException::class);
+
+        app(VoterRightRestorer::class)->restore($this->election, $voted, RestoreReason::PinHilang, null, $this->superAdmin, onlyIfNotVoted: true);
+    }
+
+    public function test_restore_for_attendee_who_voted_cancels_the_vote_and_issues_new_pin(): void
+    {
+        ['voted' => $voted] = $this->startWithOneVoter();
+        $this->actingAs($this->makeUser(User::ROLE_STAFF, StaffRole::Panitia));
+
+        Livewire::test(AttendanceList::class)
+            ->callAction(TestAction::make('restore')->table($voted), ['reason' => RestoreReason::NamaDipakaiOrangLain->value])
+            ->assertHasNoFormErrors()
+            ->assertSet('reissued.name', 'Budi Santoso')
+            ->assertSet('reissued.cancelled', 1)
+            ->assertSee('1 suara lama dibatalkan.');
+
+        $this->assertSame(0, Vote::query()->where('status', VoteStatus::Sah)->count());
+    }
+
+    public function test_pin_buttons_are_hidden_before_the_election_starts(): void
+    {
+        $attendee = app(AttendeeRegistrar::class)->register($this->election, 'Budi Santoso', null, $this->superAdmin)['attendee'];
+        $this->actingAs($this->makeUser(User::ROLE_STAFF, StaffRole::Panitia));
+
+        Livewire::test(AttendanceList::class)
+            ->assertTableActionHidden('newPin', $attendee)
+            ->assertTableActionHidden('restore', $attendee);
     }
 }
