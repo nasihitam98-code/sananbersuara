@@ -6,6 +6,7 @@ use App\Enums\BallotScope;
 use App\Enums\ElectionStatus;
 use App\Enums\StaffRole;
 use App\Enums\WaveKind;
+use App\Filament\Pages\AttendanceList;
 use App\Filament\Pages\ControlRoom;
 use App\Filament\Pages\DoorDesk;
 use App\Filament\Pages\ResultScreen;
@@ -13,6 +14,7 @@ use App\Filament\Resources\Elections\ElectionResource;
 use App\Filament\Resources\Elections\Pages\EditElection;
 use App\Filament\Resources\Elections\Pages\ListElections;
 use App\Filament\Resources\Elections\RelationManagers\BallotsRelationManager;
+use App\Filament\Resources\Elections\RelationManagers\HistoryRelationManager;
 use App\Models\Attendee;
 use App\Models\AuditLog;
 use App\Models\Ballot;
@@ -20,6 +22,7 @@ use App\Models\Candidate;
 use App\Models\Election;
 use App\Models\ElectionStaff;
 use App\Models\User;
+use App\Services\Voting\AttendeeRegistrar;
 use App\Services\Voting\ElectionLifecycle;
 use Database\Seeders\DatabaseSeeder;
 use Filament\Actions\Testing\TestAction;
@@ -214,6 +217,22 @@ class AdminAccessTest extends TestCase
             ->assertActionVisible(TestAction::make('edit')->table($this->election))
             ->filterTable('closed', true)
             ->assertCanSeeTableRecords([$this->election, $cancelled->fresh()]);
+    }
+
+    public function test_cancelled_election_history_and_attendance_remain_viewable(): void
+    {
+        app(ElectionLifecycle::class)->start($this->election, $this->superAdmin);
+        app(AttendeeRegistrar::class)->register($this->election, 'Budi Hadir', null, $this->superAdmin);
+        app(ElectionLifecycle::class)->cancel($this->election, $this->superAdmin, 'Latihan diulang');
+        $this->actingAs($this->superAdmin);
+
+        Livewire::test(HistoryRelationManager::class, ['ownerRecord' => $this->election->fresh(), 'pageClass' => EditElection::class])
+            ->assertSee('Status berubah: Berlangsung → Dibatalkan')
+            ->assertSee('Latihan diulang')
+            ->assertSee('Peserta didata di pintu');
+
+        Livewire::test(AttendanceList::class, ['electionId' => $this->election->public_id])
+            ->assertSee('Budi Hadir');
     }
 
     public function test_adding_dadakan_ballot_needs_only_a_title(): void

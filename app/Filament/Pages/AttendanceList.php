@@ -74,6 +74,9 @@ class AttendanceList extends Page implements HasTable
             ElectionStatus::Verifikasi,
             ElectionStatus::Published,
             ElectionStatus::Unpublished,
+            // Riwayat: siapa yang sempat hadir tetap bisa dilihat walau pemilihan batal/diarsipkan.
+            ElectionStatus::Cancelled,
+            ElectionStatus::Archived,
         ];
     }
 

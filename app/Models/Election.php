@@ -89,6 +89,16 @@ class Election extends Model
     }
 
     /**
+     * Riwayat kejadian pemilihan ini (Audit Log, hanya-baca).
+     *
+     * @return HasMany<AuditLog, $this>
+     */
+    public function auditLogs(): HasMany
+    {
+        return $this->hasMany(AuditLog::class);
+    }
+
+    /**
      * @return HasMany<Ballot, $this>
      */
     public function ballots(): HasMany

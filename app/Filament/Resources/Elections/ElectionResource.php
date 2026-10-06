@@ -8,6 +8,7 @@ use App\Filament\Resources\Elections\Pages\CreateElection;
 use App\Filament\Resources\Elections\Pages\EditElection;
 use App\Filament\Resources\Elections\Pages\ListElections;
 use App\Filament\Resources\Elections\RelationManagers\BallotsRelationManager;
+use App\Filament\Resources\Elections\RelationManagers\HistoryRelationManager;
 use App\Filament\Resources\Elections\RelationManagers\StaffRelationManager;
 use App\Filament\Support\Workspace;
 use App\Models\Election;
@@ -185,6 +186,7 @@ class ElectionResource extends Resource
         return [
             BallotsRelationManager::class,
             StaffRelationManager::class,
+            HistoryRelationManager::class,
         ];
     }
 
