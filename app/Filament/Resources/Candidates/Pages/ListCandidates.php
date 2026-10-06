@@ -13,7 +13,9 @@ class ListCandidates extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            CreateAction::make()
+                ->label('Tambah calon')
+                ->url(fn (): string => CandidateResource::getUrl('create', array_filter(['surat_suara' => $this->tableFilters['ballot_id']['value'] ?? null]))),
         ];
     }
 }

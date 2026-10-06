@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Candidates\Pages;
 
 use App\Enums\BallotScope;
+use App\Enums\CandidateStatus;
 use App\Filament\Resources\Candidates\CandidateResource;
 use App\Models\Ballot;
 use App\Models\Candidate;
@@ -51,6 +52,7 @@ class CreateCandidate extends CreateRecord
             throw new Halt;
         }
 
+        $data['status'] ??= CandidateStatus::Aktif;
         $candidate = new Candidate($data);
         $candidate->ballot()->associate($ballot);
         $candidate->save();

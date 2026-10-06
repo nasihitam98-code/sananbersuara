@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\CandidateStatus;
 use App\Filament\Pages\ControlRoom;
 use App\Filament\Pages\CorrectionsPage;
 use App\Filament\Pages\DevicesPage;
@@ -108,6 +109,24 @@ class AdminPagesRenderTest extends TestCase
             ->fillForm(['ballot_id' => $ballot->id, 'number' => 1, 'name' => 'Nomor Kembar', 'status' => 'AKTIF'])
             ->call('create')
             ->assertHasFormErrors(['number' => 'unique']);
+    }
+
+    public function test_candidate_form_prefills_ballot_and_next_number(): void
+    {
+        $election = Election::factory()->create();
+        $ballot = Ballot::factory()->for($election)->create();
+        Candidate::factory()->for($ballot)->create(['number' => 1]);
+
+        Livewire::test(CreateCandidate::class)
+            ->assertFormSet(['ballot_id' => $ballot->id, 'number' => 2])
+            ->assertFormFieldHidden('status')
+            ->fillForm(['name' => 'Ibu Sumiati'])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $created = $ballot->candidates()->where('number', 2)->firstOrFail();
+        $this->assertSame('Ibu Sumiati', $created->name);
+        $this->assertSame(CandidateStatus::Aktif, $created->status);
     }
 
     public function test_candidates_cannot_be_added_after_election_starts(): void

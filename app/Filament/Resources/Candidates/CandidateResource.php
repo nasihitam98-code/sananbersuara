@@ -21,6 +21,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ImageColumn;
@@ -68,6 +69,33 @@ class CandidateResource extends Resource
             ->all();
     }
 
+    /**
+     * Surat suara bawaan form calon: dari tautan "Kelola calon", atau satu-satunya pilihan yang ada.
+     */
+    public static function defaultBallotId(): ?int
+    {
+        $options = static::editableBallotOptions();
+        $requested = request()->integer('surat_suara');
+
+        if ($requested && array_key_exists($requested, $options)) {
+            return $requested;
+        }
+
+        return count($options) === 1 ? (int) array_key_first($options) : null;
+    }
+
+    /**
+     * Nomor urut berikutnya pada surat suara (untuk surat suara per RT, pilih nomor sendiri per RT).
+     */
+    public static function nextNumber(mixed $ballotId): ?int
+    {
+        if (blank($ballotId)) {
+            return null;
+        }
+
+        return (int) Candidate::query()->where('ballot_id', $ballotId)->max('number') + 1;
+    }
+
     public static function ballotIsPerUnit(mixed $ballotId): bool
     {
         return filled($ballotId) && Ballot::query()->whereKey($ballotId)->where('scope', BallotScope::PerRt)->exists();
@@ -83,10 +111,11 @@ class CandidateResource extends Resource
                         Select::make('ballot_id')
                             ->label('Surat suara')
                             ->options(fn (): array => static::editableBallotOptions())
-                            ->default(fn (): ?int => request()->integer('surat_suara') ?: null)
+                            ->default(fn (): ?int => static::defaultBallotId())
                             ->required()
                             ->in(fn (): array => array_keys(static::editableBallotOptions()))
                             ->live()
+                            ->afterStateUpdated(fn (mixed $state, Set $set) => $set('number', static::nextNumber($state)))
                             ->visibleOn('create'),
                         Select::make('unit_id')
                             ->label('RT calon')
@@ -98,6 +127,8 @@ class CandidateResource extends Resource
                             ->live(),
                         TextInput::make('number')
                             ->label('Nomor urut')
+                            ->helperText('Terisi otomatis dengan nomor berikutnya; boleh diubah.')
+                            ->default(fn (): ?int => static::nextNumber(static::defaultBallotId()))
                             ->numeric()->minValue(1)->maxValue(999)
                             ->required()
                             ->unique(
@@ -118,7 +149,8 @@ class CandidateResource extends Resource
                             ->label('Status')
                             ->options(CandidateStatus::class)
                             ->default(CandidateStatus::Aktif)
-                            ->required(),
+                            ->required()
+                            ->visibleOn('edit'),
                     ]),
                 Section::make('Foto')
                     ->description('JPG/PNG/WebP, maksimal 2 MB. Foto dipotong persegi (1:1) agar semua calon tampil seragam. Wajah di tengah.')
