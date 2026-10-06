@@ -94,7 +94,7 @@ class HomeGuideTest extends TestCase
     {
         $this->get(route('public.index'))
             ->assertOk()
-            ->assertSee('Masuk Panitia')
+            ->assertSee('Masuk panitia dan pengurus')
             ->assertSee(url('/admin'), false)
             ->assertSee('Penjaringan Calon RW')
             ->assertSee('Segera dimulai');

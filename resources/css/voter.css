@@ -79,37 +79,24 @@ body {
     text-decoration: none;
 }
 
-.topbar__action {
+.topbar__lock {
     flex: none;
-    font-size: 15px;
-    font-weight: 700;
-    padding: 8px 14px;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
     border: 2px solid rgba(255, 255, 255, 0.6);
-    border-radius: 999px;
+    border-radius: 50%;
 }
 
-.topbar__action:hover,
-.topbar__action:focus-visible {
+.topbar__lock:hover,
+.topbar__lock:focus-visible {
     background: rgba(255, 255, 255, 0.15);
 }
 
 /* Halaman publik tidak punya bar tombol bawah, jadi tidak perlu ruang kosong di bawah */
 .topbar--portal ~ .wrap {
-    padding-bottom: 16px;
-}
-
-.portal-footer {
-    max-width: 640px;
-    margin: 0 auto;
-    padding: 8px 16px 32px;
-    font-size: 15px;
-    color: var(--c-muted);
-    text-align: center;
-}
-
-.portal-footer a {
-    color: var(--c-indigo-700);
-    font-weight: 700;
+    padding-bottom: 32px;
 }
 
 .wrap {
