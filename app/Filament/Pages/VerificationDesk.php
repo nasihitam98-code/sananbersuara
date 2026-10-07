@@ -254,13 +254,25 @@ class VerificationDesk extends Page
                         $options = [];
 
                         // Kunci = ID calon (jangan pakai flatMap: kunci numerik akan diurutkan ulang).
-                        foreach (app(ResultSlots::class)->slots($this->election())->filter(fn (array $slot): bool => $chosen->contains($slot['key'])) as $slot) {
+                        $election = $this->election();
+                        $latestRound = $election?->rounds()->orderByDesc('number')->first();
+
+                        foreach (app(ResultSlots::class)->slots($election)->filter(fn (array $slot): bool => $chosen->contains($slot['key'])) as $slot) {
+                            $prefix = $slot['ballot']->title.($slot['unit'] !== null ? ' '.$slot['unit']->name : '').' · ';
+
+                            // Urut peringkat putaran terakhir + jumlah suara, agar calon yang seri terlihat berdampingan.
+                            $tally = $latestRound === null ? [] : app(ResultsCalculator::class)->tally($slot['ballot'], $latestRound, $slot['unit'])['candidates'];
+
+                            foreach ($tally as $row) {
+                                $options[$row['candidate']->id] = $prefix."#{$row['rank']} · ".$row['candidate']->displayNumber().' '.$row['candidate']->name." ({$row['votes']} suara)";
+                            }
+
                             $candidates = $slot['ballot']->ballotCandidates()
                                 ->when($slot['unit'] !== null, fn ($query) => $query->where('unit_id', $slot['unit']->id))
                                 ->get();
 
                             foreach ($candidates as $candidate) {
-                                $options[$candidate->id] = $slot['ballot']->title.($slot['unit'] !== null ? ' '.$slot['unit']->name : '').' · '.$candidate->displayNumber().' '.$candidate->name;
+                                $options[$candidate->id] ??= $prefix.$candidate->displayNumber().' '.$candidate->name;
                             }
                         }
 
