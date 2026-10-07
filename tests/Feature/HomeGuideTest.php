@@ -76,8 +76,18 @@ class HomeGuideTest extends TestCase
     {
         $this->actingAs($this->superAdmin)->get(route('workspace.switch', 'dadakan'))->assertRedirect(url('/admin'));
 
+        // Super Admin memilih pemilihan dulu (kartu), baru masuk ke dashboard pemilihan itu.
         $this->get('/admin')
             ->assertOk()
+            ->assertSee('Pemilihan mana yang mau dikerjakan?')
+            ->assertSee(route('workspace.election', $this->election->public_id), false)
+            ->assertDontSee('Sudah siap. Petugas pintu sudah bisa mendata');
+
+        $this->get(route('workspace.election', $this->election->public_id))->assertRedirect(url('/admin'));
+
+        $this->get('/admin')
+            ->assertOk()
+            ->assertSee('Ganti pemilihan')
             ->assertSee('Mode Dadakan')
             ->assertSee('Ganti mode')
             ->assertSee('Penjaringan Calon RW')

@@ -87,3 +87,4 @@ Route::middleware('auth')->get('/rekap/{election:public_id}', RecapExportControl
 Route::middleware(['auth', 'signed'])->get('/backup/{backup:public_id}/unduh', BackupDownloadController::class)->name('backups.download');
 Route::middleware('auth')->get('/panel/galeri/{galleryPhoto:public_id}/{size?}', GalleryPreviewController::class)->whereIn('size', ['thumb', 'full'])->name('gallery.preview');
 Route::middleware('auth')->get('/panel/mode/{mode?}', WorkspaceController::class)->whereIn('mode', ['dadakan', 'resmi', 'pilih'])->name('workspace.switch');
+Route::middleware('auth')->get('/panel/pemilihan/{election:public_id?}', [WorkspaceController::class, 'election'])->name('workspace.election');

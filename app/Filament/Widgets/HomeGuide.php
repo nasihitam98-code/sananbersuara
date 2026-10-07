@@ -17,10 +17,23 @@ use App\Filament\Resources\Elections\ElectionResource;
 use App\Filament\Resources\Units\UnitResource;
 use App\Filament\Resources\Users\UserResource;
 use App\Filament\Resources\Voters\VoterResource;
+use App\Filament\Support\Reauthenticate;
 use App\Filament\Support\Workspace;
+use App\Models\Candidate;
 use App\Models\Election;
 use App\Models\User;
 use App\Models\Voter;
+use App\Services\AuditLogger;
+use App\Services\CandidatePhotoProcessor;
+use App\Services\Voting\ElectionLifecycle;
+use App\Services\Voting\VotingException;
+use Filament\Actions\Action;
+use Filament\Actions\Concerns\InteractsWithActions;
+use Filament\Actions\Contracts\HasActions;
+use Filament\Forms\Components\Textarea;
+use Filament\Notifications\Notification;
+use Filament\Schemas\Concerns\InteractsWithSchemas;
+use Filament\Schemas\Contracts\HasSchemas;
 use Filament\Widgets\Widget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -30,8 +43,11 @@ use Illuminate\Support\Collection;
  * tombol yang perlu ditekan sekarang, dan panduan langkah. Langkah dan tombol hanya tampil
  * bila halamannya boleh dibuka pengguna ini.
  */
-class HomeGuide extends Widget
+class HomeGuide extends Widget implements HasActions, HasSchemas
 {
+    use InteractsWithActions;
+    use InteractsWithSchemas;
+
     protected string $view = 'filament.widgets.home-guide';
 
     protected int|string|array $columnSpan = 'full';
@@ -88,31 +104,125 @@ class HomeGuide extends Widget
      */
     public function elections(): Collection
     {
-        $user = $this->user();
-        $mode = $this->mode();
-
-        if ($mode === null) {
-            return collect();
-        }
-
-        return Election::query()
-            ->where('mode', $mode)
-            ->whereNotIn('status', [ElectionStatus::Cancelled, ElectionStatus::Archived])
-            ->when(! $user->isSuperAdmin() && $mode === ElectionMode::Dadakan, fn (Builder $query) => $query
-                ->whereHas('staff', fn (Builder $staff) => $staff->where('user_id', $user->id)))
-            ->latest()
-            ->limit(6)
-            ->get();
+        return Workspace::elections($this->user());
     }
 
     /**
-     * Pemilihan utama: yang sedang berlangsung, atau yang terbaru.
+     * Pemilihan yang sedang dikerjakan (dipilih lewat kartu "Masuk"). Null = tampilkan daftar pemilihan.
      */
     public function primaryElection(): ?Election
     {
-        $elections = $this->elections();
+        return Workspace::election();
+    }
 
-        return $elections->first(fn (Election $election): bool => $election->status->isLive()) ?? $elections->first();
+    /**
+     * Pemilihan lain yang sedang berlangsung, untuk peringatan dan konfirmasi saat berpindah.
+     */
+    public function otherLiveElection(?Election $except = null): ?Election
+    {
+        return Workspace::otherLiveElection($except);
+    }
+
+    /**
+     * Ringkasan singkat untuk kartu pemilihan.
+     */
+    public function cardSummary(Election $election): string
+    {
+        $candidates = $election->ballots()->withCount('ballotCandidates')->get()->sum('ballot_candidates_count');
+
+        if ($election->mode === ElectionMode::Dadakan) {
+            $attendees = $election->attendees()->count();
+
+            return "{$candidates} calon · {$attendees} hadir terdata";
+        }
+
+        return "{$election->ballots()->count()} surat suara · {$candidates} calon";
+    }
+
+    /**
+     * Hapus pemilihan yang belum pernah dimulai (beserta surat suara, calon, dan foto calonnya).
+     */
+    public function deleteElectionAction(): Action
+    {
+        return Action::make('deleteElection')
+            ->label('Hapus')
+            ->icon('heroicon-m-trash')
+            ->color('danger')
+            ->link()
+            ->visible(fn (array $arguments): bool => ($election = $this->electionFromArguments($arguments)) !== null && $this->user()->can('delete', $election))
+            ->requiresConfirmation()
+            ->modalHeading(fn (array $arguments): string => 'Hapus "'.($this->electionFromArguments($arguments)?->name ?? '').'"?')
+            ->modalDescription('Surat suara, calon, foto calon, dan penugasan panitia pemilihan ini ikut terhapus. Tidak bisa dibatalkan.')
+            ->modalSubmitActionLabel('Ya, hapus')
+            ->action(function (array $arguments): void {
+                $election = $this->electionFromArguments($arguments);
+                abort_unless($election !== null && $this->user()->can('delete', $election), 403);
+
+                $photos = app(CandidatePhotoProcessor::class);
+                Candidate::query()->whereHas('ballot', fn (Builder $ballot) => $ballot->where('election_id', $election->id))
+                    ->whereNotNull('photo_key')
+                    ->get()
+                    ->each(fn (Candidate $candidate) => $photos->remove($candidate));
+
+                $snapshot = $election->only(['name', 'mode']);
+                $election->delete();
+                app(AuditLogger::class)->log('election.deleted', meta: $snapshot);
+
+                if (Workspace::election()?->is($election)) {
+                    Workspace::chooseElection(null);
+                }
+
+                Notification::make()->title("Pemilihan \"{$snapshot['name']}\" dihapus.")->success()->send();
+            });
+    }
+
+    /**
+     * Pemilihan yang sudah pernah dimulai tidak bisa dihapus (riwayat wajib tersimpan); Batalkan
+     * menyembunyikannya dari daftar. Pemilihan yang sedang berlangsung dibatalkan dari halamannya sendiri.
+     */
+    public function cancelElectionAction(): Action
+    {
+        return Action::make('cancelElection')
+            ->label('Batalkan')
+            ->icon('heroicon-m-x-circle')
+            ->color('gray')
+            ->link()
+            ->visible(fn (array $arguments): bool => ($election = $this->electionFromArguments($arguments)) !== null
+                && $this->user()->isSuperAdmin()
+                && in_array($election->status, [ElectionStatus::Ditutup, ElectionStatus::Verifikasi], true))
+            ->modalHeading(fn (array $arguments): string => 'Batalkan "'.($this->electionFromArguments($arguments)?->name ?? '').'"?')
+            ->modalDescription('Pemilihan yang sudah dimulai tidak bisa dihapus. Batalkan menyembunyikannya dari daftar; datanya tetap tersimpan di Riwayat.')
+            ->modalSubmitActionLabel('Ya, batalkan')
+            ->schema([
+                Textarea::make('note')->label('Alasan')->default('Data latihan')->required()->maxLength(500),
+                Reauthenticate::field(),
+            ])
+            ->action(function (array $data, array $arguments): void {
+                $election = $this->electionFromArguments($arguments);
+                abort_unless($election !== null && $this->user()->isSuperAdmin(), 403);
+
+                try {
+                    app(ElectionLifecycle::class)->cancel($election, $this->user(), $data['note']);
+                } catch (VotingException $exception) {
+                    Notification::make()->title($exception->getMessage())->danger()->send();
+
+                    return;
+                }
+
+                if (Workspace::election()?->is($election)) {
+                    Workspace::chooseElection(null);
+                }
+
+                Notification::make()->title("Pemilihan \"{$election->name}\" dibatalkan dan disembunyikan.")->success()->send();
+            });
+    }
+
+    /**
+     * @param  array<string, mixed>  $arguments
+     */
+    private function electionFromArguments(array $arguments): ?Election
+    {
+        return $this->elections()->firstWhere('public_id', $arguments['election'] ?? null);
     }
 
     public function stageIndex(Election $election): int

@@ -28,6 +28,11 @@ class CreateElection extends CreateRecord
 
         app(AuditLogger::class)->log('election.created', $record, $record, meta: ['mode' => $record->mode->value]);
 
+        // Pemilihan baru langsung menjadi pemilihan yang sedang dikerjakan.
+        if ($record->mode === Workspace::current()) {
+            Workspace::chooseElection($record);
+        }
+
         return $record;
     }
 

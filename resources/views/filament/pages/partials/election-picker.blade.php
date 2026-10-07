@@ -1,4 +1,14 @@
-@if ($elections->count() > 1)
+@php($focused = \App\Filament\Support\Workspace::election())
+
+@if ($focused !== null)
+    {{-- Pemilihan sudah dipilih di Beranda: halaman ini hanya untuk pemilihan itu. --}}
+    @if ($election === null)
+        <x-filament::section>
+            <p>Halaman ini belum bisa dipakai untuk <strong>{{ $focused->name }}</strong> (status {{ $focused->status->getLabel() }}).</p>
+            <p class="mt-1 text-sm text-gray-500">Lanjutkan dari <x-filament::link :href="url('/admin')">Beranda</x-filament::link>, atau ganti pemilihan lewat tombol di atas.</p>
+        </x-filament::section>
+    @endif
+@elseif ($elections->count() > 1)
     <div class="flex flex-wrap items-center gap-2">
         <span class="text-sm text-gray-500">Pemilihan:</span>
         @foreach ($elections as $item)

@@ -5,7 +5,7 @@
 
     @if ($election === null)
         <x-filament::section>
-            Belum ada pemilihan Mode Dadakan yang ditugaskan kepada Anda sebagai Panitia.
+            Ruang Kendali dipakai mulai pemilihan berstatus Siap, untuk Panitia yang ditugaskan di pemilihan itu.
         </x-filament::section>
     @else
         @php($d = $this->dashboard())

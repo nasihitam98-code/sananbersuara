@@ -5,7 +5,7 @@
 
     @if ($election === null)
         <x-filament::section>
-            Belum ada pemilihan Mode Dadakan berstatus Siap/Berlangsung yang ditugaskan kepada Anda.
+            Meja Pintu dipakai saat pemilihan berstatus Siap atau Berlangsung, untuk petugas yang ditugaskan di pemilihan itu.
         </x-filament::section>
     @else
         @if ($issued)

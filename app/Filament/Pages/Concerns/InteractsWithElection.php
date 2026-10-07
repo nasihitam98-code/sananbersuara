@@ -5,6 +5,7 @@ namespace App\Filament\Pages\Concerns;
 use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
 use App\Enums\StaffRole;
+use App\Filament\Support\Workspace;
 use App\Models\Election;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -79,6 +80,11 @@ trait InteractsWithElection
     public function election(): ?Election
     {
         $elections = $this->availableElections();
+
+        if ($this->electionId === null && ($focused = Workspace::election()) !== null) {
+            // Pemilihan yang sedang dikerjakan (dipilih di Beranda) selalu dipakai, agar data tidak tercampur.
+            $this->electionId = $focused->public_id;
+        }
 
         if ($this->electionId === null) {
             // Utamakan yang sedang berjalan, lalu yang Siap; baru yang terbaru (mis. arsip).

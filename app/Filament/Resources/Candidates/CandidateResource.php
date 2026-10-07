@@ -83,6 +83,8 @@ class CandidateResource extends Resource
             ->with('election')
             ->whereHas('election', fn (Builder $query) => $query->whereIn('status', [ElectionStatus::Draft, ElectionStatus::Ready])
                 ->when(Workspace::current(), fn (Builder $query, ElectionMode $mode): Builder => $query->where('mode', $mode)))
+            // Hanya surat suara pemilihan yang sedang dikerjakan (bila sudah dipilih di Beranda).
+            ->when(Workspace::election(), fn (Builder $query, Election $election): Builder => $query->where('election_id', $election->id))
             ->get()
             ->mapWithKeys(fn (Ballot $ballot): array => [$ballot->id => "{$ballot->election->name} — {$ballot->title}"])
             ->all();
@@ -121,6 +123,11 @@ class CandidateResource extends Resource
     public static function defaultElectionFilter(): ?int
     {
         $elections = static::filterableElections();
+        $focused = Workspace::election();
+
+        if ($focused !== null && $elections->contains(fn (Election $election): bool => $election->is($focused))) {
+            return $focused->id;
+        }
 
         return ($elections->first(fn (Election $election): bool => $election->status->allowsConfigurationChanges())
             ?? $elections->first(fn (Election $election): bool => $election->status->isLive())
