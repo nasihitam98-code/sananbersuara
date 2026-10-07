@@ -125,7 +125,7 @@
                             </x-filament::dropdown.list.item>
                         @endif
                         <x-filament::dropdown.list.item icon="heroicon-o-device-phone-mobile" tag="a" :href="$d['voterUrl']" target="_blank">
-                            Buka halaman pemilih (coba dari laptop)
+                            Coba halaman pemilih
                         </x-filament::dropdown.list.item>
                     </x-filament::dropdown.list>
                 </x-filament::dropdown>
