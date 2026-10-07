@@ -10,7 +10,7 @@
                     <p class="text-warning-600">⚠ Salinan off-server belum dikonfigurasi (BACKUP_OFFSITE_DISK). Unduh backup secara berkala dan simpan di luar server.</p>
                 @endif
             </div>
-            {{ $this->backupNowAction }}
+            @if ($this->backupNowAction->isVisible()) {{ $this->backupNowAction }} @endif
         </div>
     </x-filament::section>
 

@@ -204,6 +204,7 @@ class ControlRoom extends Page
                 Select::make('kind')
                     ->label('Jenis gelombang')
                     ->options(WaveKind::class)
+                    ->selectablePlaceholder(false)
                     ->default(($this->election()?->currentRound()?->waves()->exists() ?? false) ? WaveKind::Bantuan : WaveKind::Terbuka)
                     ->live()
                     ->required(),

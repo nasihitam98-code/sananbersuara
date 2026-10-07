@@ -326,7 +326,10 @@ class AdminAccessTest extends TestCase
             ->callAction('startElection', ['current_password' => 'password'])
             ->assertHasNoFormErrors()
             ->assertActionHidden('startElection')
-            ->assertActionVisible('openWave');
+            ->assertActionVisible('openWave')
+            ->assertSee('BUKA VOTING')
+            ->assertDontSee('Perpanjang')
+            ->assertDontSee('Tutup Sekarang');
 
         $this->assertSame(ElectionStatus::Berlangsung, $this->election->fresh()->status);
     }

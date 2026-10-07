@@ -6,9 +6,9 @@
                 <p class="text-gray-500 dark:text-gray-400">Foto galeri hanya bisa dilihat Super Admin. Hapus foto yang tidak dipakai setelah selesai.</p>
             </div>
             <div class="flex flex-wrap gap-2">
-                {{ $this->uploadAction }}
-                {{ $this->autoAssignAction }}
-                {{ $this->deleteUnusedAction }}
+                @if ($this->uploadAction->isVisible()) {{ $this->uploadAction }} @endif
+                @if ($this->autoAssignAction->isVisible()) {{ $this->autoAssignAction }} @endif
+                @if ($this->deleteUnusedAction->isVisible()) {{ $this->deleteUnusedAction }} @endif
             </div>
         </div>
     </x-filament::section>

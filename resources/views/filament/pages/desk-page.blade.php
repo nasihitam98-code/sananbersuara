@@ -18,8 +18,8 @@
                 @if ($pause = $this->tpsPause())
                     <x-filament::badge size="lg" color="warning" icon="heroicon-o-pause">TPS DIJEDA: {{ $pause->reason_code->getLabel() }} sejak {{ $pause->paused_at->format('H:i') }}</x-filament::badge>
                 @endif
-                {{ $this->pauseTpsAction }}
-                {{ $this->resumeTpsAction }}
+                @if ($this->pauseTpsAction->isVisible()) {{ $this->pauseTpsAction }} @endif
+                @if ($this->resumeTpsAction->isVisible()) {{ $this->resumeTpsAction }} @endif
             </div>
 
             @if ($lastAssignment)

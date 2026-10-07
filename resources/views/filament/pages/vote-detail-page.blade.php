@@ -9,7 +9,7 @@
                 @if ($this->availableElections()->isEmpty())
                     <p class="text-warning-600">Belum ada pemilihan Mode Resmi yang ditutup (atau keterkaitannya sudah dihapus sesuai kebijakan retensi).</p>
                 @else
-                    {{ $this->openAction }}
+                    @if ($this->openAction->isVisible()) {{ $this->openAction }} @endif
                 @endif
             </div>
         </x-filament::section>

@@ -19,15 +19,15 @@
                     @if ($election->vote_links_destroyed_at && ! $election->isDadakan())
                         <p class="mt-2 text-sm text-gray-500">Keterkaitan pemilih-pilihan sudah dihapus permanen pada {{ $election->vote_links_destroyed_at->format('d-m-Y') }} (K26).</p>
                     @elseif ($deadline = $this->retentionDeadline())
-                        <p class="mt-2 text-sm text-gray-500">Detail suara (siapa memilih siapa) akan dihapus otomatis pada <strong>{{ $deadline->format('d-m-Y') }}</strong>. {{ $this->extendRetentionAction }}</p>
+                        <p class="mt-2 text-sm text-gray-500">Detail suara (siapa memilih siapa) akan dihapus otomatis pada <strong>{{ $deadline->format('d-m-Y') }}</strong>. @if ($this->extendRetentionAction->isVisible()) {{ $this->extendRetentionAction }} @endif</p>
                     @endif
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    {{ $this->startVerificationAction }}
-                    {{ $this->publishAction }}
-                    {{ $this->unpublishAction }}
-                    {{ $this->reopenVerificationAction }}
-                    {{ $this->nextRoundAction }}
+                    @if ($this->startVerificationAction->isVisible()) {{ $this->startVerificationAction }} @endif
+                    @if ($this->publishAction->isVisible()) {{ $this->publishAction }} @endif
+                    @if ($this->unpublishAction->isVisible()) {{ $this->unpublishAction }} @endif
+                    @if ($this->reopenVerificationAction->isVisible()) {{ $this->reopenVerificationAction }} @endif
+                    @if ($this->nextRoundAction->isVisible()) {{ $this->nextRoundAction }} @endif
                 </div>
             </div>
 

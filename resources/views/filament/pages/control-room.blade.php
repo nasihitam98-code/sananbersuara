@@ -59,10 +59,10 @@
                         @endif
                     </div>
                     <div class="flex flex-col gap-2">
-                        {{ $this->startElectionAction }}
-                        {{ $this->openWaveAction }}
-                        {{ $this->extendWaveAction }}
-                        {{ $this->closeWaveAction }}
+                        @if ($this->startElectionAction->isVisible()) {{ $this->startElectionAction }} @endif
+                        @if ($this->openWaveAction->isVisible()) {{ $this->openWaveAction }} @endif
+                        @if ($this->extendWaveAction->isVisible()) {{ $this->extendWaveAction }} @endif
+                        @if ($this->closeWaveAction->isVisible()) {{ $this->closeWaveAction }} @endif
                         @if ($election->status === \App\Enums\ElectionStatus::Ready)
                             <p class="text-sm text-warning-600">
                                 {{ auth()->user()->isSuperAdmin()
@@ -101,7 +101,7 @@
             @endif
 
             <div class="flex flex-wrap gap-2">
-                {{ $this->headcountAction }}
+                @if ($this->headcountAction->isVisible()) {{ $this->headcountAction }} @endif
                 <x-filament::button tag="a" :href="route('screens.qr', $election->public_id)" target="_blank" color="gray" icon="heroicon-o-qr-code">
                     Layar QR (proyektor)
                 </x-filament::button>
