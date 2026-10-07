@@ -57,6 +57,9 @@
                         @else
                             <p class="text-3xl font-bold text-gray-500">Voting tertutup</p>
                             <p class="text-sm text-gray-500">HP warga menampilkan "Menunggu pemungutan dibuka".</p>
+                            @if (($d['round']?->waves()->exists() ?? false) && $d['participation']['not_voted'] > 0 && $election->status === \App\Enums\ElectionStatus::Berlangsung)
+                                <p class="mt-2 text-sm font-semibold text-warning-600">{{ $d['participation']['not_voted'] }} orang belum memilih. Tekan BUKA VOTING untuk sesi berikutnya; yang sudah memilih tidak bisa memilih lagi.</p>
+                            @endif
                         @endif
                     </div>
                     <div class="flex flex-col gap-2">
@@ -77,14 +80,13 @@
 
             {{-- Partisipasi (tanpa angka per kandidat) --}}
             @php($p = $d['participation'])
-            <div class="grid gap-4 grid-cols-2 md:grid-cols-6">
+            <div class="grid gap-4 grid-cols-2 md:grid-cols-5">
                 @foreach ([
                     ['Hadir terdata', $p['attendees']],
                     ['Sudah memilih', $p['voted']],
                     ['Belum memilih', $p['not_voted']],
                     ['Partisipasi', $p['percent'].'%'],
                     ['PIN terkunci', $p['locked']],
-                    ['Dibantu (HP panitia)', $p['assisted']],
                 ] as [$label, $value])
                     <x-filament::section>
                         <p class="text-sm text-gray-500">{{ $label }}</p>

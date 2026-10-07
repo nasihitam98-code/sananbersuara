@@ -303,7 +303,7 @@ class AdminAccessTest extends TestCase
         $this->actingAs($committee);
 
         Livewire::test(ControlRoom::class)
-            ->callAction('openWave', ['assisted' => false, 'timed' => true, 'minutes' => 5])
+            ->callAction('openWave', ['timed' => true, 'minutes' => 5])
             ->assertHasNoActionErrors();
 
         $this->assertNotNull($this->election->fresh()->openWave());
@@ -317,7 +317,7 @@ class AdminAccessTest extends TestCase
         $this->actingAs($committee);
 
         $component = Livewire::test(ControlRoom::class)
-            ->callAction('openWave', ['name' => '  Sesi   pertama ', 'assisted' => false, 'timed' => false])
+            ->callAction('openWave', ['name' => '  Sesi   pertama ', 'timed' => false])
             ->assertHasNoFormErrors()
             ->assertSee('Sesi pertama')
             ->assertSee('Tanpa timer')
@@ -331,13 +331,16 @@ class AdminAccessTest extends TestCase
         $component->callAction('extendWave', ['minutes' => 5])->assertHasNoFormErrors();
         $this->assertTrue($this->election->fresh()->openWave()->ends_at->between(now()->addMinutes(4), now()->addMinutes(6)));
 
-        $component->callAction('closeWave');
+        app(AttendeeRegistrar::class)->register($this->election, 'Mbah Karto', null, $this->superAdmin);
+        $component->callAction('closeWave')
+            ->assertSee('1 orang belum memilih. Tekan BUKA VOTING untuk sesi berikutnya');
         $this->assertNull($this->election->fresh()->openWave());
 
         $component->callAction('openWave', ['name' => 'Sesi lansia'])->assertHasNoFormErrors();
-        $assisted = $this->election->fresh()->openWave();
-        $this->assertSame(WaveKind::Bantuan, $assisted->kind);
-        $this->assertNull($assisted->ends_at);
+        $next = $this->election->fresh()->openWave();
+        $this->assertSame(2, $next->number);
+        $this->assertSame(WaveKind::Terbuka, $next->kind);
+        $this->assertNotNull($next->ends_at);
         $component->callAction('closeWave');
 
         $history = AuditLog::query()->where('action', 'wave.opened')->oldest('id')->firstOrFail();

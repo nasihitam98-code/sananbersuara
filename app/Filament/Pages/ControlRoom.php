@@ -30,7 +30,6 @@ use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -206,25 +205,19 @@ class ControlRoom extends Page
             ->schema(function (): array {
                 $round = $this->election()?->currentRound();
                 $nextNumber = (int) ($round?->waves()->max('number') ?? 0) + 1;
-                // Sesi pertama biasanya untuk semua warga (HP sendiri, ber-timer); sesi berikutnya biasanya bantuan.
-                $assistedByDefault = $nextNumber > 1;
 
                 return [
                     TextInput::make('name')
                         ->label('Nama sesi (opsional)')
                         ->placeholder("Gelombang {$nextNumber}")
-                        ->helperText('Mis. "Sesi pertama", "Sesi lansia", "Susulan RT 05". Kosongkan = Gelombang '.$nextNumber.'.')
+                        ->helperText($nextNumber > 1
+                            ? 'Sesi ini untuk warga yang BELUM memilih. Yang sudah memilih tidak bisa memilih lagi. Kosongkan = Gelombang '.$nextNumber.'.'
+                            : 'Mis. "Sesi pertama", "Sesi lansia", "Susulan RT 05". Kosongkan = Gelombang 1.')
                         ->maxLength(60),
-                    Toggle::make('assisted')
-                        ->label('Sesi bantuan (warga memilih lewat HP panitia)')
-                        ->helperText('Untuk lansia/warga tanpa HP. Suara ditandai "Dibantu", dan HP otomatis kembali ke awal setelah memilih, siap untuk orang berikutnya.')
-                        ->default($assistedByDefault)
-                        ->live()
-                        ->afterStateUpdated(fn (bool $state, Set $set) => $set('timed', ! $state)),
                     Toggle::make('timed')
                         ->label('Pakai timer')
                         ->helperText('Matikan bila ingin buka-tutup manual: voting terbuka sampai Anda menekan Tutup Sekarang.')
-                        ->default(! $assistedByDefault)
+                        ->default(true)
                         ->live(),
                     TextInput::make('minutes')
                         ->label('Durasi (menit)')
@@ -235,7 +228,8 @@ class ControlRoom extends Page
                 ];
             })
             ->action(function (array $data): void {
-                $kind = ($data['assisted'] ?? false) ? WaveKind::Bantuan : WaveKind::Terbuka;
+                // Semua sesi sama: siapa pun yang belum memilih boleh memilih, dari HP mana pun.
+                $kind = WaveKind::Terbuka;
                 $minutes = ($data['timed'] ?? false) && filled($data['minutes'] ?? null) ? (int) $data['minutes'] : null;
 
                 $this->guard(fn () => app(WaveManager::class)->open($this->authorizedElection(), $kind, $minutes, auth()->user(), $data['name'] ?? null), 'Voting dibuka.');
