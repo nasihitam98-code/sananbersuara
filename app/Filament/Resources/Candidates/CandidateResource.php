@@ -12,6 +12,7 @@ use App\Filament\Resources\Candidates\Pages\ListCandidates;
 use App\Filament\Support\Workspace;
 use App\Models\Ballot;
 use App\Models\Candidate;
+use App\Models\Election;
 use App\Models\GalleryPhoto;
 use App\Models\Unit;
 use App\Models\User;
@@ -40,10 +41,12 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\SelectColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Unique;
 use UnitEnum;
@@ -98,6 +101,42 @@ class CandidateResource extends Resource
         }
 
         return count($options) === 1 ? (int) array_key_first($options) : null;
+    }
+
+    /**
+     * Pemilihan (mode kerja ini, belum dibatalkan/diarsipkan) untuk filter daftar calon, terbaru dulu.
+     *
+     * @return array<int, string>
+     */
+    public static function electionFilterOptions(): array
+    {
+        return static::filterableElections()
+            ->mapWithKeys(fn (Election $election): array => [$election->id => "{$election->name} ({$election->status->getLabel()})"])
+            ->all();
+    }
+
+    /**
+     * Bawaan filter: pemilihan yang sedang disiapkan (Draf/Siap), lalu yang berjalan, lalu yang terbaru.
+     */
+    public static function defaultElectionFilter(): ?int
+    {
+        $elections = static::filterableElections();
+
+        return ($elections->first(fn (Election $election): bool => $election->status->allowsConfigurationChanges())
+            ?? $elections->first(fn (Election $election): bool => $election->status->isLive())
+            ?? $elections->first())?->id;
+    }
+
+    /**
+     * @return Collection<int, Election>
+     */
+    private static function filterableElections(): Collection
+    {
+        return Election::query()
+            ->whereNotIn('status', [ElectionStatus::Cancelled, ElectionStatus::Archived])
+            ->when(Workspace::current(), fn (Builder $query, ElectionMode $mode): Builder => $query->where('mode', $mode))
+            ->latest('id')
+            ->get();
     }
 
     /**
@@ -334,13 +373,24 @@ class CandidateResource extends Resource
                 TextColumn::make('ballot.election.name')->label('Pemilihan')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('status')->label('Status')->badge(),
             ])
+            // Satu pemilihan per tampilan agar calon pemilihan lain tidak tercampur; bawaan = yang sedang disiapkan/berjalan.
+            ->filtersLayout(FiltersLayout::AboveContent)
+            ->filtersFormColumns(3)
+            ->deferFilters(false)
             ->filters([
-                Filter::make('without_photo')
-                    ->label('Belum ada foto')
-                    ->query(fn (Builder $query): Builder => $query->whereNull('photo_key')),
+                SelectFilter::make('election')
+                    ->label('Pemilihan')
+                    ->options(fn (): array => static::electionFilterOptions())
+                    ->default(fn (): ?int => static::defaultElectionFilter())
+                    ->query(fn (Builder $query, array $data): Builder => filled($data['value'] ?? null)
+                        ? $query->whereHas('ballot', fn (Builder $ballot): Builder => $ballot->where('election_id', $data['value']))
+                        : $query),
                 SelectFilter::make('ballot_id')
                     ->label('Surat suara')
                     ->options(fn (): array => Ballot::query()->with('election')->get()->mapWithKeys(fn (Ballot $ballot): array => [$ballot->id => "{$ballot->election->name} — {$ballot->title}"])->all()),
+                Filter::make('without_photo')
+                    ->label('Belum ada foto')
+                    ->query(fn (Builder $query): Builder => $query->whereNull('photo_key')),
             ])
             // Tombol ikon agar tabel tidak perlu digeser; keterangan muncul saat kursor diarahkan.
             ->recordActions([

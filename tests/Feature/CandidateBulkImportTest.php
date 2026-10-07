@@ -206,6 +206,24 @@ class CandidateBulkImportTest extends TestCase
         $this->importer()->import($this->ballot->fresh(), null, 'Penyusup', $this->superAdmin);
     }
 
+    public function test_candidate_list_shows_one_election_at_a_time_defaulting_to_the_one_being_prepared(): void
+    {
+        $this->actingAs($this->superAdmin);
+        $closedElection = Election::factory()->create(['name' => 'Latihan Lama']);
+        $closedBallot = Ballot::factory()->for($closedElection)->create();
+        $old = Candidate::factory()->for($closedBallot)->create(['number' => 1, 'name' => 'Calon Lama']);
+        $closedElection->forceFill(['status' => ElectionStatus::Ditutup])->save();
+        $current = Candidate::factory()->for($this->ballot)->create(['number' => 1, 'name' => 'Calon Baru']);
+
+        Livewire::test(ListCandidates::class)
+            ->assertTableFilterExists('election')
+            ->assertCanSeeTableRecords([$current])
+            ->assertCanNotSeeTableRecords([$old])
+            ->filterTable('election', $closedElection->id)
+            ->assertCanSeeTableRecords([$old])
+            ->assertCanNotSeeTableRecords([$current]);
+    }
+
     public function test_candidate_list_hides_candidates_of_cancelled_elections(): void
     {
         $this->actingAs($this->superAdmin);
