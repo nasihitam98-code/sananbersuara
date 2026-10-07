@@ -219,7 +219,7 @@ class ElectionFocusTest extends TestCase
             ->assertSee('Pengaturan pemilihan')
             ->assertSee(ElectionResource::getUrl('edit', ['record' => $election]), false)
             ->assertSee('Lainnya')
-            ->assertDontSee('Detail Suara')
+            ->assertSee('Detail Suara')
             ->assertDontSee('Data dasar');
 
         $this->get(ElectionResource::getUrl('create'))

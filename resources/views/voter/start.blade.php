@@ -56,6 +56,7 @@
                 <h2>Siapkan:</h2>
                 <p>Kertas berisi <strong>PIN 4 angka</strong> yang Anda terima dari petugas di pintu.</p>
                 <p class="muted">PIN hanya untuk Anda. Jangan berikan kepada orang lain.</p>
+                @include('voter.partials.privacy-notice')
             </section>
 
             @foreach ($thumbs as $thumb)

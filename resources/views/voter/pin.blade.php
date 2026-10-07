@@ -38,6 +38,8 @@
 
                 <button type="submit" class="btn btn--primary">MASUK</button>
             </form>
+
+            @include('voter.partials.privacy-notice')
         </section>
 
         <a class="btn btn--ghost" href="{{ route('voter.show', $election->access_code) }}">Bukan nama saya, kembali</a>

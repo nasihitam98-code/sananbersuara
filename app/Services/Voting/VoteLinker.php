@@ -10,8 +10,8 @@ use RuntimeException;
  * Tautan sementara peserta-suara untuk Mode Dadakan (keputusan K25, Opsi A).
  *
  * Suara menyimpan HMAC(kunci server, peserta + surat suara + putaran), bukan ID peserta.
- * Tautan hanya bisa dihitung ulang oleh server yang memegang VOTE_LINK_KEY, dan seluruh
- * kolom voter_link dikosongkan saat pemilihan ditutup.
+ * Tautan hanya bisa dihitung ulang oleh server yang memegang VOTE_LINK_KEY. Tautan disimpan untuk
+ * Detail Suara saat sengketa dan dikosongkan DataRetention setelah masa sengketa.
  */
 class VoteLinker
 {

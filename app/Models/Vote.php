@@ -47,7 +47,7 @@ class Vote extends Model
     }
 
     /**
-     * Hanya Mode Resmi (Detail Suara Super Admin). Mode Dadakan tidak menyimpan ID pemilih.
+     * Hanya Mode Resmi (Detail Suara Super Admin). Mode Dadakan memakai voter_link (lihat VoteLinker).
      *
      * @return BelongsTo<Voter, $this>
      */
@@ -62,5 +62,13 @@ class Vote extends Model
     public function ballot(): BelongsTo
     {
         return $this->belongsTo(Ballot::class);
+    }
+
+    /**
+     * @return BelongsTo<Round, $this>
+     */
+    public function round(): BelongsTo
+    {
+        return $this->belongsTo(Round::class);
     }
 }

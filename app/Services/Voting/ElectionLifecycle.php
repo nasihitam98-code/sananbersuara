@@ -198,10 +198,9 @@ class ElectionLifecycle
 
             $election->closed_at = $now;
 
-            if ($election->isDadakan()) {
-                DB::table('votes')->where('election_id', $election->id)->update(['voter_link' => null]);
-                $election->vote_links_destroyed_at = $now;
-            } else {
+            // Mode Dadakan: tautan peserta–suara (voter_link) disimpan untuk Detail Suara saat sengketa,
+            // lalu dihapus oleh DataRetention setelah masa sengketa (keputusan panitia, menggantikan K25 Opsi A).
+            if (! $election->isDadakan()) {
                 // Mode Resmi: suara yang belum dikonfirmasi tidak tersimpan; semua laptop dilepas (K14, K29).
                 app(PermitManager::class)->stopAll($election, 'PEMILIHAN_DITUTUP');
                 app(DeviceManager::class)->releaseAll($election);

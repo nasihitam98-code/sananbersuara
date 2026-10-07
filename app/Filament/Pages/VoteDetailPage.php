@@ -14,6 +14,7 @@ use App\Models\Vote;
 use App\Models\Voter;
 use App\Services\AuditLogger;
 use App\Services\InternalNotifier;
+use App\Services\Voting\VoteLinker;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -41,7 +42,7 @@ class VoteDetailPage extends Page
 
     public static function shouldRegisterNavigation(): bool
     {
-        return Workspace::shows(ElectionMode::Resmi);
+        return Workspace::shows();
     }
 
     protected static ?string $navigationLabel = 'Detail Suara';
@@ -74,7 +75,7 @@ class VoteDetailPage extends Page
     public function availableElections(): Collection
     {
         return Election::query()
-            ->where('mode', ElectionMode::Resmi)
+            ->when(Workspace::current(), fn ($query, ElectionMode $mode) => $query->where('mode', $mode))
             ->whereIn('status', [ElectionStatus::Ditutup, ElectionStatus::Verifikasi, ElectionStatus::Published, ElectionStatus::Unpublished, ElectionStatus::Archived])
             ->whereNull('vote_links_destroyed_at')
             ->latest()
@@ -141,7 +142,10 @@ class VoteDetailPage extends Page
     }
 
     /**
-     * @return Collection<int, Vote>
+     * Baris siapa memilih siapa. Mode Resmi lewat voter_id; Mode Dadakan lewat voter_link
+     * (HMAC peserta + surat suara + putaran) yang dicocokkan ulang di server.
+     *
+     * @return Collection<int, array{unit: string, number: string, name: string, choice: string, round: int, valid: bool}>
      */
     public function rows(): Collection
     {
@@ -152,14 +156,73 @@ class VoteDetailPage extends Page
             return collect();
         }
 
+        return $election->isDadakan() ? $this->dadakanRows($election) : $this->resmiRows($election);
+    }
+
+    /**
+     * @return Collection<int, array{unit: string, number: string, name: string, choice: string, round: int, valid: bool}>
+     */
+    private function resmiRows(Election $election): Collection
+    {
         return Vote::query()
             ->where('election_id', $election->id)
             ->where('ballot_id', $this->ballotFilter)
             ->whereNotNull('voter_id')
             ->when($this->unitFilter !== null, fn ($query) => $query->whereIn('voter_id', Voter::query()->where('unit_id', $this->unitFilter)->select('id')))
-            ->with(['voter.unit', 'candidate'])
+            ->with(['voter.unit', 'candidate', 'round'])
             ->get()
-            ->sortBy(fn (Vote $vote): string => $vote->voter->unit->code.$vote->voter->name)
+            ->map(fn (Vote $vote): array => [
+                'unit' => $vote->voter->unit->name,
+                'number' => (string) $vote->voter->voter_number,
+                'name' => $vote->voter->name,
+                'choice' => $vote->candidate->displayNumber().' · '.$vote->candidate->name,
+                'round' => (int) $vote->round?->number,
+                'valid' => $vote->status->value === 'SAH',
+            ])
+            ->sortBy(fn (array $row): string => $row['unit'].$row['name'])
+            ->values();
+    }
+
+    /**
+     * @return Collection<int, array{unit: string, number: string, name: string, choice: string, round: int, valid: bool}>
+     */
+    private function dadakanRows(Election $election): Collection
+    {
+        $linker = app(VoteLinker::class);
+        $rounds = $election->rounds()->get();
+        $attendees = $election->attendees()
+            ->when($this->unitFilter !== null, fn ($query) => $query->where('unit_id', $this->unitFilter))
+            ->with('unit')
+            ->get();
+
+        // Hitung ulang tautan setiap peserta untuk surat suara ini di setiap putaran.
+        $byLink = [];
+        foreach ($attendees as $attendee) {
+            foreach ($rounds as $round) {
+                $byLink[$linker->link($attendee, (int) $this->ballotFilter, $round->id)] = $attendee;
+            }
+        }
+
+        return Vote::query()
+            ->where('election_id', $election->id)
+            ->where('ballot_id', $this->ballotFilter)
+            ->whereNotNull('voter_link')
+            ->with(['candidate', 'round'])
+            ->get()
+            ->filter(fn (Vote $vote): bool => isset($byLink[$vote->voter_link]))
+            ->map(function (Vote $vote) use ($byLink): array {
+                $attendee = $byLink[$vote->voter_link];
+
+                return [
+                    'unit' => $attendee->unit?->name ?? '-',
+                    'number' => $attendee->displayNumber(),
+                    'name' => $attendee->name,
+                    'choice' => $vote->candidate->displayNumber().' · '.$vote->candidate->name,
+                    'round' => (int) $vote->round?->number,
+                    'valid' => $vote->status->value === 'SAH',
+                ];
+            })
+            ->sortBy(fn (array $row): string => $row['number'])
             ->values();
     }
 

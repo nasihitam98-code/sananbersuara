@@ -4,10 +4,10 @@
     @if ($election === null)
         <x-filament::section>
             <div class="space-y-3">
-                <p>Halaman ini menampilkan <strong>siapa memilih siapa</strong> untuk pemilihan Mode Resmi yang sudah <strong>ditutup</strong>.</p>
+                <p>Halaman ini menampilkan <strong>siapa memilih siapa</strong> untuk pemilihan yang sudah <strong>ditutup</strong>.</p>
                 <p class="text-sm text-gray-500">Gunakan hanya untuk sengketa, pemeriksaan koreksi, atau audit. Setiap pembukaan dicatat dan diberitahukan.</p>
                 @if ($this->availableElections()->isEmpty())
-                    <p class="text-warning-600">Belum ada pemilihan Mode Resmi yang ditutup (atau keterkaitannya sudah dihapus sesuai kebijakan retensi).</p>
+                    <p class="text-warning-600">Belum ada pemilihan yang ditutup (atau keterkaitannya sudah dihapus sesuai kebijakan retensi).</p>
                 @else
                     @if ($this->openAction->isVisible()) {{ $this->openAction }} @endif
                 @endif
@@ -43,18 +43,21 @@
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead class="text-left text-gray-500">
-                        <tr><th class="py-1 pe-3">RT</th><th class="pe-3">ID</th><th class="pe-3">Nama pemilih</th><th class="pe-3">Pilihan</th><th>Status suara</th></tr>
+                        <tr><th class="py-1 pe-3">RT</th><th class="pe-3">No.</th><th class="pe-3">Nama pemilih</th><th class="pe-3">Pilihan</th><th class="pe-3">Putaran</th><th>Status suara</th></tr>
                     </thead>
                     <tbody>
-                        @foreach ($this->rows() as $vote)
+                        @forelse ($this->rows() as $row)
                             <tr class="border-t border-gray-100 dark:border-white/5">
-                                <td class="py-1 pe-3">{{ $vote->voter->unit->name }}</td>
-                                <td class="pe-3 font-mono">{{ $vote->voter->voter_number }}</td>
-                                <td class="pe-3">{{ $vote->voter->name }}</td>
-                                <td class="pe-3">{{ $vote->candidate->displayNumber() }} · {{ $vote->candidate->name }}</td>
-                                <td>{{ $vote->status->value === 'SAH' ? 'Sah' : 'Dibatalkan' }}</td>
+                                <td class="py-1 pe-3">{{ $row['unit'] }}</td>
+                                <td class="pe-3 font-mono">{{ $row['number'] }}</td>
+                                <td class="pe-3">{{ $row['name'] }}</td>
+                                <td class="pe-3">{{ $row['choice'] }}</td>
+                                <td class="pe-3">{{ $row['round'] }}</td>
+                                <td>{{ $row['valid'] ? 'Sah' : 'Dibatalkan' }}</td>
                             </tr>
-                        @endforeach
+                        @empty
+                            <tr><td colspan="6" class="py-3 text-gray-500">Tidak ada data untuk pilihan ini.</td></tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>

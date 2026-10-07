@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Retensi data pribadi (K26, UU PDP):
- * 1. Keterkaitan pemilih–pilihan (Mode Resmi) dihapus N hari setelah dipublikasikan (default 30, bisa diperpanjang).
+ * 1. Keterkaitan pemilih–pilihan (Mode Resmi dan Dadakan) dihapus N hari setelah dipublikasikan (default 30, bisa diperpanjang).
  *    Status "sudah memilih" disimpan tanpa pilihan. Setelah ini Detail Suara tidak tersedia lagi.
  * 2. Satu tahun setelah ditutup: snapshot hak pilih, log izin, pengajuan koreksi, dan nama peserta
  *    Mode Dadakan dianonimkan. Angka di berita acara (snapshot terkunci) tetap utuh.
@@ -24,7 +24,7 @@ class DataRetention
 
     public function linkageDeadline(Election $election): ?Carbon
     {
-        if ($election->isDadakan() || $election->published_at === null) {
+        if ($election->published_at === null) {
             return null;
         }
 
@@ -56,7 +56,19 @@ class DataRetention
      */
     public function purgeLinkage(Election $election): void
     {
-        if ($election->isDadakan() || $election->vote_links_destroyed_at !== null) {
+        if ($election->vote_links_destroyed_at !== null) {
+            return;
+        }
+
+        if ($election->isDadakan()) {
+            // Mode Dadakan: tautan teracak peserta–suara dikosongkan; status "sudah memilih" tetap di attendee_participations.
+            DB::transaction(function () use ($election): void {
+                DB::table('votes')->where('election_id', $election->id)->update(['voter_link' => null]);
+                $election->forceFill(['vote_links_destroyed_at' => Carbon::now()])->save();
+            });
+
+            $this->audit->log('retention.linkage_purged', $election, $election, actorType: 'system');
+
             return;
         }
 

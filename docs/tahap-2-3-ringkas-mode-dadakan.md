@@ -30,7 +30,7 @@ Tandai Siap → Mulai Pemilihan               → periksa → KONFIRMASI → lay
 | `rounds` / `waves` | Putaran dan gelombang (jenis, timer, status) | |
 | `attendees` | Peserta hadir, nomor hadir, **hash PIN** (HMAC + pepper server), jumlah salah PIN, kunci | PIN asli tidak pernah disimpan |
 | `attendee_participations` | "Sudah memilih" per peserta/surat suara/putaran, penanda **dibantu** | Tidak menyimpan pilihan |
-| `votes` | Pilihan. **UUID acak, tanpa timestamp**, `voter_link` = HMAC sementara | Tidak memuat ID peserta; tautan dihapus saat ditutup |
+| `votes` | Pilihan. **UUID acak, tanpa timestamp**, `voter_link` = HMAC sementara | Tidak memuat ID peserta; tautan disimpan untuk Detail Suara (sengketa, khusus Super Admin, tercatat) dan dihapus otomatis setelah masa sengketa (keputusan panitia 7 Okt 2026, menggantikan "dihapus saat ditutup") |
 | `vote_cancellations` | Pembatalan (alasan, pelaku) | Tidak memuat pilihan |
 | `election_staff` | Penugasan Panitia / Petugas Pintu per pemilihan | |
 | `audit_logs` | Append-only, **hash berantai**, trigger DB menolak UPDATE/DELETE | Tanpa PIN, token, pilihan |

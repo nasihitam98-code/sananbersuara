@@ -6,13 +6,16 @@ use App\Enums\ElectionStatus;
 use App\Enums\RestoreReason;
 use App\Enums\VoteStatus;
 use App\Enums\WaveKind;
+use App\Filament\Pages\VoteDetailPage;
 use App\Models\Attendee;
+use App\Models\AuditLog;
 use App\Models\Ballot;
 use App\Models\Candidate;
 use App\Models\Election;
 use App\Models\User;
 use App\Models\Vote;
 use App\Services\AuditLogger;
+use App\Services\Results\DataRetention;
 use App\Services\Voting\AttendeeRegistrar;
 use App\Services\Voting\BallotBox;
 use App\Services\Voting\ElectionLifecycle;
@@ -20,9 +23,12 @@ use App\Services\Voting\ResultsCalculator;
 use App\Services\Voting\VoterRightRestorer;
 use App\Services\Voting\VotingException;
 use App\Services\Voting\WaveManager;
+use Database\Seeders\DatabaseSeeder;
+use Filament\Facades\Filament;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class DadakanVotingTest extends TestCase
@@ -249,7 +255,63 @@ class DadakanVotingTest extends TestCase
         $this->assertStringNotContainsString($pin, $meta);
     }
 
-    public function test_closing_destroys_vote_links_and_tally_counts_correctly(): void
+    public function test_super_admin_can_see_who_voted_whom_after_close_and_it_is_audited(): void
+    {
+        $this->startAndOpenWave();
+        $box = app(BallotBox::class);
+        ['attendee' => $budi, 'pin' => $budiPin] = $this->register('Budi Santoso');
+        ['attendee' => $siti, 'pin' => $sitiPin] = $this->register('Siti Aminah');
+        $box->cast($this->election, $budi, $box->verifyPin($this->election, $budi, $budiPin), $this->ballot, $this->candidates[0]);
+        $box->cast($this->election, $siti, $box->verifyPin($this->election, $siti, $sitiPin), $this->ballot, $this->candidates[1]);
+
+        $this->seed(DatabaseSeeder::class);
+        Filament::setCurrentPanel('admin');
+        $superAdmin = User::factory()->create();
+        $superAdmin->forceFill(['must_change_password' => false, 'has_email_authentication' => true])->save();
+        $superAdmin->assignRole(User::ROLE_SUPER_ADMIN);
+        $this->actingAs($superAdmin);
+
+        // Selama berlangsung: belum bisa dibuka.
+        Livewire::test(VoteDetailPage::class)->assertSee('Belum ada pemilihan yang ditutup');
+
+        app(ElectionLifecycle::class)->close($this->election, $this->admin);
+
+        $rows = Livewire::test(VoteDetailPage::class)
+            ->callAction('open', ['election' => $this->election->id, 'reason' => 'AUDIT', 'current_password' => 'password'])
+            ->assertHasNoFormErrors()
+            ->assertSee('Budi Santoso')
+            ->instance()
+            ->rows();
+
+        $choices = $rows->pluck('choice', 'name');
+        $this->assertStringContainsString($this->candidates[0]->name, $choices['Budi Santoso']);
+        $this->assertStringContainsString($this->candidates[1]->name, $choices['Siti Aminah']);
+        $this->assertTrue(AuditLog::query()->where('action', 'vote_detail.opened')->exists());
+    }
+
+    public function test_dispute_period_retention_removes_the_vote_links_for_good(): void
+    {
+        $this->startAndOpenWave();
+        $box = app(BallotBox::class);
+        ['attendee' => $attendee, 'pin' => $pin] = $this->register();
+        $box->cast($this->election, $attendee, $box->verifyPin($this->election, $attendee, $pin), $this->ballot, $this->candidates[0]);
+        app(ElectionLifecycle::class)->close($this->election, $this->admin);
+
+        app(DataRetention::class)->purgeLinkage($this->election->fresh());
+
+        $this->assertSame(0, Vote::query()->whereNotNull('voter_link')->count());
+        $this->assertNotNull($this->election->fresh()->vote_links_destroyed_at);
+        $this->assertSame(1, app(ResultsCalculator::class)->tally($this->ballot, $this->election->rounds()->first())['valid'], 'Hasil tetap utuh');
+    }
+
+    public function test_voters_are_told_their_choice_can_be_opened_only_for_disputes(): void
+    {
+        $this->get(route('voter.show', $this->election->access_code))
+            ->assertOk()
+            ->assertSee('Pilihan Anda dirahasiakan');
+    }
+
+    public function test_closing_keeps_vote_links_for_disputes_and_tally_counts_correctly(): void
     {
         $this->startAndOpenWave();
         $box = app(BallotBox::class);
@@ -262,7 +324,7 @@ class DadakanVotingTest extends TestCase
         app(ElectionLifecycle::class)->close($this->election, $this->admin);
 
         $this->assertSame(ElectionStatus::Ditutup, $this->election->fresh()->status);
-        $this->assertSame(0, Vote::query()->whereNotNull('voter_link')->count());
+        $this->assertSame(3, Vote::query()->whereNotNull('voter_link')->count(), 'Tautan disimpan untuk Detail Suara saat sengketa');
 
         $tally = app(ResultsCalculator::class)->tally($this->ballot, $this->election->rounds()->first());
         $this->assertSame(3, $tally['valid']);

@@ -216,7 +216,7 @@ class ResmiResultsTest extends TestCase
     {
         $this->actingAs($this->superAdmin);
 
-        Livewire::test(VoteDetailPage::class)->assertSee('Belum ada pemilihan Mode Resmi yang ditutup');
+        Livewire::test(VoteDetailPage::class)->assertSee('Belum ada pemilihan yang ditutup');
 
         app(ElectionLifecycle::class)->close($this->election, $this->superAdmin);
 
