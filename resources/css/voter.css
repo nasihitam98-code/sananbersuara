@@ -837,3 +837,32 @@ body[data-phase="finished"] .screen__grid {
     grid-template-columns: 1fr;
     max-width: 900px;
 }
+
+.screen__topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.screen__fullscreen {
+    min-height: 44px;
+    padding: 8px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    font: inherit;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.screen__fullscreen:hover,
+.screen__fullscreen:focus-visible {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+/* Saat layar penuh tombolnya disembunyikan agar tidak terlihat warga; keluar dengan Esc. */
+:fullscreen .screen__fullscreen {
+    display: none;
+}

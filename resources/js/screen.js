@@ -82,3 +82,13 @@ if (statusUrl) {
     setInterval(renderTimer, 1000);
     poll();
 }
+
+const fullscreenButton = el('fullscreen');
+
+if (fullscreenButton && document.documentElement.requestFullscreen) {
+    fullscreenButton.addEventListener('click', () => {
+        document.documentElement.requestFullscreen().catch(() => {});
+    });
+} else if (fullscreenButton) {
+    fullscreenButton.classList.add('hidden');
+}

@@ -8,9 +8,12 @@
     @vite(['resources/css/voter.css', 'resources/js/screen.js'])
 </head>
 <body class="screen" data-status-url="{{ route('screens.qr.status', $election->public_id) }}" data-phase="{{ $status['phase'] }}">
-    <header class="topbar">
-        <p class="topbar__label">Pindai untuk memilih</p>
-        <p class="topbar__title">{{ $election->name }}</p>
+    <header class="topbar screen__topbar">
+        <div>
+            <p class="topbar__label">Pindai untuk memilih</p>
+            <p class="topbar__title">{{ $election->name }}</p>
+        </div>
+        <button type="button" class="screen__fullscreen" data-fullscreen>⛶ Layar penuh</button>
     </header>
     <main class="screen__grid">
         <section class="card screen__qr" data-qr-card>

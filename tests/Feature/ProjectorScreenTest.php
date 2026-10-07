@@ -91,6 +91,7 @@ class ProjectorScreenTest extends TestCase
             ->assertOk()
             ->assertSee(route('screens.qr.status', $this->election->public_id), false)
             ->assertSee('Menunggu voting dibuka')
+            ->assertSee('Layar penuh')
             ->assertSee('sudah memilih')
             ->assertDontSee('Calon Rahasia');
     }
