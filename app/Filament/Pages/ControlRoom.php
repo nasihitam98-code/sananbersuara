@@ -9,10 +9,13 @@ use App\Enums\StaffRole;
 use App\Enums\WaveKind;
 use App\Enums\WaveStatus;
 use App\Filament\Pages\Concerns\InteractsWithElection;
+use App\Filament\Support\Reauthenticate;
 use App\Filament\Support\Workspace;
 use App\Models\Attendee;
 use App\Models\Election;
+use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\Voting\ElectionLifecycle;
 use App\Services\Voting\ResultsCalculator;
 use App\Services\Voting\VoterRightRestorer;
 use App\Services\Voting\VoterStatus;
@@ -157,6 +160,35 @@ class ControlRoom extends Page
             ->orderBy('name')
             ->limit(200)
             ->get();
+    }
+
+    /**
+     * Super Admin bisa memulai pemilihan langsung dari sini agar tidak bolak-balik ke menu Pemilihan.
+     * Panitia tidak: memulai pemilihan mengunci surat suara dan calon.
+     */
+    public function startElectionAction(): Action
+    {
+        return Action::make('startElection')
+            ->label('Mulai Pemilihan')
+            ->icon('heroicon-o-play')
+            ->color('success')
+            ->size('xl')
+            ->visible(fn (): bool => $this->election()?->status === ElectionStatus::Ready && $this->isSuperAdmin())
+            ->modalHeading('Mulai pemilihan?')
+            ->modalDescription('Surat suara dan calon terkunci setelah dimulai. Setelah itu tekan BUKA VOTING agar HP warga bisa memilih.')
+            ->schema([Reauthenticate::field()])
+            ->action(function (): void {
+                abort_unless($this->isSuperAdmin(), 403);
+
+                $this->guard(fn () => app(ElectionLifecycle::class)->start($this->authorizedElection(), auth()->user()), 'Pemilihan dimulai. Sekarang tekan BUKA VOTING.');
+            });
+    }
+
+    private function isSuperAdmin(): bool
+    {
+        $user = auth()->user();
+
+        return $user instanceof User && $user->isSuperAdmin();
     }
 
     public function openWaveAction(): Action

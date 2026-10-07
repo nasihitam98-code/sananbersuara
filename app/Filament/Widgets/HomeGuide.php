@@ -210,10 +210,11 @@ class HomeGuide extends Widget
                     fn () => CandidateResource::canAccess() ? ['Isi calon', CandidateResource::getUrl()] : null,
                 ]],
             ElectionStatus::Ready => $dadakan
-                ? ['Sudah siap. Petugas pintu sudah bisa mendata yang datang. Saat acara dimulai: '.$startedBy, [
-                    fn () => $edit('Buka halaman pemilihan (Mulai Pemilihan)'),
-                    fn () => $page(DoorDesk::class, 'Buka Meja Pintu'),
-                ]]
+                ? ['Sudah siap. Petugas pintu sudah bisa mendata yang datang. Saat acara dimulai: '
+                    .($manager ? 'buka Ruang Kendali, klik Mulai Pemilihan, lalu BUKA VOTING.' : 'pemilihan dimulai oleh Super Admin.'), [
+                        fn () => $page(ControlRoom::class, $manager ? 'Buka Ruang Kendali (Mulai Pemilihan)' : 'Buka Ruang Kendali'),
+                        fn () => $page(DoorDesk::class, 'Buka Meja Pintu'),
+                    ]]
                 : [$manager
                     ? 'Sudah siap. Pasang laptop meja dan bilik dengan token, lalu buka halaman pemilihan dan klik Mulai Pemilihan.'
                     : 'Sudah siap. Laptop meja dan bilik dipasang Super Admin; '.$startedBy, [

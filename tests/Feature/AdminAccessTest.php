@@ -309,6 +309,28 @@ class AdminAccessTest extends TestCase
         $this->actingAs($committee)->get(route('screens.qr', $this->election->public_id))->assertOk();
     }
 
+    public function test_super_admin_starts_election_from_control_room_but_committee_cannot(): void
+    {
+        $committee = $this->makeUser(User::ROLE_STAFF, StaffRole::Panitia);
+        $this->actingAs($committee);
+
+        Livewire::test(ControlRoom::class)
+            ->assertActionHidden('startElection')
+            ->assertActionHidden('openWave')
+            ->assertSee('Tunggu Super Admin menekan');
+
+        $this->actingAs($this->superAdmin);
+
+        Livewire::test(ControlRoom::class)
+            ->assertActionVisible('startElection')
+            ->callAction('startElection', ['current_password' => 'password'])
+            ->assertHasNoFormErrors()
+            ->assertActionHidden('startElection')
+            ->assertActionVisible('openWave');
+
+        $this->assertSame(ElectionStatus::Berlangsung, $this->election->fresh()->status);
+    }
+
     public function test_staff_tab_only_shows_for_dadakan_elections(): void
     {
         $this->actingAs($this->superAdmin);

@@ -82,7 +82,7 @@ class HomeGuideTest extends TestCase
             ->assertSee('Ganti mode')
             ->assertSee('Penjaringan Calon RW')
             ->assertSee('Sudah siap. Petugas pintu sudah bisa mendata')
-            ->assertSee('Buka halaman pemilihan (Mulai Pemilihan)')
+            ->assertSee('Buka Ruang Kendali (Mulai Pemilihan)')
             ->assertSee('Surat suara:')
             ->assertSee('Klik tahap yang sudah lewat')
             ->assertSee(ElectionResource::getUrl('edit', ['record' => $this->election]), false)

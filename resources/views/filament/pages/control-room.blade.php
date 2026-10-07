@@ -59,11 +59,16 @@
                         @endif
                     </div>
                     <div class="flex flex-col gap-2">
+                        {{ $this->startElectionAction }}
                         {{ $this->openWaveAction }}
                         {{ $this->extendWaveAction }}
                         {{ $this->closeWaveAction }}
                         @if ($election->status === \App\Enums\ElectionStatus::Ready)
-                            <p class="text-sm text-warning-600">Pemilihan belum dimulai. Super Admin menekan "Mulai Pemilihan" di menu Pemilihan.</p>
+                            <p class="text-sm text-warning-600">
+                                {{ auth()->user()->isSuperAdmin()
+                                    ? 'Langkah 1: tekan Mulai Pemilihan. Langkah 2: tombol BUKA VOTING muncul di sini.'
+                                    : 'Pemilihan belum dimulai. Tunggu Super Admin menekan "Mulai Pemilihan"; tombol BUKA VOTING lalu muncul di sini.' }}
+                            </p>
                         @endif
                     </div>
                 </div>
