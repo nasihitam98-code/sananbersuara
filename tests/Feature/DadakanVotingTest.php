@@ -182,6 +182,20 @@ class DadakanVotingTest extends TestCase
         $box->cast($this->election, $late, $lateWave, $this->ballot, $this->candidates[0]);
     }
 
+    public function test_attendee_registered_while_wave_is_open_can_vote_in_that_same_wave(): void
+    {
+        $this->register('Datang Awal');
+        $this->startAndOpenWave();
+
+        ['attendee' => $newcomer, 'pin' => $pin] = $this->register('Baru Datang');
+        $this->assertTrue($newcomer->is_late);
+
+        $box = app(BallotBox::class);
+        $box->cast($this->election, $newcomer, $box->verifyPin($this->election, $newcomer, $pin), $this->ballot, $this->candidates[0]);
+
+        $this->assertSame(1, Vote::query()->where('status', VoteStatus::Sah)->count());
+    }
+
     public function test_choice_from_another_ballot_is_rejected(): void
     {
         ['attendee' => $attendee, 'pin' => $pin] = $this->register();
