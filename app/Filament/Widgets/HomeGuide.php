@@ -22,6 +22,7 @@ use App\Filament\Support\Workspace;
 use App\Models\Election;
 use App\Models\User;
 use App\Models\Voter;
+use App\Services\Voting\ResultsCalculator;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
@@ -107,6 +108,65 @@ class HomeGuide extends Widget implements HasActions, HasSchemas
     public function primaryElection(): ?Election
     {
         return Workspace::election();
+    }
+
+    /**
+     * Kartu angka di atas dashboard pemilihan.
+     *
+     * @return array<int, array{label: string, value: string, icon: string, color: string}>
+     */
+    public function dashboardStats(Election $election): array
+    {
+        $candidates = (string) $election->ballots()->withCount('ballotCandidates')->get()->sum('ballot_candidates_count');
+
+        if ($election->mode !== ElectionMode::Dadakan) {
+            return array_map(fn (array $item): array => [
+                'label' => $item['label'],
+                'value' => (string) $item['value'],
+                'icon' => 'heroicon-o-chart-bar',
+                'color' => 'primary',
+            ], $this->preparationSummary($election));
+        }
+
+        $participation = app(ResultsCalculator::class)->participation($election, $election->currentRound());
+
+        return [
+            ['label' => 'Calon', 'value' => $candidates, 'icon' => 'heroicon-o-user-group', 'color' => 'primary'],
+            ['label' => 'Hadir terdata', 'value' => (string) $participation['attendees'], 'icon' => 'heroicon-o-identification', 'color' => 'info'],
+            ['label' => 'Sudah memilih', 'value' => (string) $participation['voted'], 'icon' => 'heroicon-o-check-circle', 'color' => 'success'],
+            ['label' => 'Partisipasi', 'value' => $participation['percent'].'%', 'icon' => 'heroicon-o-chart-pie', 'color' => 'warning'],
+        ];
+    }
+
+    /**
+     * Ubin akses cepat ke halaman pemilihan ini (hanya yang boleh dibuka pengguna dan relevan dengan tahapnya).
+     *
+     * @return array<int, array{label: string, description: string, icon: string, url: string, newTab: bool}>
+     */
+    public function quickLinks(Election $election): array
+    {
+        $query = ['pemilihan' => $election->public_id];
+        $closed = $election->status->allowsResults();
+        $dadakan = $election->mode === ElectionMode::Dadakan;
+
+        $links = [
+            [ElectionResource::canAccess() && ElectionResource::canView($election), 'Pengaturan pemilihan', 'Nama, surat suara, panitia, riwayat', 'heroicon-o-cog-6-tooth', fn (): string => ElectionResource::getUrl('edit', ['record' => $election]), false],
+            [CandidateResource::canAccess(), 'Calon', 'Tambah calon, foto, nomor urut', 'heroicon-o-user-group', fn (): string => CandidateResource::getUrl(), false],
+            [$dadakan && DoorDesk::canAccess(), 'Meja Pintu', 'Data warga yang hadir, cetak PIN', 'heroicon-o-identification', fn (): string => DoorDesk::getUrl($query), false],
+            [$dadakan && ControlRoom::canAccess(), 'Ruang Kendali', 'Buka/tutup voting, pantau peserta', 'heroicon-o-play-circle', fn (): string => ControlRoom::getUrl($query), false],
+            [$dadakan && ControlRoom::canAccess() && ! $closed, 'Layar QR', 'Tampilan proyektor untuk warga', 'heroicon-o-qr-code', fn (): string => route('screens.qr', $election->public_id), true],
+            [! $dadakan && DevicesPage::canAccess(), 'Perangkat', 'Laptop meja dan bilik', 'heroicon-o-computer-desktop', fn (): string => DevicesPage::getUrl($query), false],
+            [! $dadakan && DeskPage::canAccess(), 'Meja Izin', 'Izinkan pemilih ke bilik', 'heroicon-o-clipboard-document-check', fn (): string => DeskPage::getUrl($query), false],
+            [! $dadakan && ParticipationPage::canAccess(), 'Partisipasi', 'Kehadiran per RT', 'heroicon-o-chart-bar-square', fn (): string => ParticipationPage::getUrl($query), false],
+            [$closed && ResultScreen::canAccess(), 'Layar Hasil', 'Pengumuman hasil di proyektor', 'heroicon-o-presentation-chart-bar', fn (): string => ResultScreen::getUrl($query), false],
+            [$closed && VerificationDesk::canAccess(), 'Verifikasi & Publikasi', 'Tetapkan, berita acara, umumkan', 'heroicon-o-document-check', fn (): string => VerificationDesk::getUrl($query), false],
+        ];
+
+        return collect($links)
+            ->filter(fn (array $link): bool => $link[0])
+            ->map(fn (array $link): array => ['label' => $link[1], 'description' => $link[2], 'icon' => $link[3], 'url' => ($link[4])(), 'newTab' => $link[5]])
+            ->values()
+            ->all();
     }
 
     /**

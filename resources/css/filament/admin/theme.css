@@ -2,3 +2,45 @@
 
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
+
+/*
+ * Tampilan modern panel admin: latar lembut, bilah atas transparan, menu aktif berbentuk pil,
+ * kartu membulat dengan bayangan halus. Hanya gaya; tidak mengubah perilaku.
+ */
+.fi-body {
+    @apply bg-gray-50 dark:bg-gray-950;
+    background-image: radial-gradient(60rem 28rem at 100% -10%, color-mix(in oklab, var(--primary-500) 9%, transparent), transparent);
+    background-attachment: fixed;
+}
+
+.fi-topbar {
+    @apply bg-white/80 shadow-none backdrop-blur-md dark:bg-gray-900/80;
+}
+
+.fi-sidebar-group-label {
+    @apply text-xs font-semibold tracking-wider text-gray-400 uppercase dark:text-gray-500;
+}
+
+.fi-sidebar-item-btn {
+    @apply rounded-xl;
+}
+
+.fi-sidebar-item.fi-active > .fi-sidebar-item-btn {
+    @apply bg-primary-50 ring-1 ring-primary-100 dark:bg-primary-500/10 dark:ring-primary-500/20;
+}
+
+.fi-sidebar-item.fi-active .fi-sidebar-item-label {
+    @apply font-semibold;
+}
+
+.fi-section:not(.fi-section-not-contained) {
+    @apply rounded-2xl shadow-sm;
+}
+
+.fi-ta-ctn {
+    @apply rounded-2xl shadow-sm;
+}
+
+.fi-header-heading {
+    @apply tracking-tight;
+}

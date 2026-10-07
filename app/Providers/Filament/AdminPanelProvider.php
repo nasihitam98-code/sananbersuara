@@ -17,6 +17,7 @@ use Filament\Navigation\NavigationItem;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Contracts\View\View;
@@ -37,6 +38,9 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->brandName(fn (): string => config('app.name'))
+            ->brandLogo(fn (): View => view('filament.brand'))
+            ->brandLogoHeight('2.25rem')
+            ->maxContentWidth(Width::Full)
             ->login()
             ->profile(EditProfile::class, isSimple: false)
             ->multiFactorAuthentication(

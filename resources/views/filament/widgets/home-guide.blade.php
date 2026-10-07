@@ -101,76 +101,121 @@
                     </div>
                 @endif
 
-                {{-- Pemilihan utama: tahap sekarang + tombol yang perlu ditekan --}}
-                <x-filament::section>
-                    <div class="flex flex-wrap items-center justify-between gap-3">
-                        <div class="flex flex-wrap items-center gap-2">
-                            <span class="text-lg font-bold">{{ $primary->name }}</span>
-                            <x-filament::badge :color="$primary->status->getColor()">{{ $primary->status->isLive() ? '● ' : '' }}{{ $primary->status->getLabel() }}</x-filament::badge>
-                        </div>
-                        {{-- Tombol utama langsung di depan: Mulai (satu langkah), Hapus/Batalkan. --}}
-                        <div class="flex flex-wrap items-center gap-3">
-                            @php($startHere = ($this->startElectionAction)(['election' => $primary->public_id]))
-                            @if ($startHere->isVisible()) {{ $startHere }} @endif
-                            @php($deleteHere = ($this->deleteElectionAction)(['election' => $primary->public_id]))
-                            @if ($deleteHere->isVisible()) {{ $deleteHere }} @endif
-                            @php($cancelHere = ($this->cancelElectionAction)(['election' => $primary->public_id]))
-                            @if ($cancelHere->isVisible()) {{ $cancelHere }} @endif
+                {{-- Dashboard pemilihan: kepala, angka, tahapan + langkah sekarang, akses cepat. --}}
+                <div class="space-y-6">
+                    <div class="relative overflow-hidden rounded-2xl bg-linear-to-br from-primary-600 to-primary-800 p-6 text-white shadow-sm">
+                        <div class="flex flex-wrap items-start justify-between gap-4">
+                            <div class="space-y-2">
+                                <p class="text-sm font-medium text-white/70">Mode {{ $primary->mode->getLabel() }}</p>
+                                <h2 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $primary->name }}</h2>
+                                <span class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-sm font-semibold ring-1 ring-white/25">
+                                    @if ($primary->status->isLive())
+                                        <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-300"></span>
+                                    @endif
+                                    {{ $primary->status->getLabel() }}
+                                </span>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-3 [&_.fi-link]:text-white/80 [&_.fi-link:hover]:text-white">
+                                @php($startHere = ($this->startElectionAction)(['election' => $primary->public_id]))
+                                @if ($startHere->isVisible()) {{ $startHere }} @endif
+                                @php($deleteHere = ($this->deleteElectionAction)(['election' => $primary->public_id]))
+                                @if ($deleteHere->isVisible()) {{ $deleteHere }} @endif
+                                @php($cancelHere = ($this->cancelElectionAction)(['election' => $primary->public_id]))
+                                @if ($cancelHere->isVisible()) {{ $cancelHere }} @endif
+                            </div>
                         </div>
                     </div>
 
-                    <ol class="mt-5 grid grid-cols-3 gap-2 sm:grid-cols-6">
-                        @foreach ($this->stages($primary) as $index => $item)
-                            @php($classes = \Illuminate\Support\Arr::toCssClasses([
-                                'block rounded-lg px-2 py-2 text-center text-xs font-semibold sm:text-sm',
-                                'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300' => $index < $stage,
-                                'bg-primary-600 text-white' => $index === $stage,
-                                'bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-gray-400' => $index > $stage,
-                                'underline-offset-2 hover:underline hover:ring-2 hover:ring-primary-500' => $item['url'] !== null,
-                            ]))
-                            <li>
-                                @if ($item['url'])
-                                    <a href="{{ $item['url'] }}" class="{{ $classes }}" title="{{ $item['description'] }} (klik untuk membuka)">
-                                        {{ $index < $stage ? '✓ ' : ($index + 1).'. ' }}{{ $item['label'] }}
+                    <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                        @foreach ($this->dashboardStats($primary) as $stat)
+                            <div class="flex items-center gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
+                                <span @class([
+                                    'grid h-12 w-12 shrink-0 place-items-center rounded-xl',
+                                    'bg-primary-50 text-primary-600 dark:bg-primary-500/10 dark:text-primary-400' => $stat['color'] === 'primary',
+                                    'bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400' => $stat['color'] === 'info',
+                                    'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' => $stat['color'] === 'success',
+                                    'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400' => $stat['color'] === 'warning',
+                                ])>
+                                    <x-filament::icon :icon="$stat['icon']" class="h-6 w-6" />
+                                </span>
+                                <div class="min-w-0">
+                                    <p class="truncate text-sm text-gray-500 dark:text-gray-400">{{ $stat['label'] }}</p>
+                                    <p class="text-2xl font-bold tracking-tight tabular-nums">{{ $stat['value'] }}</p>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <div class="grid gap-6 xl:grid-cols-3">
+                        <x-filament::section class="xl:col-span-2" heading="Tahapan">
+                            <ol class="grid grid-cols-3 gap-2 sm:grid-cols-6">
+                                @foreach ($this->stages($primary) as $index => $item)
+                                    @php($classes = \Illuminate\Support\Arr::toCssClasses([
+                                        'flex h-full flex-col items-center gap-1 rounded-xl px-2 py-3 text-center text-xs font-semibold sm:text-sm',
+                                        'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300' => $index < $stage,
+                                        'bg-primary-600 text-white shadow-sm' => $index === $stage,
+                                        'bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-gray-400' => $index > $stage,
+                                        'hover:ring-2 hover:ring-primary-500' => $item['url'] !== null,
+                                    ]))
+                                    <li>
+                                        @if ($item['url'])
+                                            <a href="{{ $item['url'] }}" class="{{ $classes }}" title="{{ $item['description'] }} (klik untuk membuka)">
+                                                <span class="text-base">{{ $index < $stage ? '✓' : $index + 1 }}</span>{{ $item['label'] }}
+                                            </a>
+                                        @else
+                                            <span class="{{ $classes }}" title="{{ $item['description'] }}">
+                                                <span class="text-base">{{ $index < $stage ? '✓' : $index + 1 }}</span>{{ $item['label'] }}
+                                            </span>
+                                        @endif
+                                    </li>
+                                @endforeach
+                            </ol>
+                        </x-filament::section>
+
+                        <div class="flex flex-col justify-between gap-3 rounded-2xl bg-primary-50 p-5 ring-1 ring-primary-100 dark:bg-primary-500/10 dark:ring-primary-500/20">
+                            <div>
+                                <p class="text-xs font-semibold tracking-wider text-primary-700 uppercase dark:text-primary-300">Langkah sekarang</p>
+                                <p class="mt-2 text-gray-800 dark:text-gray-100">{{ $next['hint'] }}</p>
+                            </div>
+                            @if ($next['buttons'] !== [])
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach ($next['buttons'] as $button)
+                                        <x-filament::button
+                                            tag="a"
+                                            :href="$button['url']"
+                                            :target="$button['newTab'] ? '_blank' : null"
+                                            :color="$loop->first ? 'primary' : 'gray'"
+                                            :icon="$loop->first ? 'heroicon-m-arrow-right' : null"
+                                            icon-position="after"
+                                        >
+                                            {{ $button['label'] }}
+                                        </x-filament::button>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+
+                    @if ($links = $this->quickLinks($primary))
+                        <div>
+                            <p class="mb-3 text-sm font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">Akses cepat</p>
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                                @foreach ($links as $link)
+                                    <a href="{{ $link['url'] }}" @if ($link['newTab']) target="_blank" @endif
+                                        class="group flex items-start gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-950/5 transition hover:-translate-y-0.5 hover:shadow-md hover:ring-primary-500 dark:bg-gray-900 dark:ring-white/10">
+                                        <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gray-100 text-gray-600 transition group-hover:bg-primary-600 group-hover:text-white dark:bg-white/5 dark:text-gray-300">
+                                            <x-filament::icon :icon="$link['icon']" class="h-6 w-6" />
+                                        </span>
+                                        <span class="min-w-0">
+                                            <span class="block font-semibold">{{ $link['label'] }}@if ($link['newTab']) <span class="text-xs font-normal text-gray-400">↗</span>@endif</span>
+                                            <span class="block text-sm text-gray-500 dark:text-gray-400">{{ $link['description'] }}</span>
+                                        </span>
                                     </a>
-                                @else
-                                    <span class="{{ $classes }}" title="{{ $item['description'] }}">
-                                        {{ $index < $stage ? '✓ ' : ($index + 1).'. ' }}{{ $item['label'] }}
-                                    </span>
-                                @endif
-                            </li>
-                        @endforeach
-                    </ol>
-                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Klik tahap yang sudah lewat (✓) atau tahap sekarang untuk membuka halamannya.</p>
-
-                    <div class="mt-4 flex flex-wrap gap-x-6 gap-y-1 text-sm">
-                        @foreach ($this->preparationSummary($primary) as $item)
-                            <span><span class="text-gray-500 dark:text-gray-400">{{ $item['label'] }}:</span> <strong>{{ $item['value'] }}</strong></span>
-                        @endforeach
-                    </div>
-
-                    <div class="mt-5 rounded-xl bg-primary-50 p-4 dark:bg-primary-500/10">
-                        <p class="text-sm font-semibold uppercase tracking-wide text-primary-700 dark:text-primary-300">Sekarang</p>
-                        <p class="mt-1">{{ $next['hint'] }}</p>
-                        @if ($next['buttons'] !== [])
-                            <div class="mt-3 flex flex-wrap gap-2">
-                                @foreach ($next['buttons'] as $button)
-                                    <x-filament::button
-                                        tag="a"
-                                        :href="$button['url']"
-                                        :target="$button['newTab'] ? '_blank' : null"
-                                        :color="$loop->first ? 'primary' : 'gray'"
-                                        :size="$loop->first ? 'lg' : 'md'"
-                                        :icon="$loop->first ? 'heroicon-m-arrow-right' : null"
-                                        icon-position="after"
-                                    >
-                                        {{ $button['label'] }}
-                                    </x-filament::button>
                                 @endforeach
                             </div>
-                        @endif
-                    </div>
-                </x-filament::section>
+                        </div>
+                    @endif
+                </div>
 
             @endif
 
