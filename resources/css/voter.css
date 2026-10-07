@@ -723,3 +723,117 @@ label {
 .wrap > .result {
     margin-bottom: 12px;
 }
+/* Layar proyektor panitia: QR + partisipasi live (tanpa angka per calon). */
+.screen__grid {
+    display: grid;
+    gap: 24px;
+    max-width: 1280px;
+    margin: 24px auto;
+    padding: 0 16px;
+    grid-template-columns: 1fr;
+    align-items: start;
+}
+
+@media (min-width: 960px) {
+    .screen__grid {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+}
+
+.screen__qr {
+    text-align: center;
+}
+
+.screen__qr .qr {
+    max-width: 100%;
+    height: auto;
+}
+
+.screen__status {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    justify-content: center;
+    min-height: 420px;
+}
+
+.screen__wave {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--c-muted);
+    min-height: 1.2em;
+}
+
+.screen__headline {
+    margin: 0;
+    font-size: 40px;
+    font-weight: 900;
+    color: var(--c-indigo-700);
+}
+
+body[data-phase="open"] .screen__headline {
+    color: var(--c-teal-600);
+}
+
+body[data-phase="finished"] .screen__headline {
+    color: var(--c-indigo-900);
+}
+
+.screen__timer {
+    margin: 0;
+    font-size: 96px;
+    font-weight: 900;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--c-blue-600);
+}
+
+.screen__timer--low {
+    color: var(--c-red-600);
+}
+
+.screen__count {
+    margin: 8px 0 0;
+    font-size: 30px;
+}
+
+.screen__count strong {
+    font-size: 64px;
+    font-variant-numeric: tabular-nums;
+    color: var(--c-teal-600);
+}
+
+.screen__bar {
+    height: 36px;
+    border-radius: 999px;
+    background: var(--c-blue-50);
+    overflow: hidden;
+}
+
+.screen__bar-fill {
+    width: 0;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--c-teal-600), var(--c-blue-600));
+    transition: width 0.8s ease-out;
+}
+
+.screen__percent {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.screen__hint {
+    margin: 8px 0 0;
+    font-size: 24px;
+    color: var(--c-muted);
+}
+
+body[data-phase="finished"] .screen__grid {
+    grid-template-columns: 1fr;
+    max-width: 900px;
+}

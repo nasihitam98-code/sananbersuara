@@ -6,7 +6,7 @@ export default defineConfig({
     plugins: [
         laravel({
             // Halaman pemilih memakai font sistem (tanpa CDN font) agar ringan di ratusan HP.
-            input: ['resources/css/app.css', 'resources/js/app.js', 'resources/css/voter.css', 'resources/js/voter.js', 'resources/css/report.css', 'resources/js/report.js', 'resources/css/filament/admin/theme.css'],
+            input: ['resources/css/app.css', 'resources/js/app.js', 'resources/css/voter.css', 'resources/js/voter.js', 'resources/js/screen.js', 'resources/css/report.css', 'resources/js/report.js', 'resources/css/filament/admin/theme.css'],
             refresh: true,
         }),
         tailwindcss(),

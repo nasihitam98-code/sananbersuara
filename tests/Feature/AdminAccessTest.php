@@ -456,7 +456,10 @@ class AdminAccessTest extends TestCase
         Livewire::test(ResultScreen::class)
             ->call('reveal')
             ->assertSet('revealed', true)
-            ->assertSee('Suara sah');
+            ->assertSee('Suara sah')
+            ->assertSee('Mulai pengumuman')
+            ->assertSee('Layar penuh')
+            ->assertSeeHtml('isShown(index)');
 
         $this->assertTrue(AuditLog::query()->where('action', 'results.revealed')->exists());
     }
