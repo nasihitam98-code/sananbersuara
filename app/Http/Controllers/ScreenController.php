@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Enums\ElectionStatus;
 use App\Enums\StaffRole;
+use App\Filament\Pages\ResultScreen;
 use App\Models\Election;
 use App\Models\User;
+use App\Services\AuditLogger;
 use App\Services\Voting\ResultsCalculator;
 use App\Services\Voting\VoterStatus;
 use chillerlan\QRCode\QRCode;
@@ -79,6 +81,34 @@ class ScreenController extends Controller
             'had_waves' => $round?->waves()->exists() ?? false,
             'now' => Carbon::now()->getTimestamp(),
         ];
+    }
+
+    /**
+     * Tab proyektor hasil (tanpa menu admin): pengumuman bertahap dengan podium. Hanya setelah pemilihan
+     * ditutup; membuka tab ini tercatat sebagai penayangan hasil.
+     */
+    public function results(Request $request, Election $election): View
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        abort_unless($election->status->allowsResults(), 403);
+        abort_unless($user->isSuperAdmin()
+            || ($election->isDadakan() ? $user->hasElectionRole($election, StaffRole::Panitia) : $user->isAdminRt()), 403);
+
+        if ($election->results_revealed_at === null) {
+            $election->forceFill(['results_revealed_at' => Carbon::now()])->save();
+        }
+
+        app(AuditLogger::class)->log('results.revealed', $election, $election, meta: ['screen' => 'tab_proyektor']);
+
+        return view('screens.results', [
+            'election' => $election,
+            'blocks' => ResultScreen::resultBlocks($election, $user),
+            'participation' => $election->isDadakan()
+                ? app(ResultsCalculator::class)->participation($election, $election->currentRound())
+                : null,
+        ]);
     }
 
     private function authorizeScreen(Request $request, Election $election): void

@@ -8,6 +8,7 @@ use App\Enums\StaffRole;
 use App\Filament\Pages\Concerns\InteractsWithElection;
 use App\Filament\Support\InElectionMenu;
 use App\Filament\Support\Workspace;
+use App\Models\Election;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\Results\ResultSlots;
@@ -106,9 +107,20 @@ class ResultScreen extends Page
 
         abort_unless($election->status->allowsResults() && $this->revealed, 403);
 
-        $calculator = app(ResultsCalculator::class);
         /** @var User $user */
         $user = auth()->user();
+
+        return static::resultBlocks($election, $user);
+    }
+
+    /**
+     * Blok hasil per surat suara/RT/putaran. Dipakai halaman ini dan tab proyektor (ScreenController).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function resultBlocks(Election $election, User $user): array
+    {
+        $calculator = app(ResultsCalculator::class);
         $output = [];
 
         // Admin RT (Mode Resmi): hanya surat suara RT-nya sendiri + total surat suara semua RT (K19).

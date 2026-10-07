@@ -12,11 +12,27 @@
             <div class="py-10 text-center space-y-4">
                 <p class="text-xl">Pemilihan <strong>{{ $election->name }}</strong> sudah ditutup.</p>
                 <p class="text-gray-500">Tekan tombol di bawah untuk menampilkan seluruh hasil sekaligus (misalnya di proyektor). Penayangan dicatat di audit log.</p>
-                <x-filament::button size="xl" wire:click="reveal" icon="heroicon-o-presentation-chart-bar">Tampilkan Hasil</x-filament::button>
+                <div class="flex flex-wrap justify-center gap-3">
+                    <x-filament::button size="xl" wire:click="reveal" icon="heroicon-o-presentation-chart-bar">Tampilkan Hasil di sini</x-filament::button>
+                    <x-filament::button size="xl" color="gray" tag="a" target="_blank" icon="heroicon-o-arrow-top-right-on-square" :href="route('screens.results', $election->public_id)">Buka di tab baru (proyektor)</x-filament::button>
+                </div>
             </div>
         </x-filament::section>
     @else
         @php($p = $this->participation())
+
+        <div class="flex flex-wrap gap-2" x-data>
+            <x-filament::button tag="a" target="_blank" icon="heroicon-o-presentation-chart-bar" :href="route('screens.results', $election->public_id)">
+                Buka di tab baru (proyektor)
+            </x-filament::button>
+            <x-filament::button color="gray" icon="heroicon-o-arrows-pointing-out" x-on:click="document.getElementById('hasil-presentasi').requestFullscreen()">
+                Layar penuh di sini
+            </x-filament::button>
+        </div>
+
+        {{-- Area presentasi: saat layar penuh hanya bagian ini yang tampil (menu dan bilah atas tersembunyi). Keluar: Esc. --}}
+        <div id="hasil-presentasi" class="space-y-6 [&:fullscreen]:overflow-y-auto [&:fullscreen]:bg-gray-50 [&:fullscreen]:p-10 dark:[&:fullscreen]:bg-gray-950">
+        <h1 class="hidden text-center text-4xl font-black [:fullscreen_&]:block">{{ $election->name }}</h1>
 
         @if ($p)
         <div class="grid gap-4 grid-cols-3">
@@ -29,11 +45,6 @@
         </div>
         @endif
 
-        <div class="flex flex-wrap gap-2" x-data>
-            <x-filament::button color="gray" icon="heroicon-o-arrows-pointing-out" x-on:click="document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()">
-                Layar penuh
-            </x-filament::button>
-        </div>
 
         @foreach ($this->results() as $block)
             @php($tally = $block['tally'])
@@ -106,7 +117,12 @@
                             @if (isset($rows[$podiumIndex]) && $rows[$podiumIndex]['votes'] > 0)
                                 @php($podium = $rows[$podiumIndex])
                                 <div class="flex flex-col items-center gap-2">
-                                    <span class="text-4xl">{{ ['🥇', '🥈', '🥉'][$podiumIndex] }}</span>
+                                    <span @class([
+                                        'grid h-11 w-11 place-items-center rounded-full text-lg font-black text-white shadow ring-4 ring-white dark:ring-gray-900',
+                                        'bg-amber-500' => $podiumIndex === 0,
+                                        'bg-slate-400' => $podiumIndex === 1,
+                                        'bg-orange-700' => $podiumIndex === 2,
+                                    ])>{{ $podiumIndex + 1 }}</span>
                                     @if ($podium['candidate']->photoUrl('card'))
                                         <img src="{{ $podium['candidate']->photoUrl('card') }}" alt="Foto {{ $podium['candidate']->name }}" class="{{ $podiumIndex === 0 ? 'h-32 w-32' : 'h-24 w-24' }} rounded-full object-cover ring-4 {{ $podiumIndex === 0 ? 'ring-warning-400' : 'ring-gray-300' }}">
                                     @else
@@ -178,8 +194,15 @@
         @endforeach
 
 
+        </div>
+
         <p class="text-sm text-gray-500">Sistem hanya menampilkan data. Penetapan calon yang lolos/terpilih dilakukan panitia.</p>
         <div class="flex flex-wrap gap-2">
+            @if (\App\Filament\Pages\VerificationDesk::canAccess())
+                <x-filament::button tag="a" icon="heroicon-m-arrow-right" icon-position="after" :href="\App\Filament\Pages\VerificationDesk::getUrl(['pemilihan' => $election->public_id])">
+                    Lanjut: Sahkan &amp; Umumkan
+                </x-filament::button>
+            @endif
             <x-filament::button color="gray" wire:click="hide">Sembunyikan hasil</x-filament::button>
             <x-filament::button color="gray" icon="heroicon-o-arrow-down-tray" tag="a" :href="route('recap.export', $election->public_id)">Unduh rekap Excel</x-filament::button>
         </div>

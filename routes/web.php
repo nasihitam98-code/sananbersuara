@@ -79,6 +79,7 @@ Route::middleware(NoStore::class)->controller(BoothController::class)->group(fun
 Route::middleware('auth')->prefix('layar')->name('screens.')->group(function (): void {
     Route::get('/qr/{election:public_id}', [ScreenController::class, 'qr'])->name('qr');
     Route::get('/qr/{election:public_id}/status', [ScreenController::class, 'qrStatus'])->name('qr.status');
+    Route::get('/hasil/{election:public_id}', [ScreenController::class, 'results'])->name('results');
 });
 
 Route::middleware('auth')->get('/berita-acara/{report:public_id}', [OfficialReportController::class, 'show'])->name('reports.show');

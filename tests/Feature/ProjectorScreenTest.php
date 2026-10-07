@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\StaffRole;
 use App\Enums\WaveKind;
+use App\Models\AuditLog;
 use App\Models\Ballot;
 use App\Models\Candidate;
 use App\Models\Election;
@@ -94,6 +95,30 @@ class ProjectorScreenTest extends TestCase
             ->assertSee('Layar penuh')
             ->assertSee('sudah memilih')
             ->assertDontSee('Calon Rahasia');
+    }
+
+    public function test_results_tab_opens_only_after_close_and_is_audited(): void
+    {
+        $registrar = app(AttendeeRegistrar::class);
+        ['attendee' => $voter, 'pin' => $pin] = $registrar->register($this->election, 'Budi Santoso', null, $this->superAdmin);
+        app(ElectionLifecycle::class)->start($this->election, $this->superAdmin);
+        app(WaveManager::class)->open($this->election, WaveKind::Terbuka, 5, $this->superAdmin);
+        $box = app(BallotBox::class);
+        $box->cast($this->election, $voter, $box->verifyPin($this->election, $voter, $pin), $this->ballot, $this->candidate);
+
+        $this->actingAs($this->committee)->get(route('screens.results', $this->election->public_id))->assertForbidden();
+
+        app(ElectionLifecycle::class)->close($this->election, $this->superAdmin);
+
+        $this->get(route('screens.results', $this->election->public_id))
+            ->assertOk()
+            ->assertSee('Calon Rahasia')
+            ->assertSee('Mulai pengumuman')
+            ->assertSee('podium__badge', false)
+            ->assertDontSee('🥇');
+
+        $this->assertTrue(AuditLog::query()->where('action', 'results.revealed')->exists());
+        $this->assertNotNull($this->election->fresh()->results_revealed_at);
     }
 
     public function test_door_staff_cannot_read_projector_status(): void

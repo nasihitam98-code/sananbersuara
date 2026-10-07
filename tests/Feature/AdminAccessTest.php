@@ -458,7 +458,9 @@ class AdminAccessTest extends TestCase
             ->assertSet('revealed', true)
             ->assertSee('Suara sah')
             ->assertSee('Mulai pengumuman')
-            ->assertSee('Layar penuh')
+            ->assertSee('Buka di tab baru (proyektor)')
+            ->assertSee('id="hasil-presentasi"', false)
+            ->assertDontSee('Lanjut: Sahkan') // Verifikasi khusus Super Admin
             ->html();
 
         // Status pengumuman harus di elemen sendiri: atribut x-data kedua pada <section> Filament diabaikan browser.

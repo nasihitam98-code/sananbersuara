@@ -866,3 +866,229 @@ body[data-phase="finished"] .screen__grid {
 :fullscreen .screen__fullscreen {
     display: none;
 }
+
+/* Tab proyektor hasil: pengumuman bertahap + podium. */
+.results__wrap {
+    max-width: 1200px;
+    margin: 24px auto;
+    padding: 0 16px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.results__participation {
+    margin: 0;
+    text-align: center;
+    font-size: 22px;
+    color: var(--c-muted);
+}
+
+.results__title {
+    margin: 0;
+    font-size: 32px;
+}
+
+.results__tie {
+    color: var(--c-red-600);
+}
+
+.results__controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 16px 0;
+}
+
+.results__controls .btn {
+    width: auto;
+}
+
+.results__hint {
+    margin: 24px 0;
+    text-align: center;
+    font-size: 22px;
+    color: var(--c-muted);
+}
+
+.results__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.results__row {
+    display: grid;
+    grid-template-columns: 3.5rem 4rem 1fr auto;
+    align-items: center;
+    gap: 14px;
+    animation: results-in 0.5s ease-out;
+}
+
+@keyframes results-in {
+    from { opacity: 0; transform: translateY(-12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.results__rank {
+    font-size: 28px;
+    font-weight: 900;
+    color: var(--c-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.results__photo {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.results__photo--initials,
+.podium__photo--initials {
+    display: grid;
+    place-items: center;
+    background: #dcdbe9;
+    color: var(--c-indigo-700);
+    font-weight: 800;
+}
+
+.results__name {
+    margin: 0 0 6px;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.results__bar {
+    height: 18px;
+    border-radius: 999px;
+    background: var(--c-blue-50);
+    overflow: hidden;
+}
+
+.results__bar-fill {
+    width: 0;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--c-indigo-500);
+    transition: width 1s ease-out;
+}
+
+.results__row--top .results__bar-fill {
+    background: var(--c-red-600);
+}
+
+.results__score {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.results__score p {
+    margin: 0;
+}
+
+.results__percent {
+    font-size: 30px;
+    font-weight: 900;
+}
+
+.results__note {
+    text-align: center;
+}
+
+.podium {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    align-items: end;
+    gap: 16px;
+    margin: 8px 0 32px;
+    text-align: center;
+    animation: results-in 0.7s ease-out;
+}
+
+.podium__place {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.podium__place p {
+    margin: 0;
+}
+
+/* Lencana peringkat: emas, perak, perunggu (formal, bukan emoji). */
+.podium__badge {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 4px solid #fff;
+    box-shadow: var(--shadow);
+    color: #fff;
+    font-size: 22px;
+    font-weight: 900;
+}
+
+.podium__badge--1 { background: #c8961e; }
+.podium__badge--2 { background: #8a94a6; }
+.podium__badge--3 { background: #a0522d; }
+
+.podium__photo {
+    width: 7rem;
+    height: 7rem;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid #d9d8e6;
+}
+
+.podium__place--1 .podium__photo {
+    width: 9rem;
+    height: 9rem;
+    border-color: #c8961e;
+}
+
+.podium__name {
+    font-size: 22px;
+    font-weight: 800;
+}
+
+.podium__place--1 .podium__name {
+    font-size: 28px;
+}
+
+.podium__block {
+    width: 100%;
+    display: grid;
+    place-items: center;
+    border-radius: 14px 14px 0 0;
+    color: #fff;
+    font-size: 32px;
+    font-weight: 900;
+    background: var(--c-indigo-500);
+    height: 7rem;
+}
+
+.podium__place--1 .podium__block {
+    height: 10rem;
+    background: #c8961e;
+}
+
+.podium__place--3 .podium__block {
+    height: 5rem;
+}
+
+@media (max-width: 640px) {
+    .results__row {
+        grid-template-columns: 2.5rem 3rem 1fr auto;
+    }
+
+    .results__photo {
+        width: 3rem;
+        height: 3rem;
+    }
+}

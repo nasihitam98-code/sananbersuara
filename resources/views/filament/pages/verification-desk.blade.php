@@ -8,6 +8,13 @@
             Belum ada pemilihan yang sudah ditutup.
         </x-filament::section>
     @else
+        @if (\App\Filament\Pages\ResultScreen::canAccess())
+            <div>
+                <x-filament::link icon="heroicon-m-arrow-left" :href="\App\Filament\Pages\ResultScreen::getUrl(['pemilihan' => $election->public_id])">
+                    Lihat Layar Hasil (proyektor)
+                </x-filament::link>
+            </div>
+        @endif
         <x-filament::section>
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div>
