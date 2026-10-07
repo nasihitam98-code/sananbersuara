@@ -15,6 +15,7 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -45,7 +46,7 @@ trait InteractsWithAttendanceTable
         return $table
             ->query(fn (): Builder => $this->attendanceQuery())
             ->defaultSort('seq_no', 'desc')
-            ->poll('10s')
+            ->poll('5s')
             ->description(fn (): ?string => $this->summary())
             ->paginationPageOptions([25, 50, 100, 'all'])
             ->defaultPaginationPageOption(50)
@@ -104,6 +105,8 @@ trait InteractsWithAttendanceTable
                 $this->newPinTableAction(),
                 $this->restoreTableAction(),
             ])
+            ->filtersLayout(FiltersLayout::AboveContent)
+            ->filtersFormColumns(4)
             ->filters([
                 SelectFilter::make('status')
                     ->label('Status')
