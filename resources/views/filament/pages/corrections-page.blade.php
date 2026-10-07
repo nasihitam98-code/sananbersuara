@@ -19,7 +19,7 @@
                         <div class="flex flex-wrap gap-2">
                             @foreach ($row['ballots'] as $ballot)
                                 <span class="text-sm">{{ $ballot->title }}:</span>
-                                {{ ($this->requestAction)(['voter' => $row['voter']->public_id, 'ballot' => $ballot->public_id]) }}
+                                @if (($this->requestAction)(['voter' => $row['voter']->public_id, 'ballot' => $ballot->public_id])->isVisible()) {{ ($this->requestAction)(['voter' => $row['voter']->public_id, 'ballot' => $ballot->public_id]) }} @endif
                             @endforeach
                         </div>
                     </li>
@@ -47,10 +47,10 @@
                                 </td>
                                 <td class="flex flex-wrap gap-2 py-2">
                                     @if ($this->isPending($correction))
-                                        {{ ($this->approveAction)(['correction' => $correction->public_id]) }}
-                                        {{ ($this->rejectAction)(['correction' => $correction->public_id]) }}
+                                        @if (($this->approveAction)(['correction' => $correction->public_id])->isVisible()) {{ ($this->approveAction)(['correction' => $correction->public_id]) }} @endif
+                                        @if (($this->rejectAction)(['correction' => $correction->public_id])->isVisible()) {{ ($this->rejectAction)(['correction' => $correction->public_id]) }} @endif
                                         @if ($correction->requested_by === auth()->id())
-                                            {{ ($this->withdrawAction)(['correction' => $correction->public_id]) }}
+                                            @if (($this->withdrawAction)(['correction' => $correction->public_id])->isVisible()) {{ ($this->withdrawAction)(['correction' => $correction->public_id]) }} @endif
                                         @endif
                                     @endif
                                 </td>

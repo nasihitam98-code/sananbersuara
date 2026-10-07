@@ -34,8 +34,8 @@
                             <td class="pe-3">{{ $backup->creator?->name ?? 'Sistem' }}</td>
                             <td class="flex gap-2 py-2">
                                 @if ($backup->status === 'BERHASIL')
-                                    {{ ($this->downloadAction)(['backup' => $backup->public_id]) }}
-                                    {{ ($this->restoreAction)(['backup' => $backup->public_id]) }}
+                                    @if (($this->downloadAction)(['backup' => $backup->public_id])->isVisible()) {{ ($this->downloadAction)(['backup' => $backup->public_id]) }} @endif
+                                    @if (($this->restoreAction)(['backup' => $backup->public_id])->isVisible()) {{ ($this->restoreAction)(['backup' => $backup->public_id]) }} @endif
                                 @endif
                             </td>
                         </tr>

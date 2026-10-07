@@ -70,9 +70,9 @@
                             @endif
                             @if ($desk)
                                 <div class="mt-3 flex flex-wrap gap-2">
-                                    {{ ($this->issueBoothTokenAction)(['booth' => $booth->public_id]) }}
+                                    @if (($this->issueBoothTokenAction)(['booth' => $booth->public_id])->isVisible()) {{ ($this->issueBoothTokenAction)(['booth' => $booth->public_id]) }} @endif
                                     @if ($booth->isPaired())
-                                        {{ ($this->releaseBoothAction)(['booth' => $booth->public_id]) }}
+                                        @if (($this->releaseBoothAction)(['booth' => $booth->public_id])->isVisible()) {{ ($this->releaseBoothAction)(['booth' => $booth->public_id]) }} @endif
                                     @endif
                                 </div>
                             @endif
@@ -114,14 +114,14 @@
                                 @if ($status['permit'])
                                     <x-filament::badge color="info" size="lg">Di {{ $status['permit']->device->name() }}</x-filament::badge>
                                     @if ($desk)
-                                        {{ ($this->cancelPermitAction)(['permit' => $status['permit']->public_id]) }}
+                                        @if (($this->cancelPermitAction)(['permit' => $status['permit']->public_id])->isVisible()) {{ ($this->cancelPermitAction)(['permit' => $status['permit']->public_id]) }} @endif
                                     @endif
                                 @elseif (! $eligibleAny)
                                     <x-filament::badge color="gray" size="lg">Tidak berhak di pemilihan ini</x-filament::badge>
                                 @elseif (! $hasPending)
                                     <x-filament::badge color="success" size="lg">✓ Selesai memilih</x-filament::badge>
                                 @elseif ($desk && $election->status === \App\Enums\ElectionStatus::Berlangsung)
-                                    {{ ($this->grantAction)(['voter' => $voter->public_id]) }}
+                                    @if (($this->grantAction)(['voter' => $voter->public_id])->isVisible()) {{ ($this->grantAction)(['voter' => $voter->public_id]) }} @endif
                                 @else
                                     <x-filament::badge color="gray">Izinkan tidak tersedia</x-filament::badge>
                                 @endif

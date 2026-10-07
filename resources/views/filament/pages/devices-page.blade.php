@@ -28,9 +28,9 @@
                     <div class="mb-3 flex flex-wrap items-center gap-2">
                         @if ($pause = $this->pauseFor($unitName))
                             <x-filament::badge color="warning" icon="heroicon-o-pause">TPS DIJEDA: {{ $pause->reason_code->getLabel() }} sejak {{ $pause->paused_at->format('H:i') }}</x-filament::badge>
-                            {{ ($this->resumeTpsAction)(['unit' => $unitId]) }}
+                            @if (($this->resumeTpsAction)(['unit' => $unitId])->isVisible()) {{ ($this->resumeTpsAction)(['unit' => $unitId]) }} @endif
                         @elseif ($election->status === \App\Enums\ElectionStatus::Berlangsung)
-                            {{ ($this->pauseTpsAction)(['unit' => $unitId]) }}
+                            @if (($this->pauseTpsAction)(['unit' => $unitId])->isVisible()) {{ ($this->pauseTpsAction)(['unit' => $unitId]) }} @endif
                         @endif
                     </div>
                     <div class="overflow-x-auto">
@@ -52,10 +52,10 @@
                                         <td class="pe-3">{{ $device->ip_address ?? '-' }}</td>
                                         <td class="flex gap-2 py-2">
                                             @if ($device->kind === \App\Enums\DeviceKind::Meja)
-                                                {{ ($this->issueDeskTokenAction)(['device' => $device->public_id]) }}
+                                                @if (($this->issueDeskTokenAction)(['device' => $device->public_id])->isVisible()) {{ ($this->issueDeskTokenAction)(['device' => $device->public_id]) }} @endif
                                             @endif
                                             @if ($device->isPaired())
-                                                {{ ($this->releaseDeviceAction)(['device' => $device->public_id]) }}
+                                                @if (($this->releaseDeviceAction)(['device' => $device->public_id])->isVisible()) {{ ($this->releaseDeviceAction)(['device' => $device->public_id]) }} @endif
                                             @endif
                                         </td>
                                     </tr>

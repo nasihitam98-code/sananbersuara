@@ -43,8 +43,8 @@
                             <x-filament::badge color="gray" size="sm">Belum dipakai</x-filament::badge>
                         @endif
                         <div class="mt-auto flex flex-wrap gap-2 pt-1">
-                            {{ ($this->assignAction)(['photo' => $photo->public_id]) }}
-                            {{ ($this->deleteAction)(['photo' => $photo->public_id]) }}
+                            @if (($this->assignAction)(['photo' => $photo->public_id])->isVisible()) {{ ($this->assignAction)(['photo' => $photo->public_id]) }} @endif
+                            @if (($this->deleteAction)(['photo' => $photo->public_id])->isVisible()) {{ ($this->deleteAction)(['photo' => $photo->public_id]) }} @endif
                         </div>
                     </div>
                 </li>

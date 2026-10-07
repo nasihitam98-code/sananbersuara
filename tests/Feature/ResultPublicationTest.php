@@ -202,7 +202,9 @@ class ResultPublicationTest extends TestCase
         $this->actingAs($this->admin);
 
         Livewire::test(VerificationDesk::class)
+            ->assertDontSee('Tetapkan')
             ->callAction('startVerification')
+            ->assertSee('Tetapkan')
             ->callAction(TestAction::make('decide')->arguments(['slot' => $this->ballot->id.':0']), [
                 'status' => OutcomeStatus::Ditetapkan->value,
                 'candidates' => [$this->candidates[0]->id],

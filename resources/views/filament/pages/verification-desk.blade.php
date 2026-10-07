@@ -64,7 +64,7 @@
                                     @endif
                                 </p>
                             </div>
-                            {{ ($this->decideAction)(['slot' => $row['key']]) }}
+                            @if (($this->decideAction)(['slot' => $row['key']])->isVisible()) {{ ($this->decideAction)(['slot' => $row['key']]) }} @endif
                         </div>
 
                         <table class="mt-3 w-full text-sm">
@@ -123,9 +123,9 @@
                                         <x-filament::button tag="a" color="gray" size="sm" icon="heroicon-o-printer" :href="route('reports.show', $current->public_id)" target="_blank">Lihat / Cetak</x-filament::button>
                                     @endif
                                     @if ($current?->status === \App\Enums\ReportStatus::Draft)
-                                        {{ ($this->ratifyReportAction)(['report' => $current->public_id]) }}
+                                        @if (($this->ratifyReportAction)(['report' => $current->public_id])->isVisible()) {{ ($this->ratifyReportAction)(['report' => $current->public_id]) }} @endif
                                     @endif
-                                    {{ ($this->draftReportAction)(['unit' => $row['scope']?->id ?? 0, 'revise' => $current?->status === \App\Enums\ReportStatus::Disahkan]) }}
+                                    @if (($this->draftReportAction)(['unit' => $row['scope']?->id ?? 0, 'revise' => $current?->status === \App\Enums\ReportStatus::Disahkan])->isVisible()) {{ ($this->draftReportAction)(['unit' => $row['scope']?->id ?? 0, 'revise' => $current?->status === \App\Enums\ReportStatus::Disahkan]) }} @endif
                                 </div>
                             @elseif ($current)
                                 <x-filament::button tag="a" color="gray" size="sm" icon="heroicon-o-printer" :href="route('reports.show', $current->public_id)" target="_blank">Lihat / Cetak</x-filament::button>
