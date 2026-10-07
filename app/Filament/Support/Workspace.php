@@ -161,6 +161,15 @@ class Workspace
     }
 
     /**
+     * Menu milik satu pemilihan (Calon, Meja Pintu, Ruang Kendali, Hasil): di Mode Dadakan baru tampil
+     * setelah masuk ke sebuah pemilihan, agar menu kiri tidak mencampur pemilihan.
+     */
+    public static function showsInElection(ElectionMode ...$modes): bool
+    {
+        return static::shows(...$modes) && (static::current() !== ElectionMode::Dadakan || static::election() !== null);
+    }
+
+    /**
      * Menu tampil hanya bila mode kerja sekarang termasuk salah satu mode ini
      * (tanpa argumen: tampil bila sudah ada mode terpilih).
      */

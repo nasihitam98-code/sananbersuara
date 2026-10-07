@@ -190,7 +190,14 @@ class EditElection extends EditRecord
                     ->action(fn (array $data) => $this->runLifecycle(fn (ElectionLifecycle $lifecycle) => $lifecycle->cancel($this->record, auth()->user(), $data['note']), 'Pemilihan dibatalkan.')),
             ])->label('Status')->icon('heroicon-o-adjustments-horizontal')->button()->color('gray'),
 
-            DeleteAction::make()->label('Hapus draf'),
+            DeleteAction::make()
+                ->label('Hapus')
+                ->modalDescription('Surat suara, calon, foto calon, dan penugasan panitia pemilihan ini ikut terhapus. Tidak bisa dibatalkan.')
+                ->using(function (Election $record): bool {
+                    ElectionResource::deleteWithCandidatePhotos($record);
+
+                    return true;
+                }),
         ];
     }
 

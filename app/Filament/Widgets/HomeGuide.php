@@ -17,14 +17,12 @@ use App\Filament\Resources\Elections\ElectionResource;
 use App\Filament\Resources\Units\UnitResource;
 use App\Filament\Resources\Users\UserResource;
 use App\Filament\Resources\Voters\VoterResource;
+use App\Filament\Support\QuickStart;
 use App\Filament\Support\Reauthenticate;
 use App\Filament\Support\Workspace;
-use App\Models\Candidate;
 use App\Models\Election;
 use App\Models\User;
 use App\Models\Voter;
-use App\Services\AuditLogger;
-use App\Services\CandidatePhotoProcessor;
 use App\Services\Voting\ElectionLifecycle;
 use App\Services\Voting\VotingException;
 use Filament\Actions\Action;
@@ -140,6 +138,18 @@ class HomeGuide extends Widget implements HasActions, HasSchemas
     }
 
     /**
+     * "Mulai Pemilihan" satu langkah langsung dari kartu/dashboard; setelahnya pemilihan itu yang dikerjakan.
+     */
+    public function startElectionAction(): Action
+    {
+        return QuickStart::action(
+            'startElection',
+            fn (array $arguments): ?Election => $this->electionFromArguments($arguments),
+            fn (Election $election) => Workspace::chooseElection($election),
+        )->size('lg');
+    }
+
+    /**
      * Hapus pemilihan yang belum pernah dimulai (beserta surat suara, calon, dan foto calonnya).
      */
     public function deleteElectionAction(): Action
@@ -158,19 +168,8 @@ class HomeGuide extends Widget implements HasActions, HasSchemas
                 $election = $this->electionFromArguments($arguments);
                 abort_unless($election !== null && $this->user()->can('delete', $election), 403);
 
-                $photos = app(CandidatePhotoProcessor::class);
-                Candidate::query()->whereHas('ballot', fn (Builder $ballot) => $ballot->where('election_id', $election->id))
-                    ->whereNotNull('photo_key')
-                    ->get()
-                    ->each(fn (Candidate $candidate) => $photos->remove($candidate));
-
-                $snapshot = $election->only(['name', 'mode']);
-                $election->delete();
-                app(AuditLogger::class)->log('election.deleted', meta: $snapshot);
-
-                if (Workspace::election()?->is($election)) {
-                    Workspace::chooseElection(null);
-                }
+                $snapshot = $election->only(['name']);
+                ElectionResource::deleteWithCandidatePhotos($election);
 
                 Notification::make()->title("Pemilihan \"{$snapshot['name']}\" dihapus.")->success()->send();
             });
@@ -313,14 +312,14 @@ class HomeGuide extends Widget implements HasActions, HasSchemas
 
         [$hint, $options] = match ($election->status) {
             ElectionStatus::Draft => [$manager
-                ? 'Isi surat suara dan calon. Setelah lengkap, buka halaman pemilihan lalu klik Tandai Siap.'
+                ? 'Isi surat suara dan calon. Setelah lengkap, tekan Mulai Pemilihan di atas: otomatis diperiksa, dimulai, dan voting dibuka.'
                 : 'Super Admin sedang menyiapkan surat suara dan calon. Menu Anda aktif setelah pemilihan ditandai Siap.', [
                     fn () => $edit('Buka halaman pemilihan'),
                     fn () => CandidateResource::canAccess() ? ['Isi calon', CandidateResource::getUrl()] : null,
                 ]],
             ElectionStatus::Ready => $dadakan
                 ? ['Sudah siap. Petugas pintu sudah bisa mendata yang datang. Saat acara dimulai: '
-                    .($manager ? 'buka Ruang Kendali, klik Mulai Pemilihan, lalu BUKA VOTING.' : 'pemilihan dimulai oleh Super Admin.'), [
+                    .($manager ? 'tekan Mulai Pemilihan di atas (voting langsung dibuka).' : 'pemilihan dimulai oleh Super Admin.'), [
                         fn () => $page(ControlRoom::class, $manager ? 'Buka Ruang Kendali (Mulai Pemilihan)' : 'Buka Ruang Kendali'),
                         fn () => $page(DoorDesk::class, 'Buka Meja Pintu'),
                     ]]

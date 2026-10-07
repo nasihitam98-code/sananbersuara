@@ -9,8 +9,10 @@ use App\Enums\WaveKind;
 use App\Enums\WaveStatus;
 use App\Filament\Pages\Concerns\InteractsWithAttendanceTable;
 use App\Filament\Pages\Concerns\InteractsWithElection;
+use App\Filament\Support\QuickStart;
 use App\Filament\Support\Reauthenticate;
 use App\Filament\Support\Workspace;
+use App\Models\Election;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\Voting\ElectionLifecycle;
@@ -58,7 +60,7 @@ class ControlRoom extends Page implements HasTable
 
     public static function shouldRegisterNavigation(): bool
     {
-        return Workspace::shows(ElectionMode::Dadakan);
+        return Workspace::showsInElection(ElectionMode::Dadakan);
     }
 
     protected static function allowedStaffRoles(): array
@@ -164,20 +166,7 @@ class ControlRoom extends Page implements HasTable
      */
     public function startElectionAction(): Action
     {
-        return Action::make('startElection')
-            ->label('Mulai Pemilihan')
-            ->icon('heroicon-o-play')
-            ->color('success')
-            ->size('xl')
-            ->visible(fn (): bool => $this->election()?->status === ElectionStatus::Ready && $this->isSuperAdmin())
-            ->modalHeading('Mulai pemilihan?')
-            ->modalDescription('Surat suara dan calon terkunci setelah dimulai. Setelah itu tekan BUKA VOTING agar HP warga bisa memilih.')
-            ->schema([Reauthenticate::field()])
-            ->action(function (): void {
-                abort_unless($this->isSuperAdmin(), 403);
-
-                $this->guard(fn () => app(ElectionLifecycle::class)->start($this->authorizedElection(), auth()->user()), 'Pemilihan dimulai. Sekarang tekan BUKA VOTING.');
-            });
+        return QuickStart::action('startElection', fn (array $arguments): ?Election => $this->election());
     }
 
     private function isSuperAdmin(): bool

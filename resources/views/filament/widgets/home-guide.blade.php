@@ -63,6 +63,10 @@
                                 </div>
                                 <p class="text-sm text-gray-500 dark:text-gray-400">{{ $this->cardSummary($election) }}</p>
                             </div>
+                            @php($startCard = ($this->startElectionAction)(['election' => $election->public_id]))
+                            @if ($startCard->isVisible())
+                                <div>{{ $startCard }}</div>
+                            @endif
                             <div class="flex flex-wrap items-center justify-between gap-3">
                                 <span @if ($confirm) x-data x-on:click="if (! confirm({{ \Illuminate\Support\Js::from($confirm) }})) { $event.preventDefault() }" @endif>
                                     <x-filament::button tag="a" :href="route('workspace.election', $election->public_id)" icon="heroicon-m-arrow-right" icon-position="after">
@@ -99,9 +103,20 @@
 
                 {{-- Pemilihan utama: tahap sekarang + tombol yang perlu ditekan --}}
                 <x-filament::section>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <span class="text-lg font-bold">{{ $primary->name }}</span>
-                        <x-filament::badge :color="$primary->status->getColor()">{{ $primary->status->getLabel() }}</x-filament::badge>
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="text-lg font-bold">{{ $primary->name }}</span>
+                            <x-filament::badge :color="$primary->status->getColor()">{{ $primary->status->isLive() ? '● ' : '' }}{{ $primary->status->getLabel() }}</x-filament::badge>
+                        </div>
+                        {{-- Tombol utama langsung di depan: Mulai (satu langkah), Hapus/Batalkan. --}}
+                        <div class="flex flex-wrap items-center gap-3">
+                            @php($startHere = ($this->startElectionAction)(['election' => $primary->public_id]))
+                            @if ($startHere->isVisible()) {{ $startHere }} @endif
+                            @php($deleteHere = ($this->deleteElectionAction)(['election' => $primary->public_id]))
+                            @if ($deleteHere->isVisible()) {{ $deleteHere }} @endif
+                            @php($cancelHere = ($this->cancelElectionAction)(['election' => $primary->public_id]))
+                            @if ($cancelHere->isVisible()) {{ $cancelHere }} @endif
+                        </div>
                     </div>
 
                     <ol class="mt-5 grid grid-cols-3 gap-2 sm:grid-cols-6">
@@ -159,7 +174,7 @@
 
             @endif
 
-            @if ($steps = $this->guideSteps())
+            @if (($primary !== null || $elections->isEmpty()) && ($steps = $this->guideSteps()))
                 <x-filament::section heading="Panduan langkah Mode {{ $mode->getLabel() }}" collapsible :collapsed="$primary !== null">
                     <ol class="space-y-3">
                         @foreach ($steps as $step)

@@ -369,7 +369,7 @@ class AdminAccessTest extends TestCase
 
         Livewire::test(ControlRoom::class)
             ->assertActionVisible('startElection')
-            ->callAction('startElection', ['current_password' => 'password'])
+            ->callAction('startElection', ['current_password' => 'password', 'open_now' => false])
             ->assertHasNoFormErrors()
             ->assertActionHidden('startElection')
             ->assertActionVisible('openWave')

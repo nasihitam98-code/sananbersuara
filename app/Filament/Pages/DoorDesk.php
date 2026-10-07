@@ -47,7 +47,7 @@ class DoorDesk extends Page
 
     public static function shouldRegisterNavigation(): bool
     {
-        return Workspace::shows(ElectionMode::Dadakan);
+        return Workspace::showsInElection(ElectionMode::Dadakan);
     }
 
     /**

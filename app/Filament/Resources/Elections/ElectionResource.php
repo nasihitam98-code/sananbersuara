@@ -11,8 +11,12 @@ use App\Filament\Resources\Elections\RelationManagers\BallotsRelationManager;
 use App\Filament\Resources\Elections\RelationManagers\HistoryRelationManager;
 use App\Filament\Resources\Elections\RelationManagers\StaffRelationManager;
 use App\Filament\Support\Workspace;
+use App\Models\Candidate;
 use App\Models\Election;
+use App\Services\AuditLogger;
+use App\Services\CandidatePhotoProcessor;
 use BackedEnum;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -188,7 +192,41 @@ class ElectionResource extends Resource
                 EditAction::make()
                     ->label('Kelola')
                     ->authorize(fn (Election $record): bool => static::canView($record)),
+                DeleteAction::make()
+                    ->label('Hapus')
+                    ->modalHeading(fn (Election $record): string => "Hapus \"{$record->name}\"?")
+                    ->modalDescription('Surat suara, calon, foto calon, dan penugasan panitia pemilihan ini ikut terhapus. Tidak bisa dibatalkan.')
+                    ->using(function (Election $record): bool {
+                        static::deleteWithCandidatePhotos($record);
+
+                        return true;
+                    })
+                    ->successNotificationTitle('Pemilihan dihapus.'),
             ]);
+    }
+
+    /**
+     * Hapus pemilihan yang belum pernah dimulai beserta file foto calonnya (data lain ikut terhapus lewat relasi).
+     */
+    public static function deleteWithCandidatePhotos(Election $election): void
+    {
+        abort_unless(auth()->user()?->can('delete', $election), 403);
+
+        $photos = app(CandidatePhotoProcessor::class);
+        Candidate::query()
+            ->whereHas('ballot', fn (Builder $ballot): Builder => $ballot->where('election_id', $election->id))
+            ->whereNotNull('photo_key')
+            ->get()
+            ->each(fn (Candidate $candidate) => $photos->remove($candidate));
+
+        $snapshot = $election->only(['name', 'mode']);
+        $election->delete();
+        app(AuditLogger::class)->log('election.deleted', meta: $snapshot);
+
+        // Bila pemilihan ini yang sedang dikerjakan, kembali ke daftar pemilihan.
+        if (Workspace::election() === null) {
+            Workspace::chooseElection(null);
+        }
     }
 
     public static function getRelations(): array

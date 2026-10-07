@@ -6,6 +6,7 @@ use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
 use App\Enums\StaffRole;
 use App\Filament\Pages\ControlRoom;
+use App\Filament\Pages\DoorDesk;
 use App\Filament\Resources\Candidates\Pages\ListCandidates;
 use App\Filament\Support\Workspace;
 use App\Filament\Widgets\HomeGuide;
@@ -135,6 +136,43 @@ class ElectionFocusTest extends TestCase
 
         $this->assertTrue(Workspace::election()?->is($draft), 'Staf dengan satu pemilihan langsung masuk ke pemilihan itu');
         $this->get(route('workspace.election', $this->election('Bukan Tugasnya')->public_id))->assertForbidden();
+    }
+
+    public function test_start_from_card_readies_starts_and_opens_voting_in_one_step(): void
+    {
+        $draft = $this->election('Langsung Mulai');
+
+        Livewire::test(HomeGuide::class)
+            ->assertActionVisible(TestAction::make('startElection')->arguments(['election' => $draft->public_id]))
+            ->callAction(TestAction::make('startElection')->arguments(['election' => $draft->public_id]), ['current_password' => 'password', 'open_now' => true, 'minutes' => 5])
+            ->assertNotified('Pemilihan dimulai dan voting dibuka.');
+
+        $draft->refresh();
+        $this->assertSame(ElectionStatus::Berlangsung, $draft->status);
+        $this->assertNotNull($draft->openWave());
+        $this->assertTrue(Workspace::election()->is($draft), 'Pemilihan yang dimulai menjadi pemilihan yang dikerjakan');
+    }
+
+    public function test_start_from_card_explains_what_is_missing(): void
+    {
+        $empty = Election::factory()->create(['name' => 'Belum Ada Calon']);
+
+        Livewire::test(HomeGuide::class)
+            ->callAction(TestAction::make('startElection')->arguments(['election' => $empty->public_id]), ['current_password' => 'password'])
+            ->assertNotified('Belum bisa dimulai');
+
+        $this->assertSame(ElectionStatus::Draft, $empty->fresh()->status);
+    }
+
+    public function test_election_menus_appear_only_after_choosing_an_election(): void
+    {
+        $election = $this->election('Penjaringan');
+        $this->election('Lainnya');
+
+        $this->get('/admin')->assertDontSee(ControlRoom::getUrl(), false)->assertDontSee(DoorDesk::getUrl(), false);
+
+        $this->get(route('workspace.election', $election->public_id));
+        $this->get('/admin')->assertSee(ControlRoom::getUrl(), false)->assertSee(DoorDesk::getUrl(), false);
     }
 
     public function test_candidate_list_shows_the_chosen_election(): void

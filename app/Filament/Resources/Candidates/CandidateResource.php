@@ -69,7 +69,7 @@ class CandidateResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return Workspace::shows();
+        return Workspace::showsInElection();
     }
 
     /**

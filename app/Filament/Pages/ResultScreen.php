@@ -44,7 +44,7 @@ class ResultScreen extends Page
 
     public static function shouldRegisterNavigation(): bool
     {
-        return Workspace::shows();
+        return Workspace::showsInElection();
     }
 
     /** Hanya bisa diubah lewat aksi server (tercatat di audit), tidak dari browser. */
