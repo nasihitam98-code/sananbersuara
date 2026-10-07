@@ -4,45 +4,43 @@ namespace App\Filament\Pages;
 
 use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
-use App\Enums\RestoreReason;
 use App\Enums\StaffRole;
 use App\Enums\WaveKind;
 use App\Enums\WaveStatus;
+use App\Filament\Pages\Concerns\InteractsWithAttendanceTable;
 use App\Filament\Pages\Concerns\InteractsWithElection;
 use App\Filament\Support\Reauthenticate;
 use App\Filament\Support\Workspace;
-use App\Models\Attendee;
-use App\Models\Election;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\Voting\ElectionLifecycle;
 use App\Services\Voting\ResultsCalculator;
-use App\Services\Voting\VoterRightRestorer;
 use App\Services\Voting\VoterStatus;
 use App\Services\Voting\VotingException;
 use App\Services\Voting\WaveManager;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Table;
 use UnitEnum;
 
 /**
  * Ruang Kendali Panitia (Mode Dadakan): buka/perpanjang/tutup gelombang, pantau sudah/belum
- * (tanpa angka per kandidat), buka kunci PIN, dan Pulihkan Hak Pilih.
+ * (tanpa angka per kandidat), dan tabel peserta yang sama dengan Daftar Hadir (PIN baru / Pulihkan).
  */
-class ControlRoom extends Page
+class ControlRoom extends Page implements HasTable
 {
+    use InteractsWithAttendanceTable;
     use InteractsWithElection;
+    use InteractsWithTable;
 
     protected string $view = 'filament.pages.control-room';
 
@@ -62,17 +60,6 @@ class ControlRoom extends Page
     {
         return Workspace::shows(ElectionMode::Dadakan);
     }
-
-    public string $search = '';
-
-    public string $notVotedFilter = '';
-
-    /**
-     * PIN baru hasil buka kunci / pulihkan, tampil sekali.
-     *
-     * @var array{name: string, number: string, pin: string, cancelled: int}|null
-     */
-    public ?array $reissued = null;
 
     protected static function allowedStaffRoles(): array
     {
@@ -108,59 +95,11 @@ class ControlRoom extends Page
         ];
     }
 
-    /**
-     * @return Collection<int, Attendee>
-     */
-    public function lockedAttendees(): Collection
+    public function table(Table $table): Table
     {
-        return $this->election()?->attendees()->whereNotNull('pin_locked_at')->orderBy('name')->get() ?? collect();
-    }
-
-    /**
-     * Peserta yang cocok dengan pencarian, beserta status sudah/belum (tanpa pilihan).
-     *
-     * @return Collection<int, array{attendee: Attendee, voted: bool}>
-     */
-    public function searchResults(): Collection
-    {
-        $election = $this->election();
-
-        if ($election === null || mb_strlen(trim($this->search)) < 2) {
-            return collect();
-        }
-
-        return $this->withVotedFlag($election, $election->attendees()
-            ->where('name_search', 'like', '%'.addcslashes(Attendee::normalizeForSearch($this->search), '%_\\').'%')
-            ->orderBy('name')
-            ->limit(15)
-            ->get());
-    }
-
-    /**
-     * Daftar yang belum memilih untuk dipanggil di gelombang bantuan.
-     *
-     * @return Collection<int, Attendee>
-     */
-    public function notVoted(): Collection
-    {
-        $election = $this->election();
-        $round = $election?->currentRound();
-
-        if ($election === null) {
-            return collect();
-        }
-
-        $ballotCount = max(1, $election->ballots()->count());
-
-        return $election->attendees()
-            ->when($round !== null, fn (Builder $query) => $query->whereRaw(
-                '(select count(*) from attendee_participations p where p.attendee_id = attendees.id and p.round_id = ? and p.active_key = 1) < ?',
-                [$round->id, $ballotCount],
-            ))
-            ->when(mb_strlen(trim($this->notVotedFilter)) >= 2, fn (Builder $query) => $query->where('name_search', 'like', '%'.addcslashes(Attendee::normalizeForSearch($this->notVotedFilter), '%_\\').'%'))
-            ->orderBy('name')
-            ->limit(200)
-            ->get();
+        return $this->attendanceTable($table)
+            ->heading('Peserta')
+            ->defaultPaginationPageOption(25);
     }
 
     /**
@@ -283,79 +222,6 @@ class ControlRoom extends Page
                 app(AuditLogger::class)->log('election.headcount_entered', $election, $election, meta: ['headcount' => (int) $data['headcount']]);
                 Notification::make()->title('Hitung kepala disimpan.')->success()->send();
             });
-    }
-
-    public function restoreAction(): Action
-    {
-        return Action::make('restore')
-            ->label('Pulihkan Hak Pilih')
-            ->color('danger')
-            ->modalHeading(fn (array $arguments): string => 'Pulihkan hak pilih: '.($this->attendeeFromArguments($arguments)?->name ?? ''))
-            ->modalDescription('Jika orang ini sudah tercatat memilih, suara tersebut DIBATALKAN (tidak dihapus) tanpa menampilkan pilihannya. PIN lama hangus dan PIN baru dibuat.')
-            ->schema([
-                Select::make('reason')->label('Alasan')->options(RestoreReason::class)->required()->live(),
-                Textarea::make('note')->label('Catatan')->maxLength(500)
-                    ->required(fn (Get $get): bool => in_array($get('reason'), [RestoreReason::Lainnya, RestoreReason::Lainnya->value], true)),
-            ])
-            ->action(function (array $data, array $arguments): void {
-                $election = $this->authorizedElection();
-                $attendee = $this->attendeeFromArguments($arguments);
-                abort_if($attendee === null, 404);
-
-                $reason = $data['reason'] instanceof RestoreReason ? $data['reason'] : RestoreReason::from($data['reason']);
-
-                try {
-                    $result = app(VoterRightRestorer::class)->restore($election, $attendee, $reason, $data['note'] ?? null, auth()->user());
-                } catch (VotingException $exception) {
-                    Notification::make()->title($exception->getMessage())->danger()->send();
-
-                    return;
-                }
-
-                $this->reissued = [
-                    'name' => $attendee->name,
-                    'number' => $attendee->displayNumber(),
-                    'pin' => $result['pin'],
-                    'cancelled' => $result['cancelled_votes'],
-                ];
-            });
-    }
-
-    public function acknowledgeReissue(): void
-    {
-        $this->reissued = null;
-    }
-
-    /**
-     * @param  array<string, mixed>  $arguments
-     */
-    private function attendeeFromArguments(array $arguments): ?Attendee
-    {
-        $election = $this->election();
-
-        return $election?->attendees()->where('public_id', $arguments['attendee'] ?? '')->first();
-    }
-
-    /**
-     * @param  Collection<int, Attendee>  $attendees
-     * @return Collection<int, array{attendee: Attendee, voted: bool}>
-     */
-    private function withVotedFlag(Election $election, Collection $attendees): Collection
-    {
-        $round = $election->currentRound();
-        $ballotCount = max(1, $election->ballots()->count());
-
-        $votedCounts = $round === null ? collect() : DB::table('attendee_participations')
-            ->where('round_id', $round->id)
-            ->where('active_key', 1)
-            ->whereIn('attendee_id', $attendees->pluck('id'))
-            ->groupBy('attendee_id')
-            ->pluck(DB::raw('count(*)'), 'attendee_id');
-
-        return $attendees->map(fn (Attendee $attendee): array => [
-            'attendee' => $attendee,
-            'voted' => ((int) ($votedCounts[$attendee->id] ?? 0)) >= $ballotCount,
-        ]);
     }
 
     private function guard(callable $callback, string $success): void

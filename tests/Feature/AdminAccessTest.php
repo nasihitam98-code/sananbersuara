@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Enums\BallotScope;
 use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
-use App\Enums\RestoreReason;
 use App\Enums\StaffRole;
 use App\Enums\WaveKind;
 use App\Filament\Pages\AttendanceList;
@@ -381,6 +380,22 @@ class AdminAccessTest extends TestCase
         $this->assertSame(ElectionStatus::Berlangsung, $this->election->fresh()->status);
     }
 
+    public function test_control_room_lists_attendees_like_attendance_list(): void
+    {
+        $registrar = app(AttendeeRegistrar::class);
+        $budi = $registrar->register($this->election, 'Budi Santoso', null, $this->superAdmin)['attendee'];
+        $siti = $registrar->register($this->election, 'Siti Aminah', null, $this->superAdmin)['attendee'];
+        $this->actingAs($this->makeUser(User::ROLE_STAFF, StaffRole::Panitia));
+
+        Livewire::test(ControlRoom::class)
+            ->assertCanSeeTableRecords([$budi, $siti])
+            ->assertSee('Belum memilih')
+            ->searchTable('siti')
+            ->assertCanSeeTableRecords([$siti])
+            ->assertCanNotSeeTableRecords([$budi])
+            ->assertDontSee('Cari peserta (Pulihkan Hak Pilih)');
+    }
+
     public function test_staff_tab_only_shows_for_dadakan_elections(): void
     {
         $this->actingAs($this->superAdmin);
@@ -398,7 +413,7 @@ class AdminAccessTest extends TestCase
         $this->actingAs($committee);
 
         $component = Livewire::test(ControlRoom::class)
-            ->callAction(TestAction::make('restore')->arguments(['attendee' => $attendee->public_id]), ['reason' => RestoreReason::PinHilang->value])
+            ->callAction(TestAction::make('newPin')->table($attendee))
             ->assertHasNoFormErrors()
             ->assertSee('Cetak kartu PIN')
             ->assertSee('PIN BARU. PIN lama tidak berlaku.');

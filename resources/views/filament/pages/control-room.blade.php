@@ -45,7 +45,6 @@
                     <div class="text-center">
                         @if ($d['wave'])
                             <p class="text-lg font-semibold">{{ $d['wave']->displayName() }}</p>
-                            <p class="text-sm text-gray-500">{{ $d['wave']->kind->getLabel() }}</p>
                             <p class="text-6xl font-black tabular-nums {{ ($d['status']['remaining'] ?? 999) <= 30 ? 'text-danger-600' : 'text-primary-700 dark:text-primary-300' }}">
                                 @if ($d['status']['remaining'] === null)
                                     Tanpa timer
@@ -114,65 +113,8 @@
             </div>
         </div>
 
-        <div class="grid gap-6 lg:grid-cols-2">
-            {{-- Cari peserta: pulihkan hak pilih --}}
-            <x-filament::section heading="Cari peserta (Pulihkan Hak Pilih)">
-                <x-filament::input.wrapper>
-                    <x-filament::input type="search" wire:model.live.debounce.400ms="search" placeholder="Ketik minimal 2 huruf nama" />
-                </x-filament::input.wrapper>
-
-                <ul class="mt-3 divide-y divide-gray-200 dark:divide-white/10">
-                    @foreach ($this->searchResults() as $row)
-                        <li class="flex items-center justify-between gap-3 py-2">
-                            <div>
-                                <p class="font-semibold">{{ $row['attendee']->name }}</p>
-                                <p class="text-sm text-gray-500">No. {{ $row['attendee']->displayNumber() }}
-                                    · {{ $row['voted'] ? '✓ Sudah memilih' : '○ Belum memilih' }}
-                                    {{ $row['attendee']->isPinLocked() ? '· 🔒 PIN terkunci' : '' }}
-                                </p>
-                            </div>
-                            @if ($election->status->isLive())
-                                {{ ($this->restoreAction)(['attendee' => $row['attendee']->public_id]) }}
-                            @endif
-                        </li>
-                    @endforeach
-                </ul>
-            </x-filament::section>
-
-            {{-- PIN terkunci --}}
-            <x-filament::section heading="PIN terkunci ({{ $this->lockedAttendees()->count() }})">
-                <ul class="divide-y divide-gray-200 dark:divide-white/10">
-                    @forelse ($this->lockedAttendees() as $attendee)
-                        <li class="flex items-center justify-between gap-3 py-2">
-                            <span>🔒 {{ $attendee->name }} <span class="text-sm text-gray-500">No. {{ $attendee->displayNumber() }}</span></span>
-                            @if ($election->status->isLive())
-                                {{ ($this->restoreAction)(['attendee' => $attendee->public_id]) }}
-                            @endif
-                        </li>
-                    @empty
-                        <li class="py-2 text-gray-500">Tidak ada.</li>
-                    @endforelse
-                </ul>
-            </x-filament::section>
-        </div>
-
-        {{-- Belum memilih --}}
-        <x-filament::section heading="Belum memilih (untuk dipanggil di gelombang bantuan)" collapsible>
-            <x-filament::input.wrapper>
-                <x-filament::input type="search" wire:model.live.debounce.400ms="notVotedFilter" placeholder="Saring nama" />
-            </x-filament::input.wrapper>
-            <p class="mt-2 text-sm text-gray-500">
-                Menampilkan maksimal 200 nama.
-                <x-filament::link :href="\App\Filament\Pages\AttendanceList::getUrl(['pemilihan' => $election->public_id])">Lihat semua di Daftar Hadir</x-filament::link>
-            </p>
-            <ul class="mt-3 grid gap-x-6 md:grid-cols-2 xl:grid-cols-3">
-                @forelse ($this->notVoted() as $attendee)
-                    <li class="py-1">{{ $attendee->name }} <span class="text-sm text-gray-500">· No. {{ $attendee->displayNumber() }}</span></li>
-                @empty
-                    <li class="py-1 text-gray-500">Semua yang hadir sudah memilih.</li>
-                @endforelse
-            </ul>
-        </x-filament::section>
+        {{-- Peserta: tabel yang sama dengan Daftar Hadir (cari nama, filter belum/sudah, PIN baru, Pulihkan). --}}
+        {{ $this->table }}
 
     @endif
 </x-filament-panels::page>
