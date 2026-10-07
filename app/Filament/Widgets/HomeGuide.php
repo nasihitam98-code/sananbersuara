@@ -198,27 +198,37 @@ class HomeGuide extends Widget
         $edit = fn (string $label): ?array => ElectionResource::canAccess() ? [$label, ElectionResource::getUrl('edit', ['record' => $election])] : null;
         $page = fn (string $page, string $label): ?array => $page::canAccess() ? [$label, $page::getUrl($query)] : null;
 
+        // Yang tidak bisa mengelola pemilihan (Panitia, Petugas Pintu, Admin RT) tidak diberi petunjuk tombol yang tidak mereka punya.
+        $manager = ElectionResource::canAccess();
+        $startedBy = $manager ? 'buka halaman pemilihan lalu klik Mulai Pemilihan.' : 'pemilihan dimulai oleh Super Admin.';
+
         [$hint, $options] = match ($election->status) {
-            ElectionStatus::Draft => ['Isi surat suara dan calon. Setelah lengkap, buka pengaturan lalu tekan Status → Tandai Siap.', [
-                fn () => $edit('Buka pengaturan pemilihan'),
-                fn () => CandidateResource::canAccess() ? ['Isi calon', CandidateResource::getUrl()] : null,
-            ]],
-            ElectionStatus::Ready => $dadakan
-                ? ['Sudah siap. Petugas pintu sudah bisa mendata yang datang. Saat acara dimulai: Status → Mulai Pemilihan.', [
-                    fn () => $edit('Buka pengaturan (Mulai Pemilihan)'),
-                    fn () => $page(DoorDesk::class, 'Buka Meja Pintu'),
-                ]]
-                : ['Sudah siap. Pasang laptop meja dan bilik dengan token, lalu Status → Mulai Pemilihan.', [
-                    fn () => $page(DevicesPage::class, 'Pasang laptop (Perangkat)'),
-                    fn () => $edit('Buka pengaturan (Mulai Pemilihan)'),
+            ElectionStatus::Draft => [$manager
+                ? 'Isi surat suara dan calon. Setelah lengkap, buka halaman pemilihan lalu klik Tandai Siap.'
+                : 'Super Admin sedang menyiapkan surat suara dan calon. Menu Anda aktif setelah pemilihan ditandai Siap.', [
+                    fn () => $edit('Buka halaman pemilihan'),
+                    fn () => CandidateResource::canAccess() ? ['Isi calon', CandidateResource::getUrl()] : null,
                 ]],
-            ElectionStatus::Berlangsung, ElectionStatus::Paused => $dadakan
-                ? ['Pemilihan berjalan. Buka/tutup voting dan tampilkan QR dari Ruang Kendali.', [
-                    fn () => $page(ControlRoom::class, 'Buka Ruang Kendali'),
+            ElectionStatus::Ready => $dadakan
+                ? ['Sudah siap. Petugas pintu sudah bisa mendata yang datang. Saat acara dimulai: '.$startedBy, [
+                    fn () => $edit('Buka halaman pemilihan (Mulai Pemilihan)'),
                     fn () => $page(DoorDesk::class, 'Buka Meja Pintu'),
-                    fn () => $page(AttendanceList::class, 'Daftar Hadir'),
-                    fn () => $edit('Status: Jeda / Tutup Pemilihan'),
                 ]]
+                : [$manager
+                    ? 'Sudah siap. Pasang laptop meja dan bilik dengan token, lalu buka halaman pemilihan dan klik Mulai Pemilihan.'
+                    : 'Sudah siap. Laptop meja dan bilik dipasang Super Admin; '.$startedBy, [
+                        fn () => $page(DevicesPage::class, 'Pasang laptop (Perangkat)'),
+                        fn () => $edit('Buka halaman pemilihan (Mulai Pemilihan)'),
+                    ]],
+            ElectionStatus::Berlangsung, ElectionStatus::Paused => $dadakan
+                ? [ControlRoom::canAccess()
+                    ? 'Pemilihan berjalan. Buka/tutup voting dan tampilkan QR dari Ruang Kendali.'
+                    : 'Pemilihan berjalan. Terus data yang datang di Meja Pintu. Warga yang lupa PIN diarahkan ke meja panitia.', [
+                        fn () => $page(ControlRoom::class, 'Buka Ruang Kendali'),
+                        fn () => $page(DoorDesk::class, 'Buka Meja Pintu'),
+                        fn () => $page(AttendanceList::class, 'Daftar Hadir'),
+                        fn () => $edit('Status: Jeda / Tutup Pemilihan'),
+                    ]]
                 : ['Pemilihan berjalan. Petugas meja mengizinkan pemilih ke bilik.', [
                     fn () => $page(DeskPage::class, 'Buka Meja Izin'),
                     fn () => $page(ParticipationPage::class, 'Lihat Partisipasi'),
@@ -260,7 +270,7 @@ class HomeGuide extends Widget
                 [ElectionResource::class, 'Buat pemilihan', 'Tambah surat suara, mis. "Calon Ketua RW", berhak: semua yang hadir.'],
                 [CandidateResource::class, 'Masukkan calon', 'Satu per satu atau Tambah banyak calon (tempel daftar nama).'],
                 [GalleryPage::class, 'Galeri Foto: unggah foto calon', 'Lalu Pasang otomatis (nama file) atau pilih per calon.'],
-                [ElectionResource::class, 'Tugaskan Panitia dan Petugas Pintu', 'Di pemilihan, tab Panitia & Petugas Pintu. Lalu Status → Tandai Siap → Mulai.'],
+                [ElectionResource::class, 'Tugaskan Panitia dan Petugas Pintu', 'Di pemilihan, tab Panitia & Petugas Pintu. Lalu klik Tandai Siap, dan saat acara dimulai klik Mulai Pemilihan.'],
                 [DoorDesk::class, 'Meja Pintu: daftarkan yang hadir', 'Ketik nama, tekan Daftarkan & buat PIN, tulis PIN di kertas.'],
                 [ControlRoom::class, 'Ruang Kendali: buka voting', 'Tampilkan Layar QR, tekan BUKA VOTING. Gelombang bantuan untuk lansia.'],
                 [AttendanceList::class, 'Daftar Hadir: pantau siapa yang belum memilih', 'Bisa dicari, disaring, dan diunduh Excel.'],

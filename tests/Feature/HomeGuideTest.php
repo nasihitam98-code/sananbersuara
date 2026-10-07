@@ -82,7 +82,7 @@ class HomeGuideTest extends TestCase
             ->assertSee('Ganti mode')
             ->assertSee('Penjaringan Calon RW')
             ->assertSee('Sudah siap. Petugas pintu sudah bisa mendata')
-            ->assertSee('Buka pengaturan (Mulai Pemilihan)')
+            ->assertSee('Buka halaman pemilihan (Mulai Pemilihan)')
             ->assertSee('Surat suara:')
             ->assertSee('Klik tahap yang sudah lewat')
             ->assertSee(ElectionResource::getUrl('edit', ['record' => $this->election]), false)
@@ -114,6 +114,8 @@ class HomeGuideTest extends TestCase
             ->assertSee('Buka Meja Pintu')
             ->assertSee('Meja Pintu: daftarkan yang hadir')
             ->assertDontSee('Ruang Kendali: buka voting')
+            ->assertSee('pemilihan dimulai oleh Super Admin')
+            ->assertDontSee('klik Mulai Pemilihan')
             ->assertDontSee('Ganti mode');
 
         $this->actingAs($door)->get(route('workspace.switch', 'resmi'))->assertForbidden();

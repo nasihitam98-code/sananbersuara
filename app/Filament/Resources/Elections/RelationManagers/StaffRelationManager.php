@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Elections\RelationManagers;
 
 use App\Enums\StaffRole;
 use App\Filament\Resources\Elections\Pages\EditElection;
+use App\Models\Election;
 use App\Models\ElectionStaff;
 use App\Models\User;
 use App\Services\AuditLogger;
@@ -28,6 +29,14 @@ class StaffRelationManager extends RelationManager
     protected static ?string $title = 'Panitia & Petugas Pintu';
 
     protected static ?string $modelLabel = 'penugasan';
+
+    /**
+     * Panitia dan Petugas Pintu hanya dipakai Mode Dadakan; Mode Resmi memakai akun Admin RT per RT.
+     */
+    public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
+    {
+        return $ownerRecord instanceof Election && $ownerRecord->isDadakan() && parent::canViewForRecord($ownerRecord, $pageClass);
+    }
 
     public function form(Schema $schema): Schema
     {

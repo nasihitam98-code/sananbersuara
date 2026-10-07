@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\BallotScope;
+use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
 use App\Enums\RestoreReason;
 use App\Enums\StaffRole;
@@ -306,6 +307,15 @@ class AdminAccessTest extends TestCase
 
         $this->assertNotNull($this->election->fresh()->openWave());
         $this->actingAs($committee)->get(route('screens.qr', $this->election->public_id))->assertOk();
+    }
+
+    public function test_staff_tab_only_shows_for_dadakan_elections(): void
+    {
+        $this->actingAs($this->superAdmin);
+        $resmi = Election::factory()->create(['mode' => ElectionMode::Resmi]);
+
+        $this->assertTrue(StaffRelationManager::canViewForRecord($this->election, EditElection::class));
+        $this->assertFalse(StaffRelationManager::canViewForRecord($resmi, EditElection::class));
     }
 
     public function test_restored_pin_can_be_printed_as_a_new_card(): void
