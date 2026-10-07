@@ -1092,3 +1092,44 @@ body[data-phase="finished"] .screen__grid {
         height: 3rem;
     }
 }
+
+/* Halaman hasil publik: foto pemenang harus blok (span inline mengabaikan ukuran), penjelasan. */
+.winner__photo {
+    display: block;
+}
+
+.winner .photo img {
+    display: block;
+}
+
+.public-facts {
+    display: grid;
+    gap: 8px;
+    margin: 12px 0;
+}
+
+.public-facts div {
+    display: grid;
+    grid-template-columns: 8.5rem 1fr;
+    gap: 8px;
+}
+
+.public-facts dt {
+    color: var(--c-muted);
+    font-weight: 600;
+}
+
+.public-facts dd {
+    margin: 0;
+}
+
+.public-meaning {
+    margin: 10px 0 0;
+}
+
+@media (max-width: 480px) {
+    .public-facts div {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+}

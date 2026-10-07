@@ -37,6 +37,8 @@
                 {{ $election->closed_at?->translatedFormat('d F Y') }}
                 @if ($election->status === \App\Enums\ElectionStatus::Unpublished)
                     · sedang ditinjau ulang
+                @else
+                    · hasil resmi · lihat →
                 @endif
             </span>
         </a>

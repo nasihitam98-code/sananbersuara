@@ -10,6 +10,20 @@
             <p class="muted">Panitia sedang memeriksa kembali hasil pemilihan ini. Silakan kembali lagi nanti.</p>
         </section>
     @else
+        <section class="card public-intro">
+            <h1>Hasil resmi</h1>
+            <dl class="public-facts">
+                @if ($election->started_at)
+                    <div><dt>Dilaksanakan</dt><dd>{{ $election->started_at->translatedFormat('l, d F Y') }}</dd></div>
+                @endif
+                @if ($election->published_at)
+                    <div><dt>Diumumkan</dt><dd>{{ $election->published_at->translatedFormat('d F Y, H:i') }}</dd></div>
+                @endif
+                <div><dt>Cara</dt><dd>{{ $election->isDadakan() ? 'Warga yang hadir memilih lewat HP (nama + PIN), satu orang satu suara.' : 'Pemilih terdaftar per RT memilih di bilik, satu orang satu suara.' }}</dd></div>
+            </dl>
+            <p class="muted">Yang ditampilkan adalah calon yang <strong>ditetapkan panitia</strong> berdasarkan hasil penghitungan suara dan berita acara yang telah disahkan. Rincian jumlah suara tercatat di berita acara.</p>
+        </section>
+
         @if ($units->count() > 1)
             <nav class="tabs" aria-label="Pilih RT">
                 @foreach ($units as $unit)
@@ -24,6 +38,13 @@
             <section class="card">
                 <h2>{{ $row['title'] }}</h2>
                 <span class="step">{{ $row['label'] }}</span>
+                @if ($row['decided'])
+                    <p class="muted public-meaning">
+                        {{ $row['candidates']->count() === 1
+                            ? 'Calon berikut ditetapkan sebagai yang terpilih.'
+                            : 'Calon berikut ditetapkan lolos ke tahap berikutnya ('.$row['candidates']->count().' orang, urut nomor calon).' }}
+                    </p>
+                @endif
 
                 @if ($row['decided'])
                     <div class="winners {{ $row['candidates']->count() === 1 ? 'winners--single' : '' }}">
