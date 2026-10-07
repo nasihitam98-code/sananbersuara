@@ -29,14 +29,60 @@
                         <p class="mt-2 text-sm text-gray-500">Detail suara (siapa memilih siapa) akan dihapus otomatis pada <strong>{{ $deadline->format('d-m-Y') }}</strong>. @if ($this->extendRetentionAction->isVisible()) {{ $this->extendRetentionAction }} @endif</p>
                     @endif
                 </div>
-                <div class="flex flex-wrap gap-2">
-                    @if ($this->startVerificationAction->isVisible()) {{ $this->startVerificationAction }} @endif
-                    @if ($this->publishAction->isVisible()) {{ $this->publishAction }} @endif
-                    @if ($this->unpublishAction->isVisible()) {{ $this->unpublishAction }} @endif
-                    @if ($this->reopenVerificationAction->isVisible()) {{ $this->reopenVerificationAction }} @endif
-                    @if ($this->nextRoundAction->isVisible()) {{ $this->nextRoundAction }} @endif
-                </div>
             </div>
+
+                {{-- Langkah berurutan: apa yang sudah selesai dan apa yang dikerjakan sekarang. --}}
+                @php($verified = in_array($election->status, [\App\Enums\ElectionStatus::Verifikasi, \App\Enums\ElectionStatus::Published, \App\Enums\ElectionStatus::Unpublished], true))
+                @php($slotRows = $this->slotRows())
+                @php($decided = collect($slotRows)->filter(fn ($row) => $row['outcome'] !== null)->count())
+                @php($reportRows = $this->reportRows())
+                @php($ratified = collect($reportRows)->filter(fn ($row) => $row['current']?->status === \App\Enums\ReportStatus::Disahkan)->count())
+                @php($published = $election->status === \App\Enums\ElectionStatus::Published)
+                @php($steps = [
+                    ['Mulai verifikasi', $verified, 'Mengunci hasil untuk diperiksa panitia.'],
+                    ['Tetapkan yang lolos/terpilih', $verified && $decided === count($slotRows), "{$decided} dari ".count($slotRows).' surat suara sudah ditetapkan (bagian ② di bawah).'],
+                    ['Berita acara: buat draf, cetak, tanda tangan, sahkan', $verified && $ratified === count($reportRows), "{$ratified} dari ".count($reportRows).' berita acara disahkan (bagian ③ di bawah).'],
+                    ['Publikasikan ke Halaman Publik', $published, 'Hasil resmi tampil di Halaman Publik (tanpa angka suara).'],
+                ])
+                @php($current = collect($steps)->search(fn ($step) => ! $step[1]))
+
+                <ol class="mt-5 space-y-3">
+                    @foreach ($steps as $index => [$label, $done, $detail])
+                        <li @class([
+                            'flex flex-wrap items-center justify-between gap-3 rounded-xl p-3',
+                            'bg-primary-50 ring-1 ring-primary-200 dark:bg-primary-500/10 dark:ring-primary-500/30' => $index === $current,
+                        ])>
+                            <div class="flex items-center gap-3">
+                                <span @class([
+                                    'grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm font-bold',
+                                    'bg-success-600 text-white' => $done,
+                                    'bg-primary-600 text-white' => ! $done && $index === $current,
+                                    'bg-gray-200 text-gray-600 dark:bg-white/10 dark:text-gray-300' => ! $done && $index !== $current,
+                                ])>{{ $done ? '✓' : $index + 1 }}</span>
+                                <div>
+                                    <p class="font-semibold">{{ $label }}</p>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ $detail }}</p>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                @if ($index === 0 && $this->startVerificationAction->isVisible()) {{ $this->startVerificationAction }} @endif
+                                @if ($index === 3)
+                                    @if ($this->publishAction->isVisible()) {{ $this->publishAction }} @endif
+                                    @if ($this->unpublishAction->isVisible()) {{ $this->unpublishAction }} @endif
+                                    @if ($this->reopenVerificationAction->isVisible()) {{ $this->reopenVerificationAction }} @endif
+                                @endif
+                            </div>
+                        </li>
+                    @endforeach
+                </ol>
+
+                @if ($this->nextRoundAction->isVisible())
+                    <div class="mt-4 flex flex-wrap items-center gap-3 border-t border-gray-100 pt-4 text-sm text-gray-500 dark:border-white/10">
+                        <span>Ada calon <strong>seri</strong> di posisi penentu? Lakukan sebelum langkah 2:</span>
+                        {{ $this->nextRoundAction }}
+                    </div>
+                @endif
+
 
             @if (in_array($election->status, [\App\Enums\ElectionStatus::Verifikasi, \App\Enums\ElectionStatus::Unpublished], true))
                 @php($problems = $this->publishProblems())
@@ -56,7 +102,7 @@
         </x-filament::section>
 
         {{-- 1. Penetapan --}}
-        <x-filament::section heading="1. Penetapan hasil oleh panitia" description="Sistem hanya menampilkan angka. Yang terpilih/lolos ditetapkan di sini.">
+        <x-filament::section id="penetapan" heading="② Penetapan hasil oleh panitia" description="Klik Tetapkan di setiap surat suara. Sistem hanya menampilkan angka; yang terpilih/lolos ditetapkan panitia.">
             <div class="space-y-6">
                 @foreach ($this->slotRows() as $row)
                     @php($tally = $row['tally'])
@@ -107,7 +153,7 @@
         </x-filament::section>
 
         {{-- 2. Berita acara --}}
-        <x-filament::section heading="2. Berita acara" description="Buat draf → cetak (Simpan sebagai PDF) → tanda tangani → Sahkan. Penetapan yang berubah membuat berita acara lingkup itu harus dibuat ulang.">
+        <x-filament::section id="berita-acara" heading="③ Berita acara" description="Urutan: Buat draf → Lihat / Cetak (Simpan sebagai PDF) → tanda tangani panitia → Sahkan. Bila penetapan diubah, berita acara dibuat ulang.">
             <div class="space-y-4">
                 @foreach ($this->reportRows() as $row)
                     @php($current = $row['current'])

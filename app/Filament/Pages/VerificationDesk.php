@@ -235,7 +235,7 @@ class VerificationDesk extends Page
         return Action::make('nextRound')
             ->label('Buka Putaran Berikutnya')
             ->icon('heroicon-o-arrow-path')
-            ->color('warning')
+            ->color('gray')
             ->visible(fn (): bool => in_array($this->election()?->status, [ElectionStatus::Ditutup, ElectionStatus::Verifikasi], true))
             ->modalHeading('Buka putaran berikutnya')
             ->modalDescription('Untuk seri atau keputusan panitia. Pemilihan kembali Berlangsung hanya untuk surat suara/RT yang dipilih, dengan calon yang dipilih. Mode Resmi: laptop meja dan bilik perlu dipasang ulang dengan token baru.')
@@ -369,10 +369,29 @@ class VerificationDesk extends Page
             return [];
         }
 
-        return $slot['ballot']->ballotCandidates()
+        $candidates = $slot['ballot']->ballotCandidates()
             ->when($slot['unit'] !== null, fn ($query) => $query->where('unit_id', $slot['unit']->id))
-            ->get()
-            ->mapWithKeys(fn ($candidate): array => [$candidate->id => $candidate->displayNumber().' · '.$candidate->name])
+            ->get();
+
+        // Peringkat + suara per putaran agar panitia tidak perlu mencocokkan dengan tabel; urut putaran terakhir dulu.
+        $rounds = $this->election()?->rounds()->orderBy('number')->get() ?? collect();
+        $calculator = app(ResultsCalculator::class);
+        $results = [];
+        $order = [];
+
+        foreach ($rounds as $round) {
+            foreach ($calculator->tally($slot['ballot'], $round, $slot['unit'])['candidates'] as $row) {
+                $results[$row['candidate']->id][] = ($rounds->count() > 1 ? "P{$round->number} " : '')."#{$row['rank']} ({$row['votes']} suara)";
+                $order[$row['candidate']->id] = $round->number * -1000 + $row['rank'];
+            }
+        }
+
+        return $candidates
+            ->sortBy(fn ($candidate): int => $order[$candidate->id] ?? PHP_INT_MAX)
+            ->mapWithKeys(fn ($candidate): array => [
+                $candidate->id => $candidate->displayNumber().' · '.$candidate->name
+                    .(isset($results[$candidate->id]) ? ' — '.implode(' · ', $results[$candidate->id]) : ''),
+            ])
             ->all();
     }
 
