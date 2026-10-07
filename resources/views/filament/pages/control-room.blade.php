@@ -113,8 +113,24 @@
             </div>
         </div>
 
-        {{-- Peserta: cari nama, filter belum/sudah, PIN baru, Pulihkan, unduh Excel. --}}
-        {{ $this->table }}
+        {{-- Peserta: tab belum/sudah/semua, cari nama, PIN baru (belum), Pulihkan (sudah), unduh Excel. --}}
+        @php($tabCounts = $this->participantTabCounts())
+        <div class="space-y-3">
+            <x-filament::tabs label="Peserta">
+                @foreach (['belum' => 'Belum memilih', 'sudah' => 'Sudah memilih', 'semua' => 'Semua'] as $tabKey => $tabLabel)
+                    <x-filament::tabs.item
+                        :active="$participantTab === $tabKey"
+                        :badge="$tabCounts[$tabKey]"
+                        :badge-color="$tabKey === 'sudah' ? 'success' : ($tabKey === 'belum' ? 'warning' : 'gray')"
+                        wire:click="setParticipantTab('{{ $tabKey }}')"
+                    >
+                        {{ $tabLabel }}
+                    </x-filament::tabs.item>
+                @endforeach
+            </x-filament::tabs>
+
+            {{ $this->table }}
+        </div>
 
     @endif
 </x-filament-panels::page>

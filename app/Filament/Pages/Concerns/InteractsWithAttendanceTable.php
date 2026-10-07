@@ -44,12 +44,17 @@ trait InteractsWithAttendanceTable
     public ?array $reissued = null;
 
     /**
+     * Tab tabel peserta: "belum" (tombol PIN baru), "sudah" (tombol Pulihkan), atau "semua".
+     */
+    public string $participantTab = 'belum';
+
+    /**
      * Tabel peserta: nomor, nama, RT, jam datang, status sudah/belum, status PIN, dan tombol PIN baru / Pulihkan.
      */
     protected function attendanceTable(Table $table): Table
     {
         return $table
-            ->query(fn (): Builder => $this->attendanceQuery())
+            ->query(fn (): Builder => $this->applyParticipantTab($this->attendanceQuery()))
             ->defaultSort('seq_no', 'desc')
             ->poll('5s')
             ->description(fn (): ?string => $this->summary())
@@ -111,17 +116,9 @@ trait InteractsWithAttendanceTable
                 $this->restoreTableAction(),
             ])
             ->filtersLayout(FiltersLayout::AboveContent)
-            ->filtersFormColumns(4)
+            ->filtersFormColumns(3)
             ->deferFilters(false)
             ->filters([
-                SelectFilter::make('status')
-                    ->label('Status')
-                    ->options(['belum' => 'Belum memilih', 'sudah' => 'Sudah memilih'])
-                    ->query(fn (Builder $query, array $data): Builder => match ($data['value'] ?? null) {
-                        'sudah' => $query->whereRaw(static::PARTICIPATION_COUNT_SQL.' >= ?', [$this->roundId(), $this->ballotCount()]),
-                        'belum' => $query->whereRaw(static::PARTICIPATION_COUNT_SQL.' < ?', [$this->roundId(), $this->ballotCount()]),
-                        default => $query,
-                    }),
                 SelectFilter::make('unit_id')
                     ->label('RT')
                     ->options(fn (): array => Unit::query()->orderBy('sort')->pluck('name', 'id')->all()),
@@ -153,11 +150,8 @@ trait InteractsWithAttendanceTable
             ->button()
             ->size('sm')
             ->color('primary')
-            ->visible(fn (): bool => $this->canRestore())
-            ->disabled(fn (Attendee $record): bool => $this->hasVoted($record))
-            ->tooltip(fn (Attendee $record): string => $this->hasVoted($record)
-                ? 'Sudah memilih. Bila suaranya bukan dia yang memberikan, pakai Pulihkan.'
-                : 'PIN lupa/hilang/terkunci: buat PIN baru. PIN lama tidak berlaku.')
+            ->visible(fn (Attendee $record): bool => $this->canRestore() && ! $this->hasVoted($record))
+            ->tooltip('PIN lupa/hilang/terkunci: buat PIN baru. PIN lama tidak berlaku.')
             ->requiresConfirmation()
             ->modalIcon(Heroicon::OutlinedKey)
             ->modalHeading(fn (Attendee $record): string => "Buat PIN baru untuk {$record->name}?")
@@ -181,11 +175,8 @@ trait InteractsWithAttendanceTable
             ->size('sm')
             ->color('danger')
             ->outlined()
-            ->visible(fn (): bool => $this->canRestore())
-            ->disabled(fn (Attendee $record): bool => ! $this->hasVoted($record))
-            ->tooltip(fn (Attendee $record): string => $this->hasVoted($record)
-                ? 'Tercatat sudah memilih padahal merasa belum: suara lama dibatalkan, PIN baru dibuat.'
-                : 'Belum memilih. Bila lupa PIN, cukup tombol PIN baru.')
+            ->visible(fn (Attendee $record): bool => $this->canRestore() && $this->hasVoted($record))
+            ->tooltip('Tercatat sudah memilih padahal merasa belum: suara lama dibatalkan, PIN baru dibuat.')
             ->modalHeading(fn (Attendee $record): string => "Pulihkan hak pilih: {$record->name}")
             ->modalDescription('Suara yang tercatat atas nama orang ini DIBATALKAN (tidak dihapus) tanpa menampilkan pilihannya. PIN lama hangus dan PIN baru dibuat.')
             ->modalSubmitActionLabel('Pulihkan')
@@ -224,6 +215,43 @@ trait InteractsWithAttendanceTable
     public function acknowledgeReissue(): void
     {
         $this->reissued = null;
+    }
+
+    public function setParticipantTab(string $tab): void
+    {
+        $this->participantTab = in_array($tab, ['belum', 'sudah', 'semua'], true) ? $tab : 'belum';
+        $this->resetPage($this->getTablePaginationPageName());
+    }
+
+    /**
+     * Jumlah per tab untuk label tab.
+     *
+     * @return array{belum: int, sudah: int, semua: int}
+     */
+    public function participantTabCounts(): array
+    {
+        $election = $this->election();
+
+        if ($election === null) {
+            return ['belum' => 0, 'sudah' => 0, 'semua' => 0];
+        }
+
+        $participation = app(ResultsCalculator::class)->participation($election, $election->currentRound());
+
+        return ['belum' => $participation['not_voted'], 'sudah' => $participation['voted'], 'semua' => $participation['attendees']];
+    }
+
+    /**
+     * @param  Builder<Attendee>  $query
+     * @return Builder<Attendee>
+     */
+    private function applyParticipantTab(Builder $query): Builder
+    {
+        return match ($this->participantTab) {
+            'sudah' => $query->whereRaw(static::PARTICIPATION_COUNT_SQL.' >= ?', [$this->roundId(), $this->ballotCount()]),
+            'semua' => $query,
+            default => $query->whereRaw(static::PARTICIPATION_COUNT_SQL.' < ?', [$this->roundId(), $this->ballotCount()]),
+        };
     }
 
     private function canRestore(): bool
