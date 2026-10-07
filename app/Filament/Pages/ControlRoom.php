@@ -9,6 +9,7 @@ use App\Enums\WaveKind;
 use App\Enums\WaveStatus;
 use App\Filament\Pages\Concerns\InteractsWithAttendanceTable;
 use App\Filament\Pages\Concerns\InteractsWithElection;
+use App\Filament\Support\InElectionMenu;
 use App\Filament\Support\QuickStart;
 use App\Filament\Support\Reauthenticate;
 use App\Filament\Support\Workspace;
@@ -40,6 +41,10 @@ use UnitEnum;
  */
 class ControlRoom extends Page implements HasTable
 {
+    use InElectionMenu;
+
+    public const ELECTION_MENU_SORT = 4;
+
     use InteractsWithAttendanceTable;
     use InteractsWithElection;
     use InteractsWithTable;

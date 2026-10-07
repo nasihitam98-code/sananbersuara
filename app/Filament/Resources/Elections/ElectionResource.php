@@ -19,7 +19,6 @@ use App\Services\CandidatePhotoProcessor;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
@@ -52,7 +51,8 @@ class ElectionResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return Workspace::shows();
+        // Mode Dadakan: pemilihan dipilih/dibuat dari kartu di Beranda; halamannya lewat menu "Pengaturan pemilihan".
+        return Workspace::shows(ElectionMode::Resmi);
     }
 
     /**
@@ -71,9 +71,12 @@ class ElectionResource extends Resource
         return array_merge(array_diff_key($existing ?? [], array_flip($formKeys)), $filled);
     }
 
+    /**
+     * Form Buat pemilihan cukup nama; pengaturan lanjutan diubah nanti lewat "Nama & pengaturan".
+     */
     public static function form(Schema $schema): Schema
     {
-        return $schema->components(static::settingsComponents());
+        return $schema->components([static::settingsComponents()[0]]);
     }
 
     /**
@@ -205,9 +208,6 @@ class ElectionResource extends Resource
                     ->modalSubmitActionLabel('Tetap masuk')
                     ->action(fn (Election $record) => redirect()->route('workspace.election', $record->public_id)),
                 QuickStart::cancelAction('cancel', fn (array $arguments, ?Model $record): ?Election => $record instanceof Election ? $record : null),
-                EditAction::make()
-                    ->label('Kelola')
-                    ->authorize(fn (Election $record): bool => static::canView($record)),
                 DeleteAction::make()
                     ->label('Hapus')
                     ->modalHeading(fn (Election $record): string => "Hapus \"{$record->name}\"?")

@@ -8,6 +8,7 @@ use App\Enums\StaffRole;
 use App\Filament\Pages\ControlRoom;
 use App\Filament\Pages\DoorDesk;
 use App\Filament\Resources\Candidates\Pages\ListCandidates;
+use App\Filament\Resources\Elections\ElectionResource;
 use App\Filament\Resources\Elections\Pages\ListElections;
 use App\Filament\Support\Workspace;
 use App\Filament\Widgets\HomeGuide;
@@ -193,6 +194,26 @@ class ElectionFocusTest extends TestCase
 
         $this->assertSame(ElectionStatus::Berlangsung, $draft->fresh()->status);
         $this->assertNull($draft->fresh()->openWave());
+    }
+
+    public function test_dadakan_sidebar_is_short_and_grouped_by_the_chosen_election(): void
+    {
+        $election = $this->election('Penjaringan');
+        $this->get(route('workspace.election', $election->public_id));
+
+        $this->get('/admin')
+            ->assertOk()
+            ->assertSee('Pemilihan ini')
+            ->assertSee('Pengaturan pemilihan')
+            ->assertSee(ElectionResource::getUrl('edit', ['record' => $election]), false)
+            ->assertSee('Lainnya')
+            ->assertDontSee('Detail Suara')
+            ->assertDontSee('Data dasar');
+
+        $this->get(ElectionResource::getUrl('create'))
+            ->assertOk()
+            ->assertSee('Nama pemilihan')
+            ->assertDontSee('Pengaturan lanjutan');
     }
 
     public function test_candidate_list_shows_the_chosen_election(): void

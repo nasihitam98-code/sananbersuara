@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Enums\ElectionStatus;
 use App\Enums\OutcomeStatus;
 use App\Enums\ReportStatus;
+use App\Filament\Support\InElectionMenu;
 use App\Filament\Support\Reauthenticate;
 use App\Filament\Support\Workspace;
 use App\Models\Ballot;
@@ -41,6 +42,10 @@ use UnitEnum;
  */
 class VerificationDesk extends Page
 {
+    use InElectionMenu;
+
+    public const ELECTION_MENU_SORT = 6;
+
     protected string $view = 'filament.pages.verification-desk';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentCheck;

@@ -9,6 +9,7 @@ use App\Enums\ElectionStatus;
 use App\Filament\Resources\Candidates\Pages\CreateCandidate;
 use App\Filament\Resources\Candidates\Pages\EditCandidate;
 use App\Filament\Resources\Candidates\Pages\ListCandidates;
+use App\Filament\Support\InElectionMenu;
 use App\Filament\Support\Workspace;
 use App\Models\Ballot;
 use App\Models\Candidate;
@@ -53,6 +54,10 @@ use UnitEnum;
 
 class CandidateResource extends Resource
 {
+    use InElectionMenu;
+
+    public const ELECTION_MENU_SORT = 2;
+
     protected static ?string $model = Candidate::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUserGroup;

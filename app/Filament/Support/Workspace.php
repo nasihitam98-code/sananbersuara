@@ -22,6 +22,9 @@ class Workspace
 
     public const ELECTION_SESSION_KEY = 'workspace_election';
 
+    /** Grup menu Mode Dadakan untuk halaman milik pemilihan yang sedang dikerjakan. */
+    public const ELECTION_MENU_GROUP = 'Pemilihan ini';
+
     /**
      * @return array<int, ElectionMode>
      */

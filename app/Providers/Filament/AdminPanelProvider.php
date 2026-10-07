@@ -2,7 +2,10 @@
 
 namespace App\Providers\Filament;
 
+use App\Enums\ElectionMode;
 use App\Filament\Pages\Auth\EditProfile;
+use App\Filament\Resources\Elections\ElectionResource;
+use App\Filament\Support\Workspace;
 use App\Http\Middleware\EnsurePasswordChanged;
 use Filament\Auth\MultiFactor\Email\EmailAuthentication;
 use Filament\Http\Middleware\Authenticate;
@@ -49,17 +52,25 @@ class AdminPanelProvider extends PanelProvider
                 'gray' => Color::Slate,
             ])
             ->navigationGroups([
+                NavigationGroup::make(Workspace::ELECTION_MENU_GROUP),
                 NavigationGroup::make('Persiapan'),
                 NavigationGroup::make('Hari H'),
                 NavigationGroup::make('Hasil'),
-                NavigationGroup::make('Data dasar'),
-                NavigationGroup::make('Sistem')->collapsed(),
+                NavigationGroup::make('Lainnya')->collapsed(),
             ])
             ->navigationItems([
                 NavigationItem::make('Halaman Publik')
                     ->url(fn (): string => route('public.index'), shouldOpenInNewTab: true)
                     ->icon(Heroicon::OutlinedGlobeAlt)
                     ->sort(1),
+                // Mode Dadakan: halaman pemilihan yang sedang dikerjakan (surat suara, panitia, riwayat).
+                NavigationItem::make('Pengaturan pemilihan')
+                    ->group(Workspace::ELECTION_MENU_GROUP)
+                    ->icon(Heroicon::OutlinedCog6Tooth)
+                    ->sort(1)
+                    ->visible(fn (): bool => Workspace::current() === ElectionMode::Dadakan && Workspace::election() !== null && ElectionResource::canAccess())
+                    ->url(fn (): string => ($election = Workspace::election()) !== null ? ElectionResource::getUrl('edit', ['record' => $election]) : url('/admin'))
+                    ->isActiveWhen(fn (): bool => request()->routeIs(ElectionResource::getRouteBaseName().'.edit')),
             ])
             ->sidebarCollapsibleOnDesktop()
             ->renderHook(PanelsRenderHook::GLOBAL_SEARCH_BEFORE, fn (): View => view('filament.workspace-switcher'))

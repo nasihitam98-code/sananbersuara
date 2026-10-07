@@ -6,6 +6,7 @@ use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
 use App\Enums\StaffRole;
 use App\Filament\Pages\Concerns\InteractsWithElection;
+use App\Filament\Support\InElectionMenu;
 use App\Filament\Support\Workspace;
 use App\Models\Attendee;
 use App\Models\Unit;
@@ -29,6 +30,10 @@ use UnitEnum;
  */
 class DoorDesk extends Page
 {
+    use InElectionMenu;
+
+    public const ELECTION_MENU_SORT = 3;
+
     use InteractsWithElection;
 
     protected string $view = 'filament.pages.door-desk';

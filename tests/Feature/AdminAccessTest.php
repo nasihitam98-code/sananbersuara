@@ -259,7 +259,7 @@ class AdminAccessTest extends TestCase
         Livewire::test(ListElections::class)
             ->assertCanSeeTableRecords([$this->election])
             ->assertCanNotSeeTableRecords([$cancelled->fresh()])
-            ->assertActionVisible(TestAction::make('edit')->table($this->election))
+            ->assertActionVisible(TestAction::make('enter')->table($this->election))
             ->filterTable('closed', true)
             ->assertCanSeeTableRecords([$this->election, $cancelled->fresh()]);
     }

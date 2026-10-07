@@ -35,9 +35,9 @@ class GalleryPage extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPhoto;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Persiapan';
+    protected static string|UnitEnum|null $navigationGroup = 'Lainnya';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 1;
 
     protected static ?string $navigationLabel = 'Galeri Foto';
 

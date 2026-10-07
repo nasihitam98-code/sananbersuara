@@ -27,9 +27,9 @@ class SiteSettings extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPencilSquare;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Data dasar';
+    protected static string|UnitEnum|null $navigationGroup = 'Lainnya';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 4;
 
     protected static ?string $navigationLabel = 'Pengaturan Tampilan';
 

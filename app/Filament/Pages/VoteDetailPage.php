@@ -6,6 +6,7 @@ use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
 use App\Enums\VoteDetailReason;
 use App\Filament\Support\Reauthenticate;
+use App\Filament\Support\Workspace;
 use App\Models\Election;
 use App\Models\Unit;
 use App\Models\User;
@@ -34,9 +35,14 @@ class VoteDetailPage extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedEye;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Sistem';
+    protected static string|UnitEnum|null $navigationGroup = 'Lainnya';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 7;
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Workspace::shows(ElectionMode::Resmi);
+    }
 
     protected static ?string $navigationLabel = 'Detail Suara';
 

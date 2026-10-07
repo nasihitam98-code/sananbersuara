@@ -6,6 +6,7 @@ use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
 use App\Enums\StaffRole;
 use App\Filament\Pages\Concerns\InteractsWithElection;
+use App\Filament\Support\InElectionMenu;
 use App\Filament\Support\Workspace;
 use App\Models\User;
 use App\Services\AuditLogger;
@@ -26,6 +27,10 @@ use UnitEnum;
  */
 class ResultScreen extends Page
 {
+    use InElectionMenu;
+
+    public const ELECTION_MENU_SORT = 5;
+
     use InteractsWithElection;
 
     protected string $view = 'filament.pages.result-screen';

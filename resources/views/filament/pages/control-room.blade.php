@@ -110,13 +110,25 @@
             @endif
 
             <div class="flex flex-wrap gap-2">
-                @if ($this->headcountAction->isVisible()) {{ $this->headcountAction }} @endif
-                <x-filament::button tag="a" :href="route('screens.qr', $election->public_id)" target="_blank" color="gray" icon="heroicon-o-qr-code">
+                <x-filament::button tag="a" :href="route('screens.qr', $election->public_id)" target="_blank" icon="heroicon-o-qr-code">
                     Layar QR (proyektor)
                 </x-filament::button>
-                <x-filament::button tag="a" :href="$d['voterUrl']" target="_blank" color="gray" icon="heroicon-o-device-phone-mobile">
-                    Buka halaman pemilih
-                </x-filament::button>
+                {{-- Yang jarang dipakai dikumpulkan agar layar tetap ringkas. --}}
+                <x-filament::dropdown placement="bottom-start">
+                    <x-slot name="trigger">
+                        <x-filament::button color="gray" icon="heroicon-m-ellipsis-horizontal">Lainnya</x-filament::button>
+                    </x-slot>
+                    <x-filament::dropdown.list>
+                        @if ($this->headcountAction->isVisible())
+                            <x-filament::dropdown.list.item icon="heroicon-o-user-group" wire:click="mountAction('headcount')">
+                                Input hitung kepala
+                            </x-filament::dropdown.list.item>
+                        @endif
+                        <x-filament::dropdown.list.item icon="heroicon-o-device-phone-mobile" tag="a" :href="$d['voterUrl']" target="_blank">
+                            Buka halaman pemilih (coba dari laptop)
+                        </x-filament::dropdown.list.item>
+                    </x-filament::dropdown.list>
+                </x-filament::dropdown>
             </div>
         </div>
 
