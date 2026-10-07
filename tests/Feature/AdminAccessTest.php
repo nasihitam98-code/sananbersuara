@@ -303,7 +303,7 @@ class AdminAccessTest extends TestCase
         $this->actingAs($committee);
 
         Livewire::test(ControlRoom::class)
-            ->callAction('openWave', ['kind' => WaveKind::Terbuka->value, 'minutes' => 5])
+            ->callAction('openWave', ['assisted' => false, 'timed' => true, 'minutes' => 5])
             ->assertHasNoActionErrors();
 
         $this->assertNotNull($this->election->fresh()->openWave());
@@ -317,7 +317,7 @@ class AdminAccessTest extends TestCase
         $this->actingAs($committee);
 
         $component = Livewire::test(ControlRoom::class)
-            ->callAction('openWave', ['name' => '  Sesi   pertama ', 'kind' => WaveKind::Terbuka->value, 'timed' => false])
+            ->callAction('openWave', ['name' => '  Sesi   pertama ', 'assisted' => false, 'timed' => false])
             ->assertHasNoFormErrors()
             ->assertSee('Sesi pertama')
             ->assertSee('Tanpa timer')
@@ -334,7 +334,13 @@ class AdminAccessTest extends TestCase
         $component->callAction('closeWave');
         $this->assertNull($this->election->fresh()->openWave());
 
-        $history = AuditLog::query()->where('action', 'wave.opened')->latest('id')->firstOrFail();
+        $component->callAction('openWave', ['name' => 'Sesi lansia'])->assertHasNoFormErrors();
+        $assisted = $this->election->fresh()->openWave();
+        $this->assertSame(WaveKind::Bantuan, $assisted->kind);
+        $this->assertNull($assisted->ends_at);
+        $component->callAction('closeWave');
+
+        $history = AuditLog::query()->where('action', 'wave.opened')->oldest('id')->firstOrFail();
         $this->assertSame('Voting dibuka: Sesi pertama', HistoryRelationManager::describe($history));
     }
 
