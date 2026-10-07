@@ -41,7 +41,7 @@
             @php($top = $rows[0]['votes'] ?? 0)
 
             {{-- Pengumuman: peringkat dibuka dari bawah ke atas tiap tombol "Berikutnya"; teratas terakhir dengan podium. --}}
-            <x-filament::section
+            <div
                 x-data="{
                     total: {{ count($rows) }},
                     shown: 0,
@@ -80,6 +80,7 @@
                     },
                 }"
             >
+            <x-filament::section>
                 <x-slot name="heading">
                     {{ $block['title'] }}{{ count($election->rounds) > 1 ? ' · Putaran '.$block['round'] : '' }}
                 </x-slot>
@@ -173,6 +174,7 @@
                     @endforeach
                 </ol>
             </x-filament::section>
+            </div>
         @endforeach
 
 

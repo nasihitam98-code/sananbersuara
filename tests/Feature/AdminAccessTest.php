@@ -453,13 +453,17 @@ class AdminAccessTest extends TestCase
 
         app(ElectionLifecycle::class)->close($this->election, $this->superAdmin);
 
-        Livewire::test(ResultScreen::class)
+        $html = Livewire::test(ResultScreen::class)
             ->call('reveal')
             ->assertSet('revealed', true)
             ->assertSee('Suara sah')
             ->assertSee('Mulai pengumuman')
             ->assertSee('Layar penuh')
-            ->assertSeeHtml('isShown(index)');
+            ->html();
+
+        // Status pengumuman harus di elemen sendiri: atribut x-data kedua pada <section> Filament diabaikan browser.
+        $this->assertMatchesRegularExpression('/<div\s+x-data="\{\s*total:/', $html);
+        $this->assertDoesNotMatchRegularExpression('/<section[^>]*x-data="[^"]*"[^>]*x-data=/s', $html);
 
         $this->assertTrue(AuditLog::query()->where('action', 'results.revealed')->exists());
     }
