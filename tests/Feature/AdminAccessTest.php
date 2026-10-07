@@ -27,6 +27,7 @@ use App\Services\Voting\AttendeeRegistrar;
 use App\Services\Voting\ElectionLifecycle;
 use App\Services\Voting\WaveManager;
 use Database\Seeders\DatabaseSeeder;
+use Filament\Actions\Action;
 use Filament\Actions\Testing\TestAction;
 use Filament\Auth\MultiFactor\Email\Notifications\VerifyEmailAuthentication;
 use Filament\Auth\Pages\Login;
@@ -393,6 +394,26 @@ class AdminAccessTest extends TestCase
             ->assertCanSeeTableRecords([$siti])
             ->assertCanNotSeeTableRecords([$budi])
             ->assertDontSee('Cari peserta (Pulihkan Hak Pilih)');
+    }
+
+    public function test_super_admin_closes_election_from_control_room_then_sees_result_screen_link(): void
+    {
+        app(ElectionLifecycle::class)->start($this->election, $this->superAdmin);
+        app(AttendeeRegistrar::class)->register($this->election, 'Mbah Karto', null, $this->superAdmin);
+
+        $this->actingAs($this->makeUser(User::ROLE_STAFF, StaffRole::Panitia));
+        Livewire::test(ControlRoom::class)->assertActionHidden('closeElection');
+
+        $this->actingAs($this->superAdmin);
+        Livewire::test(ControlRoom::class)
+            ->assertActionVisible('closeElection')
+            ->assertActionExists('closeElection', fn (Action $action): bool => str_contains((string) $action->getModalDescription(), 'Masih ada 1 orang yang belum memilih.'))
+            ->callAction('closeElection', ['current_password' => 'password'])
+            ->assertHasNoFormErrors()
+            ->assertActionHidden('closeElection')
+            ->assertSee('Buka Layar Hasil');
+
+        $this->assertSame(ElectionStatus::Ditutup, $this->election->fresh()->status);
     }
 
     public function test_staff_tab_only_shows_for_dadakan_elections(): void

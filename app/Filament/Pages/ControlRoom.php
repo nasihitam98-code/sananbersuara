@@ -114,6 +114,51 @@ class ControlRoom extends Page implements HasTable
     }
 
     /**
+     * Super Admin menutup pemilihan dari sini setelah semua sesi selesai; setelah itu Layar Hasil terbuka.
+     */
+    public function closeElectionAction(): Action
+    {
+        return Action::make('closeElection')
+            ->label('Tutup Pemilihan')
+            ->icon('heroicon-o-lock-closed')
+            ->color('gray')
+            ->outlined()
+            ->visible(fn (): bool => ($this->election()?->status->isLive() ?? false) && $this->isSuperAdmin())
+            ->modalHeading('Tutup pemilihan?')
+            ->modalDescription(fn (): string => $this->closeElectionWarning()
+                .'Tidak ada suara baru yang diterima dan Pulihkan Hak Pilih tidak bisa lagi dilakukan. Setelah ditutup, hasil bisa ditampilkan di Layar Hasil. Tindakan ini tidak bisa dibatalkan.')
+            ->modalSubmitActionLabel('Ya, tutup pemilihan')
+            ->schema([Reauthenticate::field()])
+            ->action(function (): void {
+                abort_unless($this->isSuperAdmin(), 403);
+
+                $this->guard(fn () => app(ElectionLifecycle::class)->close($this->authorizedElection(), auth()->user()), 'Pemilihan ditutup. Buka Layar Hasil untuk menampilkan hasil.');
+            });
+    }
+
+    private function closeElectionWarning(): string
+    {
+        $election = $this->election();
+
+        if ($election === null) {
+            return '';
+        }
+
+        $notVoted = app(ResultsCalculator::class)->participation($election, $election->currentRound())['not_voted'];
+        $warnings = [];
+
+        if ($election->openWave() !== null) {
+            $warnings[] = 'Voting masih terbuka dan akan ikut ditutup.';
+        }
+
+        if ($notVoted > 0) {
+            $warnings[] = "Masih ada {$notVoted} orang yang belum memilih.";
+        }
+
+        return $warnings === [] ? '' : '⚠ '.implode(' ', $warnings).' ';
+    }
+
+    /**
      * Super Admin bisa memulai pemilihan langsung dari sini agar tidak bolak-balik ke menu Pemilihan.
      * Panitia tidak: memulai pemilihan mengunci surat suara dan calon.
      */

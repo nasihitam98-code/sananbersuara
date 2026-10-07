@@ -66,6 +66,13 @@
                         @if ($this->openWaveAction->isVisible()) {{ $this->openWaveAction }} @endif
                         @if ($this->extendWaveAction->isVisible()) {{ $this->extendWaveAction }} @endif
                         @if ($this->closeWaveAction->isVisible()) {{ $this->closeWaveAction }} @endif
+                        @if ($this->closeElectionAction->isVisible()) {{ $this->closeElectionAction }} @endif
+                        @if ($election->status === \App\Enums\ElectionStatus::Ditutup && \App\Filament\Pages\ResultScreen::canAccess())
+                            <x-filament::button tag="a" size="xl" icon="heroicon-o-chart-bar" :href="\App\Filament\Pages\ResultScreen::getUrl(['pemilihan' => $election->public_id])">
+                                Buka Layar Hasil
+                            </x-filament::button>
+                            <p class="text-sm text-gray-500">Pemilihan sudah ditutup. Tampilkan hasil di proyektor dari Layar Hasil.</p>
+                        @endif
                         @if ($election->status === \App\Enums\ElectionStatus::Ready)
                             <p class="text-sm text-warning-600">
                                 {{ auth()->user()->isSuperAdmin()
