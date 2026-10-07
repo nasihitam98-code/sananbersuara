@@ -7,7 +7,6 @@ use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
 use App\Enums\StaffRole;
 use App\Enums\WaveKind;
-use App\Filament\Pages\AttendanceList;
 use App\Filament\Pages\ControlRoom;
 use App\Filament\Pages\DoorDesk;
 use App\Filament\Pages\ResultScreen;
@@ -276,7 +275,7 @@ class AdminAccessTest extends TestCase
             ->assertSee('Latihan diulang')
             ->assertSee('Peserta didata di pintu');
 
-        Livewire::test(AttendanceList::class, ['electionId' => $this->election->public_id])
+        Livewire::test(ControlRoom::class, ['electionId' => $this->election->public_id])
             ->assertSee('Budi Hadir');
     }
 

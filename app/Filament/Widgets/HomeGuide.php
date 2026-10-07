@@ -4,7 +4,6 @@ namespace App\Filament\Widgets;
 
 use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
-use App\Filament\Pages\AttendanceList;
 use App\Filament\Pages\ControlRoom;
 use App\Filament\Pages\DeskPage;
 use App\Filament\Pages\DevicesPage;
@@ -227,7 +226,6 @@ class HomeGuide extends Widget
                     : 'Pemilihan berjalan. Terus data yang datang di Meja Pintu. Warga yang lupa PIN diarahkan ke meja panitia.', [
                         fn () => $page(ControlRoom::class, 'Buka Ruang Kendali'),
                         fn () => $page(DoorDesk::class, 'Buka Meja Pintu'),
-                        fn () => $page(AttendanceList::class, 'Daftar Hadir'),
                         fn () => $edit('Status: Jeda / Tutup Pemilihan'),
                     ]]
                 : ['Pemilihan berjalan. Petugas meja mengizinkan pemilih ke bilik.', [
@@ -273,8 +271,7 @@ class HomeGuide extends Widget
                 [GalleryPage::class, 'Galeri Foto: unggah foto calon', 'Lalu Pasang otomatis (nama file) atau pilih per calon.'],
                 [ElectionResource::class, 'Tugaskan Panitia dan Petugas Pintu', 'Di pemilihan, tab Panitia & Petugas Pintu. Lalu klik Tandai Siap, dan saat acara dimulai klik Mulai Pemilihan.'],
                 [DoorDesk::class, 'Meja Pintu: daftarkan yang hadir', 'Ketik nama, tekan Daftarkan & buat PIN, tulis PIN di kertas.'],
-                [ControlRoom::class, 'Ruang Kendali: buka voting', 'Tampilkan Layar QR, tekan BUKA VOTING. Yang belum memilih ikut sesi berikutnya (HP sendiri atau pinjam).'],
-                [AttendanceList::class, 'Daftar Hadir: pantau siapa yang belum memilih', 'Bisa dicari, disaring, dan diunduh Excel.'],
+                [ControlRoom::class, 'Ruang Kendali: buka voting', 'Tampilkan Layar QR, tekan BUKA VOTING. Tabel peserta di bawahnya menunjukkan siapa yang belum memilih; mereka ikut sesi berikutnya.'],
                 [ResultScreen::class, 'Tutup, lalu Tampilkan Hasil', 'Ranking calon tampil di layar/proyektor.'],
                 [VerificationDesk::class, 'Tetapkan yang lolos, lalu Publish', 'Nama yang lolos tampil di halaman publik.'],
             ],

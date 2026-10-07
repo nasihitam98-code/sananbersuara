@@ -6,7 +6,7 @@ use App\Enums\RestoreReason;
 use App\Enums\StaffRole;
 use App\Enums\VoteStatus;
 use App\Enums\WaveKind;
-use App\Filament\Pages\AttendanceList;
+use App\Filament\Pages\ControlRoom;
 use App\Models\Attendee;
 use App\Models\AuditLog;
 use App\Models\Ballot;
@@ -29,7 +29,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
 
-class AttendanceListTest extends TestCase
+class ControlRoomParticipantsTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -82,7 +82,7 @@ class AttendanceListTest extends TestCase
 
         $this->actingAs($this->makeUser(User::ROLE_STAFF, StaffRole::Panitia));
 
-        Livewire::test(AttendanceList::class)
+        Livewire::test(ControlRoom::class)
             ->assertCanSeeTableRecords([$voted, $waiting])
             ->assertSee('✓ Sudah memilih')
             ->assertSee('Belum memilih')
@@ -100,17 +100,17 @@ class AttendanceListTest extends TestCase
 
     public function test_door_staff_and_other_election_committee_cannot_see_the_list(): void
     {
-        $this->actingAs($this->superAdmin)->get(AttendanceList::getUrl())->assertOk()->assertSee('Daftar Hadir');
+        $this->actingAs($this->superAdmin)->get(ControlRoom::getUrl())->assertOk()->assertSee('Peserta');
 
         $door = $this->makeUser(User::ROLE_STAFF, StaffRole::PetugasPintu);
-        $this->actingAs($door)->get(AttendanceList::getUrl())->assertForbidden();
+        $this->actingAs($door)->get(ControlRoom::getUrl())->assertForbidden();
 
         app(AttendeeRegistrar::class)->register($this->election, 'Budi Santoso', null, $this->superAdmin);
         $otherElection = Election::factory()->create();
         $otherCommittee = $this->makeUser(User::ROLE_STAFF, StaffRole::Panitia, $otherElection);
 
         $this->actingAs($otherCommittee);
-        Livewire::test(AttendanceList::class, ['electionId' => $this->election->public_id])
+        Livewire::test(ControlRoom::class, ['electionId' => $this->election->public_id])
             ->assertDontSee('Budi Santoso');
     }
 
@@ -119,7 +119,7 @@ class AttendanceListTest extends TestCase
         app(AttendeeRegistrar::class)->register($this->election, '=HYPERLINK("http://x")', null, $this->superAdmin);
         $this->actingAs($this->makeUser(User::ROLE_STAFF, StaffRole::Panitia));
 
-        Livewire::test(AttendanceList::class)
+        Livewire::test(ControlRoom::class)
             ->callAction(TestAction::make('export')->table())
             ->assertFileDownloaded('daftar-hadir-'.$this->election->public_id.'.xlsx');
 
@@ -149,7 +149,7 @@ class AttendanceListTest extends TestCase
         $oldHash = $waiting->fresh()->pin_hash;
         $this->actingAs($this->makeUser(User::ROLE_STAFF, StaffRole::Panitia));
 
-        $component = Livewire::test(AttendanceList::class)
+        $component = Livewire::test(ControlRoom::class)
             ->assertSee('Diberikan')
             ->assertTableActionEnabled('newPin', $waiting)
             ->assertTableActionDisabled('newPin', $voted)
@@ -182,7 +182,7 @@ class AttendanceListTest extends TestCase
         ['voted' => $voted] = $this->startWithOneVoter();
         $this->actingAs($this->makeUser(User::ROLE_STAFF, StaffRole::Panitia));
 
-        Livewire::test(AttendanceList::class)
+        Livewire::test(ControlRoom::class)
             ->callAction(TestAction::make('restore')->table($voted), ['reason' => RestoreReason::NamaDipakaiOrangLain->value])
             ->assertHasNoFormErrors()
             ->assertSet('reissued.name', 'Budi Santoso')
@@ -197,7 +197,7 @@ class AttendanceListTest extends TestCase
         $attendee = app(AttendeeRegistrar::class)->register($this->election, 'Budi Santoso', null, $this->superAdmin)['attendee'];
         $this->actingAs($this->makeUser(User::ROLE_STAFF, StaffRole::Panitia));
 
-        Livewire::test(AttendanceList::class)
+        Livewire::test(ControlRoom::class)
             ->assertTableActionHidden('newPin', $attendee)
             ->assertTableActionHidden('restore', $attendee);
     }

@@ -113,7 +113,7 @@
             </div>
         </div>
 
-        {{-- Peserta: tabel yang sama dengan Daftar Hadir (cari nama, filter belum/sudah, PIN baru, Pulihkan). --}}
+        {{-- Peserta: cari nama, filter belum/sudah, PIN baru, Pulihkan, unduh Excel. --}}
         {{ $this->table }}
 
     @endif

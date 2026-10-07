@@ -34,7 +34,7 @@ use UnitEnum;
 
 /**
  * Ruang Kendali Panitia (Mode Dadakan): buka/perpanjang/tutup gelombang, pantau sudah/belum
- * (tanpa angka per kandidat), dan tabel peserta yang sama dengan Daftar Hadir (PIN baru / Pulihkan).
+ * (tanpa angka per kandidat), dan tabel peserta: siapa sudah/belum memilih, PIN baru / Pulihkan, unduh Excel.
  */
 class ControlRoom extends Page implements HasTable
 {
@@ -68,7 +68,18 @@ class ControlRoom extends Page implements HasTable
 
     protected static function allowedStatuses(): array
     {
-        return [ElectionStatus::Ready, ElectionStatus::Berlangsung, ElectionStatus::Paused, ElectionStatus::Ditutup];
+        return [
+            ElectionStatus::Ready,
+            ElectionStatus::Berlangsung,
+            ElectionStatus::Paused,
+            ElectionStatus::Ditutup,
+            // Setelah ditutup: hanya lihat & unduh daftar peserta (arsip), tombol voting tidak tampil.
+            ElectionStatus::Verifikasi,
+            ElectionStatus::Published,
+            ElectionStatus::Unpublished,
+            ElectionStatus::Cancelled,
+            ElectionStatus::Archived,
+        ];
     }
 
     /**

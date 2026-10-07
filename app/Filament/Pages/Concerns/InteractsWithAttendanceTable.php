@@ -5,6 +5,8 @@ namespace App\Filament\Pages\Concerns;
 use App\Enums\RestoreReason;
 use App\Models\Attendee;
 use App\Models\Unit;
+use App\Services\AuditLogger;
+use App\Services\Exports\SpreadsheetSanitizer;
 use App\Services\Voting\ResultsCalculator;
 use App\Services\Voting\VoterRightRestorer;
 use App\Services\Voting\VotingException;
@@ -21,9 +23,12 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Writer\XLSX\Writer;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Tabel peserta Mode Dadakan yang dipakai bersama Daftar Hadir dan Ruang Kendali, agar keduanya selalu sama.
+ * Tabel peserta Mode Dadakan di Ruang Kendali (dulu halaman Daftar Hadir terpisah): status sudah/belum, unduh Excel.
  * Tidak pernah memuat pilihan maupun angka PIN; kolom PIN hanya status, dengan tombol "PIN baru" dan "Pulihkan".
  * Kelas pemakai harus memakai InteractsWithElection dan InteractsWithTable.
  */
@@ -125,6 +130,13 @@ trait InteractsWithAttendanceTable
                 Filter::make('locked')
                     ->label('PIN terkunci')
                     ->query(fn (Builder $query): Builder => $query->whereNotNull('pin_locked_at')),
+            ])
+            ->headerActions([
+                Action::make('export')
+                    ->label('Unduh Excel')
+                    ->icon(Heroicon::OutlinedArrowDownTray)
+                    ->color('gray')
+                    ->action(fn (): StreamedResponse => $this->export()),
             ]);
     }
 
@@ -291,5 +303,40 @@ trait InteractsWithAttendanceTable
         $participation = app(ResultsCalculator::class)->participation($election, $election->currentRound());
 
         return "Hadir terdata {$participation['attendees']} · sudah memilih {$participation['voted']} · belum {$participation['not_voted']}";
+    }
+
+    private function export(): StreamedResponse
+    {
+        $election = $this->authorizedElection();
+        $rows = $this->attendanceQuery()->reorder('seq_no')->get();
+
+        $path = tempnam(sys_get_temp_dir(), 'hadir');
+        $writer = new Writer;
+        $writer->openToFile($path);
+        $writer->getCurrentSheet()->setName('Daftar Hadir');
+        $writer->addRow(Row::fromValues(['No. hadir', 'Nama', 'RT', 'Jam datang', 'Status', 'Datang terlambat', 'Dibantu', 'PIN terkunci']));
+
+        foreach ($rows as $attendee) {
+            $writer->addRow(Row::fromValues(SpreadsheetSanitizer::row([
+                $attendee->displayNumber(),
+                $attendee->name,
+                $attendee->unit?->name ?? '-',
+                $attendee->created_at?->format('d/m/Y H:i'),
+                $this->statusLabel((int) $attendee->getAttribute('voted_ballots')),
+                $attendee->is_late ? 'Ya' : '',
+                $attendee->getAttribute('is_assisted') ? 'Ya' : '',
+                $attendee->pin_locked_at !== null ? 'Ya' : '',
+            ])));
+        }
+
+        $writer->close();
+        $content = (string) file_get_contents($path);
+        @unlink($path);
+
+        app(AuditLogger::class)->log('attendance.exported', $election, $election, meta: ['rows' => $rows->count()]);
+
+        return response()->streamDownload(function () use ($content): void {
+            echo $content;
+        }, 'daftar-hadir-'.$election->public_id.'.xlsx');
     }
 }

@@ -81,7 +81,9 @@ trait InteractsWithElection
         $elections = $this->availableElections();
 
         if ($this->electionId === null) {
-            $live = $elections->first(fn (Election $election): bool => $election->status->isLive());
+            // Utamakan yang sedang berjalan, lalu yang Siap; baru yang terbaru (mis. arsip).
+            $live = $elections->first(fn (Election $election): bool => $election->status->isLive())
+                ?? $elections->first(fn (Election $election): bool => $election->status === ElectionStatus::Ready);
             $this->electionId = ($live ?? $elections->first())?->public_id;
         }
 
