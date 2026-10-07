@@ -44,6 +44,7 @@
                                     @if ($candidate->originLabel())
                                         <br><span class="candidate__origin">Asal {{ $candidate->originLabel() }}</span>
                                     @endif
+                                    @include('voter.partials.profile-button')
                                     @if ($candidate->status->value === 'MUNDUR')
                                         <br><span class="tag">Mengundurkan diri</span>
                                     @endif
@@ -53,6 +54,8 @@
                         </label>
                     @endforeach
                 </fieldset>
+
+                @include('voter.partials.profile-dialogs')
             </div>
 
             <section class="card review hidden" data-step="review" aria-live="polite">

@@ -49,6 +49,44 @@ class VoterFlowTest extends TestCase
         return "/v/{$this->election->access_code}{$path}";
     }
 
+    public function test_ballot_shows_vision_and_mission_only_for_candidates_that_have_them(): void
+    {
+        $this->candidate->update([
+            'vision' => 'RW rukun dan aman.',
+            'mission' => "- Ronda malam bergilir\n\n2. Laporan kas terbuka",
+        ]);
+        ['attendee' => $attendee, 'pin' => $pin] = app(AttendeeRegistrar::class)->register($this->election, 'Budi Santoso', null, $this->admin);
+        app(ElectionLifecycle::class)->start($this->election, $this->admin);
+        app(WaveManager::class)->open($this->election, WaveKind::Terbuka, 5, $this->admin);
+        $this->post($this->url("/pin/{$attendee->public_id}"), ['pin' => $pin]);
+
+        $page = $this->get($this->url('/surat-suara'))
+            ->assertOk()
+            ->assertSee('Lihat visi &amp; misi', false)
+            ->assertSee('RW rukun dan aman.')
+            ->assertSee('<li>Ronda malam bergilir</li>', false)
+            ->assertSee('<li>Laporan kas terbuka</li>', false);
+
+        $this->assertSame(1, substr_count($page->getContent(), 'data-profile-open='), 'Hanya calon yang mengisi profil');
+    }
+
+    public function test_public_can_read_candidate_profiles_before_the_election_but_not_drafts(): void
+    {
+        $this->candidate->update(['vision' => 'RW rukun dan aman.', 'mission' => 'Ronda malam bergilir']);
+
+        $this->get(route('public.candidates', $this->election->public_id))
+            ->assertOk()
+            ->assertSee('Kenali calon')
+            ->assertSee('Bapak Sutrisno')
+            ->assertSee('RW rukun dan aman.')
+            ->assertSee('Visi &amp; misi belum diisi.', false);
+
+        $this->get(route('public.index'))->assertSee(route('public.candidates', $this->election->public_id), false);
+
+        $draft = Election::factory()->create();
+        $this->get(route('public.candidates', $draft->public_id))->assertNotFound();
+    }
+
     public function test_full_flow_from_waiting_to_done(): void
     {
         ['attendee' => $attendee, 'pin' => $pin] = app(AttendeeRegistrar::class)->register($this->election, 'Budi Santoso', null, $this->admin);

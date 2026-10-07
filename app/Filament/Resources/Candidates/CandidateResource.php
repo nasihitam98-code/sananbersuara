@@ -28,6 +28,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ViewField;
 use Filament\Notifications\Notification;
@@ -269,6 +270,22 @@ class CandidateResource extends Resource
                             ->default(CandidateStatus::Aktif)
                             ->required()
                             ->visibleOn('edit'),
+                    ]),
+                Section::make('Visi & misi (opsional)')
+                    ->description('Tampil di HP warga (tombol "Lihat visi & misi" di surat suara) dan di Halaman Publik sebelum hari H.')
+                    ->collapsible()
+                    ->schema([
+                        Textarea::make('vision')
+                            ->label('Visi')
+                            ->placeholder('Contoh: Mewujudkan RW yang rukun, bersih, dan aman.')
+                            ->rows(2)
+                            ->maxLength(500),
+                        Textarea::make('mission')
+                            ->label('Misi')
+                            ->helperText('Satu poin per baris.')
+                            ->placeholder("Contoh:\nRonda malam rutin bergilir\nKerja bakti sebulan sekali\nLaporan kas terbuka tiap bulan")
+                            ->rows(5)
+                            ->maxLength(2000),
                     ]),
                 Section::make('Foto')
                     ->description('JPG/PNG/WebP, maksimal '.intdiv((int) config('voting.photo.max_kilobytes'), 1024).' MB (foto langsung dari HP boleh). Foto dipotong persegi (1:1) agar semua calon tampil seragam. Wajah di tengah.')

@@ -18,10 +18,10 @@
         </section>
 
         @foreach ($upcoming as $election)
-            <div class="result">
+            <a class="result" href="{{ route('public.candidates', $election->public_id) }}">
                 <span class="result__name">{{ $election->name }}</span>
-                <span class="result__detail">{{ $election->status->isLive() ? 'Sedang berlangsung' : 'Segera dimulai' }}</span>
-            </div>
+                <span class="result__detail">{{ $election->status->isLive() ? 'Sedang berlangsung' : 'Segera dimulai' }} · kenali calon &amp; visi-misi →</span>
+            </a>
         @endforeach
     @endif
 

@@ -26,6 +26,7 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 Route::get('/', [PublicResultController::class, 'index'])->name('public.index');
 Route::get('/hasil/{election:public_id}', [PublicResultController::class, 'show'])->name('public.show');
+Route::get('/calon/{election:public_id}', [PublicResultController::class, 'candidates'])->name('public.candidates');
 
 /*
 |--------------------------------------------------------------------------

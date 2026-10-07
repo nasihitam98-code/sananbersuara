@@ -353,3 +353,29 @@ function preventDoubleSubmit() {
         });
     });
 }
+
+/*
+ * Visi & misi calon: tombol di kartu calon membuka <dialog>. Klik tombol tidak ikut memilih calon
+ * (tombol berada di dalam label radio), dan klik di luar kotak menutup dialog.
+ */
+document.addEventListener('click', (event) => {
+    const opener = event.target.closest('[data-profile-open]');
+
+    if (opener) {
+        event.preventDefault();
+        event.stopPropagation();
+        document.getElementById(opener.dataset.profileOpen)?.showModal();
+
+        return;
+    }
+
+    if (event.target.closest('[data-profile-close]')) {
+        event.target.closest('dialog')?.close();
+
+        return;
+    }
+
+    if (event.target instanceof HTMLDialogElement && event.target.classList.contains('profile')) {
+        event.target.close();
+    }
+});

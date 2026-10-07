@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-#[Fillable(['unit_id', 'origin_unit_id', 'number', 'name', 'status'])]
+#[Fillable(['unit_id', 'origin_unit_id', 'number', 'name', 'vision', 'mission', 'status'])]
 #[RouteKey('public_id')]
 class Candidate extends Model
 {
@@ -83,6 +83,25 @@ class Candidate extends Model
     /**
      * Teks asal RT untuk ditampilkan, mis. "RT 03", atau null bila tidak diisi.
      */
+    public function hasProfile(): bool
+    {
+        return filled($this->vision) || filled($this->mission);
+    }
+
+    /**
+     * Misi ditulis satu poin per baris; baris kosong dan penanda daftar ("-", "1.") dibuang.
+     *
+     * @return array<int, string>
+     */
+    public function missionPoints(): array
+    {
+        return collect(preg_split('/\R/', (string) $this->mission))
+            ->map(fn (string $line): string => trim((string) preg_replace('/^\s*(?:[-*•]|\d+[.)])\s*/u', '', $line)))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
     public function originLabel(): ?string
     {
         return $this->originUnit?->name;

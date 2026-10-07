@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CandidateStatus;
 use App\Enums\ElectionStatus;
 use App\Enums\OutcomeStatus;
 use App\Models\Election;
@@ -27,10 +28,36 @@ class PublicResultController extends Controller
         $upcoming = Election::query()
             ->whereIn('status', [ElectionStatus::Ready, ElectionStatus::Berlangsung, ElectionStatus::Paused])
             ->latest()
-            ->get(['id', 'name', 'status']);
+            ->get(['id', 'public_id', 'name', 'status']);
 
         return response()
             ->view('public.index', ['elections' => $elections, 'upcoming' => $upcoming])
+            ->header('Cache-Control', 'public, max-age=60');
+    }
+
+    /**
+     * "Kenali calon": nama, nomor, asal RT, visi & misi. Untuk pemilihan yang siap/berjalan/sudah selesai;
+     * tidak memuat angka suara.
+     */
+    public function candidates(Election $election): Response
+    {
+        abort_if(in_array($election->status, [ElectionStatus::Draft, ElectionStatus::Cancelled, ElectionStatus::Archived], true), 404);
+
+        $ballots = $election->ballots()
+            ->orderBy('sort')
+            ->get()
+            ->map(fn ($ballot): array => [
+                'title' => $ballot->title,
+                'candidates' => $ballot->ballotCandidates()
+                    ->with(['unit', 'originUnit'])
+                    ->where('status', CandidateStatus::Aktif)
+                    ->orderBy('unit_id')
+                    ->orderBy('number')
+                    ->get(),
+            ]);
+
+        return response()
+            ->view('public.candidates', ['election' => $election, 'ballots' => $ballots])
             ->header('Cache-Control', 'public, max-age=60');
     }
 

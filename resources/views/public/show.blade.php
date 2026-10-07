@@ -75,5 +75,5 @@
         <p class="muted center">Hasil resmi berdasarkan berita acara yang telah disahkan panitia.</p>
     @endif
 
-    <p class="center"><a href="{{ route('public.index') }}">← Semua hasil</a></p>
+    <p class="center"><a href="{{ route('public.candidates', $election->public_id) }}">Visi &amp; misi semua calon</a> · <a href="{{ route('public.index') }}">← Semua hasil</a></p>
 @endsection
