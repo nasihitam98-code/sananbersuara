@@ -11,6 +11,7 @@ use App\Models\Wave;
 use App\Services\AuditLogger;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Buka, perpanjang, jeda, dan tutup gelombang (Mode Dadakan).
@@ -22,9 +23,15 @@ class WaveManager
         private StatusPublisher $publisher,
     ) {}
 
-    public function open(Election $election, WaveKind $kind, ?int $minutes, User $actor): Wave
+    /**
+     * @param  int|null  $minutes  Kosong = tanpa timer; ditutup manual dengan close().
+     * @param  string|null  $name  Nama sesi bebas, mis. "Sesi lansia". Kosong = "Gelombang N".
+     */
+    public function open(Election $election, WaveKind $kind, ?int $minutes, User $actor, ?string $name = null): Wave
     {
-        $wave = DB::transaction(function () use ($election, $kind, $minutes, $actor): Wave {
+        $name = filled($name) ? Str::of($name)->squish()->limit(60, '')->toString() : null;
+
+        $wave = DB::transaction(function () use ($election, $kind, $minutes, $actor, $name): Wave {
             $election = Election::query()->whereKey($election->id)->lockForUpdate()->firstOrFail();
 
             if ($election->status !== ElectionStatus::Berlangsung) {
@@ -46,6 +53,7 @@ class WaveManager
             $wave = new Wave;
             $wave->round()->associate($round);
             $wave->number = (int) $round->waves()->max('number') + 1;
+            $wave->name = $name;
             $wave->kind = $kind;
             $wave->status = WaveStatus::Dibuka;
             $wave->opened_at = Carbon::now();
@@ -58,6 +66,7 @@ class WaveManager
 
         $this->audit->log('wave.opened', $wave, $election, meta: [
             'number' => $wave->number,
+            'name' => $wave->name,
             'kind' => $kind->value,
             'minutes' => $minutes,
         ], actor: $actor);
@@ -84,7 +93,7 @@ class WaveManager
             return $wave;
         });
 
-        $this->audit->log('wave.extended', $wave, $election, meta: ['minutes' => $minutes], actor: $actor);
+        $this->audit->log('wave.extended', $wave, $election, meta: ['number' => $wave->number, 'name' => $wave->name, 'minutes' => $minutes], actor: $actor);
         $this->publishStatus($election);
 
         return $wave;
@@ -102,7 +111,7 @@ class WaveManager
             return $wave;
         });
 
-        $this->audit->log('wave.closed', $wave, $election, meta: ['number' => $wave->number, 'early' => true], actor: $actor);
+        $this->audit->log('wave.closed', $wave, $election, meta: ['number' => $wave->number, 'name' => $wave->name, 'early' => true], actor: $actor);
         $this->publishStatus($election);
 
         return $wave;
@@ -158,7 +167,7 @@ class WaveManager
         $wave->closed_at = $wave->ends_at;
         $wave->save();
 
-        $this->audit->log('wave.closed', $wave, $election, meta: ['number' => $wave->number, 'early' => false], actorType: 'system');
+        $this->audit->log('wave.closed', $wave, $election, meta: ['number' => $wave->number, 'name' => $wave->name, 'early' => false], actorType: 'system');
         $this->publishStatus($election);
     }
 

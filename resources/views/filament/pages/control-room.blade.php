@@ -44,7 +44,8 @@
                     </div>
                     <div class="text-center">
                         @if ($d['wave'])
-                            <p class="text-sm text-gray-500">Gelombang {{ $d['wave']->number }} · {{ $d['wave']->kind->getLabel() }}</p>
+                            <p class="text-lg font-semibold">{{ $d['wave']->displayName() }}</p>
+                            <p class="text-sm text-gray-500">{{ $d['wave']->kind->getLabel() }}</p>
                             <p class="text-6xl font-black tabular-nums {{ ($d['status']['remaining'] ?? 999) <= 30 ? 'text-danger-600' : 'text-primary-700 dark:text-primary-300' }}">
                                 @if ($d['status']['remaining'] === null)
                                     Tanpa timer

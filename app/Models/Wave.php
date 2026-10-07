@@ -39,6 +39,11 @@ class Wave extends Model
         return $this->belongsTo(Round::class);
     }
 
+    public function displayName(): string
+    {
+        return filled($this->name) ? $this->name : "Gelombang {$this->number}";
+    }
+
     public function hasTimer(): bool
     {
         return $this->ends_at !== null || $this->paused_remaining_seconds !== null;

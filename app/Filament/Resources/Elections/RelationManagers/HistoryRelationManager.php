@@ -99,6 +99,10 @@ class HistoryRelationManager extends RelationManager
             $label .= ': '.$status($record->meta['from'] ?? null).' → '.$status($record->meta['to'] ?? null);
         }
 
+        if (str_starts_with($record->action, 'wave.') && isset($record->meta['number'])) {
+            $label .= ': '.(filled($record->meta['name'] ?? null) ? $record->meta['name'] : 'Gelombang '.$record->meta['number']);
+        }
+
         return $label;
     }
 }

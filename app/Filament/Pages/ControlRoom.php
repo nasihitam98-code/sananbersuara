@@ -26,6 +26,7 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Utilities\Get;
@@ -199,39 +200,57 @@ class ControlRoom extends Page
             ->color('success')
             ->size('xl')
             ->visible(fn (): bool => $this->election()?->status === ElectionStatus::Berlangsung && $this->election()?->openWave() === null)
-            ->modalHeading('Buka gelombang voting')
-            ->schema(fn (): array => [
-                Select::make('kind')
-                    ->label('Jenis gelombang')
-                    ->options(WaveKind::class)
-                    ->selectablePlaceholder(false)
-                    ->default(($this->election()?->currentRound()?->waves()->exists() ?? false) ? WaveKind::Bantuan : WaveKind::Terbuka)
-                    ->live()
-                    ->required(),
-                TextInput::make('minutes')
-                    ->label('Durasi (menit)')
-                    ->numeric()->minValue(1)->maxValue(120)
-                    ->default(fn (): int => $this->election()?->defaultWaveMinutes() ?? 5)
-                    ->required(fn (Get $get): bool => $get('kind') === WaveKind::Terbuka->value || $get('kind') === WaveKind::Terbuka)
-                    ->helperText('Gelombang bantuan boleh tanpa timer (kosongkan) dan ditutup manual.'),
-            ])
+            ->modalHeading('Buka sesi voting')
+            ->modalSubmitActionLabel('Buka voting')
+            ->schema(function (): array {
+                $round = $this->election()?->currentRound();
+                $nextNumber = (int) ($round?->waves()->max('number') ?? 0) + 1;
+                $defaultKind = $nextNumber > 1 ? WaveKind::Bantuan : WaveKind::Terbuka;
+
+                return [
+                    TextInput::make('name')
+                        ->label('Nama sesi (opsional)')
+                        ->placeholder("Gelombang {$nextNumber}")
+                        ->helperText('Mis. "Sesi pertama", "Sesi lansia", "Susulan RT 05". Kosongkan = Gelombang '.$nextNumber.'.')
+                        ->maxLength(60),
+                    Select::make('kind')
+                        ->label('Jenis')
+                        ->options(WaveKind::class)
+                        ->selectablePlaceholder(false)
+                        ->default($defaultKind)
+                        ->required(),
+                    Toggle::make('timed')
+                        ->label('Pakai timer')
+                        ->helperText('Matikan bila ingin buka-tutup manual: voting terbuka sampai Anda menekan Tutup Sekarang.')
+                        ->default($defaultKind === WaveKind::Terbuka)
+                        ->live(),
+                    TextInput::make('minutes')
+                        ->label('Durasi (menit)')
+                        ->numeric()->minValue(1)->maxValue(120)
+                        ->default(fn (): int => $this->election()?->defaultWaveMinutes() ?? 5)
+                        ->visible(fn (Get $get): bool => (bool) $get('timed'))
+                        ->required(fn (Get $get): bool => (bool) $get('timed')),
+                ];
+            })
             ->action(function (array $data): void {
                 $kind = $data['kind'] instanceof WaveKind ? $data['kind'] : WaveKind::from($data['kind']);
-                $minutes = filled($data['minutes'] ?? null) ? (int) $data['minutes'] : null;
+                $minutes = ($data['timed'] ?? false) && filled($data['minutes'] ?? null) ? (int) $data['minutes'] : null;
 
-                $this->guard(fn () => app(WaveManager::class)->open($this->authorizedElection(), $kind, $minutes, auth()->user()), 'Voting dibuka.');
+                $this->guard(fn () => app(WaveManager::class)->open($this->authorizedElection(), $kind, $minutes, auth()->user(), $data['name'] ?? null), 'Voting dibuka.');
             });
     }
 
     public function extendWaveAction(): Action
     {
         return Action::make('extendWave')
-            ->label('Perpanjang')
+            ->label(fn (): string => $this->election()?->openWave()?->hasTimer() === false ? 'Pasang timer' : 'Perpanjang')
             ->icon('heroicon-o-clock')
             ->color('warning')
             ->visible(fn (): bool => $this->election()?->openWave() !== null)
+            ->modalHeading(fn (): string => $this->election()?->openWave()?->hasTimer() === false ? 'Pasang timer' : 'Perpanjang waktu voting')
+            ->modalDescription(fn (): ?string => $this->election()?->openWave()?->hasTimer() === false ? 'Voting tertutup otomatis setelah waktu ini habis.' : null)
             ->schema([
-                Select::make('minutes')->label('Tambah waktu')->options([1 => '+1 menit', 2 => '+2 menit', 3 => '+3 menit', 5 => '+5 menit', 10 => '+10 menit'])->default(2)->required(),
+                Select::make('minutes')->label('Waktu')->options([1 => '+1 menit', 2 => '+2 menit', 3 => '+3 menit', 5 => '+5 menit', 10 => '+10 menit'])->default(2)->required(),
             ])
             ->action(fn (array $data) => $this->guard(fn () => app(WaveManager::class)->extend($this->authorizedElection(), (int) $data['minutes'], auth()->user()), 'Waktu diperpanjang.'));
     }

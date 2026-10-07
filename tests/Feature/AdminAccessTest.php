@@ -27,6 +27,7 @@ use App\Models\ElectionStaff;
 use App\Models\User;
 use App\Services\Voting\AttendeeRegistrar;
 use App\Services\Voting\ElectionLifecycle;
+use App\Services\Voting\WaveManager;
 use Database\Seeders\DatabaseSeeder;
 use Filament\Actions\Testing\TestAction;
 use Filament\Auth\MultiFactor\Email\Notifications\VerifyEmailAuthentication;
@@ -307,6 +308,43 @@ class AdminAccessTest extends TestCase
 
         $this->assertNotNull($this->election->fresh()->openWave());
         $this->actingAs($committee)->get(route('screens.qr', $this->election->public_id))->assertOk();
+    }
+
+    public function test_committee_opens_named_wave_without_timer_and_can_add_timer_later(): void
+    {
+        $committee = $this->makeUser(User::ROLE_STAFF, StaffRole::Panitia);
+        app(ElectionLifecycle::class)->start($this->election, $this->superAdmin);
+        $this->actingAs($committee);
+
+        $component = Livewire::test(ControlRoom::class)
+            ->callAction('openWave', ['name' => '  Sesi   pertama ', 'kind' => WaveKind::Terbuka->value, 'timed' => false])
+            ->assertHasNoFormErrors()
+            ->assertSee('Sesi pertama')
+            ->assertSee('Tanpa timer')
+            ->assertSee('Pasang timer');
+
+        $wave = $this->election->fresh()->openWave();
+        $this->assertSame('Sesi pertama', $wave->name);
+        $this->assertNull($wave->ends_at);
+        $this->assertTrue($wave->isOpenAt(now()->addHours(3)));
+
+        $component->callAction('extendWave', ['minutes' => 5])->assertHasNoFormErrors();
+        $this->assertTrue($this->election->fresh()->openWave()->ends_at->between(now()->addMinutes(4), now()->addMinutes(6)));
+
+        $component->callAction('closeWave');
+        $this->assertNull($this->election->fresh()->openWave());
+
+        $history = AuditLog::query()->where('action', 'wave.opened')->latest('id')->firstOrFail();
+        $this->assertSame('Voting dibuka: Sesi pertama', HistoryRelationManager::describe($history));
+    }
+
+    public function test_unnamed_wave_is_called_by_its_number(): void
+    {
+        app(ElectionLifecycle::class)->start($this->election, $this->superAdmin);
+        $wave = app(WaveManager::class)->open($this->election, WaveKind::Bantuan, null, $this->superAdmin, '   ');
+
+        $this->assertNull($wave->name);
+        $this->assertSame('Gelombang 1', $wave->displayName());
     }
 
     public function test_super_admin_starts_election_from_control_room_but_committee_cannot(): void
