@@ -18,17 +18,13 @@ use App\Filament\Resources\Units\UnitResource;
 use App\Filament\Resources\Users\UserResource;
 use App\Filament\Resources\Voters\VoterResource;
 use App\Filament\Support\QuickStart;
-use App\Filament\Support\Reauthenticate;
 use App\Filament\Support\Workspace;
 use App\Models\Election;
 use App\Models\User;
 use App\Models\Voter;
-use App\Services\Voting\ElectionLifecycle;
-use App\Services\Voting\VotingException;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
-use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Concerns\InteractsWithSchemas;
 use Filament\Schemas\Contracts\HasSchemas;
@@ -181,39 +177,7 @@ class HomeGuide extends Widget implements HasActions, HasSchemas
      */
     public function cancelElectionAction(): Action
     {
-        return Action::make('cancelElection')
-            ->label('Batalkan')
-            ->icon('heroicon-m-x-circle')
-            ->color('gray')
-            ->link()
-            ->visible(fn (array $arguments): bool => ($election = $this->electionFromArguments($arguments)) !== null
-                && $this->user()->isSuperAdmin()
-                && in_array($election->status, [ElectionStatus::Ditutup, ElectionStatus::Verifikasi], true))
-            ->modalHeading(fn (array $arguments): string => 'Batalkan "'.($this->electionFromArguments($arguments)?->name ?? '').'"?')
-            ->modalDescription('Pemilihan yang sudah dimulai tidak bisa dihapus. Batalkan menyembunyikannya dari daftar; datanya tetap tersimpan di Riwayat.')
-            ->modalSubmitActionLabel('Ya, batalkan')
-            ->schema([
-                Textarea::make('note')->label('Alasan')->default('Data latihan')->required()->maxLength(500),
-                Reauthenticate::field(),
-            ])
-            ->action(function (array $data, array $arguments): void {
-                $election = $this->electionFromArguments($arguments);
-                abort_unless($election !== null && $this->user()->isSuperAdmin(), 403);
-
-                try {
-                    app(ElectionLifecycle::class)->cancel($election, $this->user(), $data['note']);
-                } catch (VotingException $exception) {
-                    Notification::make()->title($exception->getMessage())->danger()->send();
-
-                    return;
-                }
-
-                if (Workspace::election()?->is($election)) {
-                    Workspace::chooseElection(null);
-                }
-
-                Notification::make()->title("Pemilihan \"{$election->name}\" dibatalkan dan disembunyikan.")->success()->send();
-            });
+        return QuickStart::cancelAction('cancelElection', fn (array $arguments): ?Election => $this->electionFromArguments($arguments));
     }
 
     /**

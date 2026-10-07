@@ -10,12 +10,14 @@ use App\Filament\Resources\Elections\Pages\ListElections;
 use App\Filament\Resources\Elections\RelationManagers\BallotsRelationManager;
 use App\Filament\Resources\Elections\RelationManagers\HistoryRelationManager;
 use App\Filament\Resources\Elections\RelationManagers\StaffRelationManager;
+use App\Filament\Support\QuickStart;
 use App\Filament\Support\Workspace;
 use App\Models\Candidate;
 use App\Models\Election;
 use App\Services\AuditLogger;
 use App\Services\CandidatePhotoProcessor;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
@@ -29,6 +31,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
 class ElectionResource extends Resource
@@ -189,6 +192,19 @@ class ElectionResource extends Resource
             // Halaman pemilihan selalu bisa dibuka Super Admin (isian terkunci sesuai status).
             ->recordUrl(fn (Election $record): ?string => static::canView($record) ? static::getUrl('edit', ['record' => $record]) : null)
             ->recordActions([
+                QuickStart::action('start', fn (array $arguments, ?Model $record): ?Election => $record instanceof Election ? $record : null)
+                    ->label('Mulai')
+                    ->size('sm'),
+                Action::make('enter')
+                    ->label('Masuk')
+                    ->icon('heroicon-m-arrow-right')
+                    ->color('primary')
+                    ->requiresConfirmation(fn (Election $record): bool => Workspace::otherLiveElection($record) !== null)
+                    ->modalHeading('Ada pemilihan lain yang sedang berlangsung')
+                    ->modalDescription(fn (Election $record): string => 'Pemilihan "'.Workspace::otherLiveElection($record)?->name.'" sedang berlangsung. Tetap masuk ke "'.$record->name.'"? Voting di sana tetap berjalan.')
+                    ->modalSubmitActionLabel('Tetap masuk')
+                    ->action(fn (Election $record) => redirect()->route('workspace.election', $record->public_id)),
+                QuickStart::cancelAction('cancel', fn (array $arguments, ?Model $record): ?Election => $record instanceof Election ? $record : null),
                 EditAction::make()
                     ->label('Kelola')
                     ->authorize(fn (Election $record): bool => static::canView($record)),

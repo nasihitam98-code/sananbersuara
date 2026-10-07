@@ -8,6 +8,7 @@ use App\Enums\StaffRole;
 use App\Filament\Pages\ControlRoom;
 use App\Filament\Pages\DoorDesk;
 use App\Filament\Resources\Candidates\Pages\ListCandidates;
+use App\Filament\Resources\Elections\Pages\ListElections;
 use App\Filament\Support\Workspace;
 use App\Filament\Widgets\HomeGuide;
 use App\Models\AuditLog;
@@ -173,6 +174,25 @@ class ElectionFocusTest extends TestCase
 
         $this->get(route('workspace.election', $election->public_id));
         $this->get('/admin')->assertSee(ControlRoom::getUrl(), false)->assertSee(DoorDesk::getUrl(), false);
+    }
+
+    public function test_election_list_has_start_enter_delete_and_cancel_on_each_row(): void
+    {
+        $draft = $this->election('Draf Baru');
+        $closed = $this->election('Sudah Ditutup', ElectionStatus::Ditutup);
+
+        Livewire::test(ListElections::class)
+            ->assertActionVisible(TestAction::make('start')->table($draft))
+            ->assertActionVisible(TestAction::make('delete')->table($draft))
+            ->assertActionHidden(TestAction::make('cancel')->table($draft))
+            ->assertActionHidden(TestAction::make('start')->table($closed))
+            ->assertActionHidden(TestAction::make('delete')->table($closed))
+            ->assertActionVisible(TestAction::make('cancel')->table($closed))
+            ->assertActionVisible(TestAction::make('enter')->table($closed))
+            ->callAction(TestAction::make('start')->table($draft), ['current_password' => 'password', 'open_now' => false]);
+
+        $this->assertSame(ElectionStatus::Berlangsung, $draft->fresh()->status);
+        $this->assertNull($draft->fresh()->openWave());
     }
 
     public function test_candidate_list_shows_the_chosen_election(): void
