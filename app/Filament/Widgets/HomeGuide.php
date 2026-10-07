@@ -110,6 +110,29 @@ class HomeGuide extends Widget implements HasActions, HasSchemas
     }
 
     /**
+     * Arsip: pemilihan yang dibatalkan/diarsipkan (disembunyikan dari kartu, datanya tetap tersimpan).
+     *
+     * @return Collection<int, Election>
+     */
+    public function archivedElections(): Collection
+    {
+        $user = $this->user();
+        $mode = $this->mode();
+
+        if ($mode === null) {
+            return collect();
+        }
+
+        return Election::query()
+            ->where('mode', $mode)
+            ->whereIn('status', [ElectionStatus::Cancelled, ElectionStatus::Archived])
+            ->when(! $user->isSuperAdmin() && $mode === ElectionMode::Dadakan, fn (Builder $query) => $query
+                ->whereHas('staff', fn (Builder $staff) => $staff->where('user_id', $user->id)))
+            ->latest('id')
+            ->get();
+    }
+
+    /**
      * Pemilihan lain yang sedang berlangsung, untuk peringatan dan konfirmasi saat berpindah.
      */
     public function otherLiveElection(?Election $except = null): ?Election

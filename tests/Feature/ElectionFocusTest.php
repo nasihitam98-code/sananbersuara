@@ -123,6 +123,18 @@ class ElectionFocusTest extends TestCase
 
         $this->assertSame(ElectionStatus::Cancelled, $closed->fresh()->status);
         $this->assertFalse(Workspace::elections()->contains(fn (Election $election): bool => $election->is($closed)));
+
+        // Tetap bisa dilihat dari Arsip di Beranda: riwayat dan daftar hadir.
+        $current = $this->election('Sekarang');
+        $this->get(route('workspace.election', $current->public_id));
+        $this->get('/admin')
+            ->assertSee('Arsip: pemilihan dibatalkan (1)')
+            ->assertSee(ControlRoom::getUrl(['pemilihan' => $closed->public_id]), false);
+
+        Livewire::withQueryParams(['pemilihan' => $closed->public_id])
+            ->test(ControlRoom::class)
+            ->assertSee('Menampilkan:')
+            ->assertSee('Latihan Lama');
     }
 
     public function test_committee_with_one_election_enters_it_and_cannot_choose_others(): void

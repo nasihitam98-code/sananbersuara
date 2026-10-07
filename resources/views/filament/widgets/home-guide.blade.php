@@ -174,6 +174,33 @@
 
             @endif
 
+            {{-- Arsip: pemilihan dibatalkan tetap bisa dilihat riwayat dan daftar hadirnya. --}}
+            @php($archived = $this->archivedElections())
+            @if ($archived->isNotEmpty())
+                <x-filament::section :heading="'Arsip: pemilihan dibatalkan ('.$archived->count().')'" collapsible collapsed>
+                    @foreach ($archived as $old)
+                        <div @class(['flex flex-wrap items-center justify-between gap-3 py-3', 'border-t border-gray-100 dark:border-white/10' => ! $loop->first])>
+                            <div>
+                                <p class="font-semibold">{{ $old->name }}</p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">{{ $old->status->getLabel() }} · {{ $this->cardSummary($old) }}</p>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                @if (\App\Filament\Resources\Elections\ElectionResource::canView($old))
+                                    <x-filament::button tag="a" size="sm" color="gray" icon="heroicon-m-clock" :href="\App\Filament\Resources\Elections\ElectionResource::getUrl('edit', ['record' => $old])">
+                                        Riwayat
+                                    </x-filament::button>
+                                @endif
+                                @if ($old->isDadakan() && \App\Filament\Pages\ControlRoom::canAccess())
+                                    <x-filament::button tag="a" size="sm" color="gray" icon="heroicon-m-users" :href="\App\Filament\Pages\ControlRoom::getUrl(['pemilihan' => $old->public_id])">
+                                        Daftar hadir
+                                    </x-filament::button>
+                                @endif
+                            </div>
+                        </div>
+                    @endforeach
+                </x-filament::section>
+            @endif
+
             @if (($primary !== null || $elections->isEmpty()) && ($steps = $this->guideSteps()))
                 <x-filament::section heading="Panduan langkah Mode {{ $mode->getLabel() }}" collapsible :collapsed="$primary !== null">
                     <ol class="space-y-3">
