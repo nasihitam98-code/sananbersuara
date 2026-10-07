@@ -112,6 +112,7 @@ trait InteractsWithAttendanceTable
             ])
             ->filtersLayout(FiltersLayout::AboveContent)
             ->filtersFormColumns(4)
+            ->deferFilters(false)
             ->filters([
                 SelectFilter::make('status')
                     ->label('Status')
