@@ -63,12 +63,14 @@ class VoterController extends Controller
             return response()->json(['message' => $exception->getMessage(), 'results' => []], 409);
         }
 
+        // Nomor hadir selalu ikut tampil (juga tercetak di kartu PIN) agar nama kembar bisa dibedakan.
         return response()->json([
             'results' => $results->map(fn (Attendee $attendee): array => [
                 'id' => $attendee->public_id,
                 'name' => $attendee->name,
-                'detail' => $attendee->unit?->name ?? 'No. hadir '.$attendee->displayNumber(),
+                'detail' => ($attendee->unit ? $attendee->unit->name.' · ' : '').'No. hadir '.$attendee->displayNumber(),
             ])->values(),
+            'more' => $results->count() >= (int) $election->setting('search_max_results'),
         ]);
     }
 

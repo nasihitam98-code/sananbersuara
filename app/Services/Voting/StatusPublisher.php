@@ -72,7 +72,23 @@ class StatusPublisher
         $temporary = $path.'.'.bin2hex(random_bytes(4)).'.tmp';
 
         File::put($temporary, (string) json_encode($this->build($election)));
-        File::move($temporary, $path);
+
+        // Windows menolak mengganti file yang sedang dibaca HP lain ("Access is denied"). Coba beberapa kali;
+        // bila tetap gagal, hapus file lama agar HP beralih ke endpoint /status (selalu benar), jangan
+        // biarkan status lama tampil. Tindakan panitia (buka/tutup voting) tidak boleh gagal karena ini.
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            if (@rename($temporary, $path)) {
+                return;
+            }
+
+            usleep(40_000);
+        }
+
+        @unlink($temporary);
+
+        if (! @unlink($path)) {
+            report(new \RuntimeException("File status {$path} tidak bisa diperbarui; HP memakai endpoint cadangan."));
+        }
     }
 
     public static function pathFor(Election $election): string

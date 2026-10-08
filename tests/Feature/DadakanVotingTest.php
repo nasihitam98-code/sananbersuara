@@ -131,9 +131,9 @@ class DadakanVotingTest extends TestCase
         $box->verifyPin($this->election, $attendee, $pin);
     }
 
-    public function test_search_requires_three_characters_and_returns_at_most_five(): void
+    public function test_search_requires_three_characters_and_returns_at_most_eight(): void
     {
-        foreach (range(1, 8) as $index) {
+        foreach (range(1, 10) as $index) {
             $this->register("Ahmad Warga {$index}");
         }
 
@@ -141,7 +141,7 @@ class DadakanVotingTest extends TestCase
         $box = app(BallotBox::class);
 
         $this->assertCount(0, $box->search($this->election, 'ah'));
-        $this->assertCount(5, $box->search($this->election, 'ahmad'));
+        $this->assertCount(8, $box->search($this->election, 'ahmad'));
     }
 
     public function test_three_wrong_pins_lock_the_name_even_for_the_correct_pin(): void

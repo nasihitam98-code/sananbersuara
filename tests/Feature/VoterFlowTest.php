@@ -109,7 +109,9 @@ class VoterFlowTest extends TestCase
         $this->getJson($this->url('/cari?q=budi'))
             ->assertOk()
             ->assertJsonPath('results.0.id', $attendee->public_id)
-            ->assertJsonPath('results.0.name', 'Budi Santoso');
+            ->assertJsonPath('results.0.name', 'Budi Santoso')
+            ->assertJsonPath('results.0.detail', 'No. hadir '.$attendee->displayNumber())
+            ->assertJsonPath('more', false);
 
         $this->get($this->url("/pin/{$attendee->public_id}"))->assertOk()->assertSee('Budi Santoso');
 
@@ -128,7 +130,7 @@ class VoterFlowTest extends TestCase
         ])->assertRedirect(route('voter.ballot', $this->election->access_code));
 
         $this->get($this->url('/surat-suara'))->assertRedirect(route('voter.done', $this->election->access_code));
-        $this->get($this->url('/selesai'))->assertOk()->assertSee('Sudah memilih');
+        $this->get($this->url('/selesai'))->assertOk()->assertSee('Sudah memilih')->assertSee('data-auto-return="15"', false)->assertSee('HP ini boleh dipinjamkan');
 
         $this->assertSame(1, Vote::query()->count());
         $this->getJson($this->url('/cari?q=budi'))->assertJson(['results' => []]);

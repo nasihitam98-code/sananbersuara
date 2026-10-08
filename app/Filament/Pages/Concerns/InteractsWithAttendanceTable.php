@@ -56,7 +56,6 @@ trait InteractsWithAttendanceTable
         return $table
             ->query(fn (): Builder => $this->applyParticipantTab($this->attendanceQuery()))
             ->defaultSort('seq_no', 'desc')
-            ->poll('5s')
             ->description(fn (): ?string => $this->summary())
             ->paginationPageOptions([25, 50, 100, 'all'])
             ->defaultPaginationPageOption(50)

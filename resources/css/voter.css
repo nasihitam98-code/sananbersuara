@@ -1241,3 +1241,9 @@ body[data-phase="finished"] .screen__grid {
         height: 72px;
     }
 }
+
+.done__return {
+    margin-top: 16px;
+    font-size: 16px;
+    opacity: 0.9;
+}

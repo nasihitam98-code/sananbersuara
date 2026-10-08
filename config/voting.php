@@ -35,7 +35,7 @@ return [
         'pin_length' => 4,
         'pin_max_attempts' => 3,
         'search_min_chars' => 3,
-        'search_max_results' => 5,
+        'search_max_results' => 8,
         'voter_session_minutes' => 15,
         'headcount' => null,
 

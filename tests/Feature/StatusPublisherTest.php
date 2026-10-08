@@ -76,6 +76,24 @@ class StatusPublisherTest extends TestCase
         $this->assertSame('finished', $this->publishedStatus()['state']);
     }
 
+    public function test_opening_voting_never_fails_when_the_status_file_cannot_be_replaced(): void
+    {
+        // Simulasi file yang tidak bisa diganti (mis. sedang dibaca HP di Windows): jalurnya berupa folder.
+        $path = StatusPublisher::pathFor($this->election);
+        File::delete($path);
+        File::ensureDirectoryExists($path);
+
+        try {
+            app(ElectionLifecycle::class)->start($this->election, $this->admin);
+            app(WaveManager::class)->open($this->election, WaveKind::Terbuka, 5, $this->admin);
+
+            $this->assertNotNull($this->election->fresh()->openWave(), 'Voting tetap terbuka');
+            $this->get(route('voter.status', $this->election->access_code))->assertJson(['state' => 'open']);
+        } finally {
+            File::deleteDirectory($path);
+        }
+    }
+
     public function test_status_file_contains_no_personal_data(): void
     {
         app(ElectionLifecycle::class)->start($this->election, $this->admin);

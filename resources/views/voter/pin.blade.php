@@ -11,7 +11,7 @@
             <h1>Masukkan PIN</h1>
             <p class="muted">Nama yang Anda pilih:</p>
             <p class="result__name">{{ $attendee->name }}</p>
-            <p class="muted">{{ $attendee->unit?->name ?? 'No. hadir '.$attendee->displayNumber() }}</p>
+            <p class="muted">{{ $attendee->unit ? $attendee->unit->name.' · ' : '' }}No. hadir {{ $attendee->displayNumber() }}</p>
 
             <form method="POST" action="{{ route('voter.pin.verify', [$election->access_code, $attendee->public_id]) }}" class="stack" data-once>
                 @csrf

@@ -182,6 +182,12 @@ if (page === 'start') {
                         item.append(link);
                         list.append(item);
                     }
+
+                    // Hasil dibatasi: bila penuh, mungkin nama yang dicari belum terlihat.
+                    if (data.more) {
+                        empty.textContent = 'Nama Anda belum muncul? Ketik nama lebih lengkap.';
+                        empty.classList.remove('hidden');
+                    }
                 } catch (error) {
                     empty.textContent = 'Koneksi bermasalah. Coba lagi.';
                     empty.classList.remove('hidden');
@@ -338,9 +344,27 @@ function initBallotSteps(onChoose) {
     preventDoubleSubmit();
 }
 
-/* Selesai: untuk HP pinjaman (gelombang bantuan) kembali ke awal otomatis. */
-if (page === 'done' && body.dataset.autoReturn === '1') {
-    setTimeout(() => window.location.replace(body.dataset.startUrl), 8000);
+/* Selesai: kembali ke awal otomatis (dengan hitung mundur) agar HP bisa dipinjamkan ke warga berikutnya. */
+if (page === 'done' && Number(body.dataset.autoReturn) > 0) {
+    let left = Number(body.dataset.autoReturn);
+    const counter = document.querySelector('[data-return-seconds]');
+
+    const tick = () => {
+        if (left <= 0) {
+            window.location.replace(body.dataset.startUrl);
+
+            return;
+        }
+
+        if (counter) {
+            counter.textContent = String(left);
+        }
+
+        left--;
+        setTimeout(tick, 1000);
+    };
+
+    tick();
 }
 
 function preventDoubleSubmit() {

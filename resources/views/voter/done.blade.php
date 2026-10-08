@@ -1,7 +1,7 @@
 @extends('voter.layout', ['page' => 'done'])
 
 @section('body-attributes')
-    data-auto-return="{{ $status['assisted'] ? '1' : '0' }}"
+    data-auto-return="15"
 @endsection
 
 @section('header')
@@ -22,9 +22,8 @@
 
             <a class="btn btn--ghost" href="{{ route('voter.show', $election->access_code) }}">Selesai</a>
 
-            @if ($status['assisted'])
-                <p>Layar akan kembali ke awal untuk pemilih berikutnya.</p>
-            @endif
+            {{-- HP boleh dipinjamkan: layar kembali ke awal sendiri agar orang berikutnya bisa langsung memilih. --}}
+            <p class="done__return">Layar kembali ke awal dalam <strong data-return-seconds>15</strong> detik. HP ini boleh dipinjamkan ke warga berikutnya.</p>
         </div>
     </main>
 @endsection
