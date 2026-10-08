@@ -105,6 +105,7 @@ class ControlRoom extends Page implements HasTable
         return [
             'status' => app(VoterStatus::class)->for($election),
             'participation' => app(ResultsCalculator::class)->participation($election, $round),
+            'byUnit' => app(ResultsCalculator::class)->participationByUnit($election, $round),
             'round' => $round,
             'wave' => $election->openWave(),
             'waves' => $round?->waves()->get() ?? collect(),

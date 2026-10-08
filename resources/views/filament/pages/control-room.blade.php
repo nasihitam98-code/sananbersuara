@@ -102,6 +102,25 @@
                 @endforeach
             </div>
 
+            {{-- Partisipasi per RT: membantu panitia memanggil RT yang warganya belum banyak memilih. Tanpa angka per kandidat. --}}
+            @if (collect($d['byUnit'])->contains(fn (array $unit): bool => $unit['unit'] !== 'Tanpa RT'))
+                <x-filament::section heading="Partisipasi per RT" description="Sudah memilih dibanding hadir terdata per RT. Tidak menampilkan suara calon." collapsible>
+                    <div class="grid gap-x-8 gap-y-3 md:grid-cols-2">
+                        @foreach ($d['byUnit'] as $unit)
+                            <div>
+                                <div class="flex items-baseline justify-between text-sm">
+                                    <span class="font-semibold">{{ $unit['unit'] }}</span>
+                                    <span class="tabular-nums text-gray-500">{{ $unit['voted'] }} / {{ $unit['attendees'] }} · <strong class="text-gray-900 dark:text-white">{{ $unit['percent'] }}%</strong></span>
+                                </div>
+                                <div class="mt-1 h-2.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+                                    <div class="h-full rounded-full {{ $unit['percent'] >= 100 ? 'bg-success-500' : 'bg-primary-500' }}" style="width: {{ $unit['percent'] }}%"></div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </x-filament::section>
+            @endif
+
             @if ($d['headcount'] !== null)
                 @php($mismatch = (int) $d['headcount'] !== $p['attendees'])
                 <div class="rounded-xl p-4 {{ $mismatch ? 'bg-danger-50 text-danger-800 dark:bg-danger-950 dark:text-danger-200' : 'bg-success-50 text-success-800 dark:bg-success-950 dark:text-success-200' }}" role="status">

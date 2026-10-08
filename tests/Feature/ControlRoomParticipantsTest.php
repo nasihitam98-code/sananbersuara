@@ -13,12 +13,14 @@ use App\Models\Ballot;
 use App\Models\Candidate;
 use App\Models\Election;
 use App\Models\ElectionStaff;
+use App\Models\Unit;
 use App\Models\User;
 use App\Models\Vote;
 use App\Services\Exports\SpreadsheetSanitizer;
 use App\Services\Voting\AttendeeRegistrar;
 use App\Services\Voting\BallotBox;
 use App\Services\Voting\ElectionLifecycle;
+use App\Services\Voting\ResultsCalculator;
 use App\Services\Voting\VoterRightRestorer;
 use App\Services\Voting\VotingException;
 use App\Services\Voting\WaveManager;
@@ -99,6 +101,34 @@ class ControlRoomParticipantsTest extends TestCase
             ->searchTable($waiting->displayNumber())
             ->assertCanSeeTableRecords([$waiting])
             ->assertCanNotSeeTableRecords([$voted]);
+    }
+
+    public function test_participation_is_broken_down_per_rt_without_candidate_tallies(): void
+    {
+        [$rtOne, $rtTwo] = Unit::query()->orderBy('sort')->limit(2)->get()->all();
+        $registrar = app(AttendeeRegistrar::class);
+        ['attendee' => $voted, 'pin' => $pin] = $registrar->register($this->election, 'Budi Santoso', $rtOne->id, $this->superAdmin);
+        $registrar->register($this->election, 'Mbah Karto', $rtOne->id, $this->superAdmin);
+        $registrar->register($this->election, 'Siti Aminah', $rtTwo->id, $this->superAdmin);
+        $registrar->register($this->election, 'Tamu Undangan', null, $this->superAdmin);
+        app(ElectionLifecycle::class)->start($this->election, $this->superAdmin);
+        app(WaveManager::class)->open($this->election, WaveKind::Terbuka, 5, $this->superAdmin);
+        $box = app(BallotBox::class);
+        $box->cast($this->election, $voted, $box->verifyPin($this->election, $voted, $pin), $this->ballot, $this->candidate);
+
+        $byUnit = collect(app(ResultsCalculator::class)->participationByUnit($this->election, $this->election->currentRound()))->keyBy('unit');
+
+        $this->assertSame(['unit' => $rtOne->name, 'attendees' => 2, 'voted' => 1, 'not_voted' => 1, 'percent' => 50.0], $byUnit[$rtOne->name]);
+        $this->assertSame(0, $byUnit[$rtTwo->name]['voted']);
+        $this->assertSame(1, $byUnit['Tanpa RT']['attendees']);
+        $this->assertSame('Tanpa RT', $byUnit->keys()->last());
+
+        $this->actingAs($this->makeUser(User::ROLE_STAFF, StaffRole::Panitia));
+
+        Livewire::test(ControlRoom::class)
+            ->assertSee('Partisipasi per RT')
+            ->assertSee($rtTwo->name)
+            ->assertDontSee($this->candidate->name);
     }
 
     public function test_door_staff_and_other_election_committee_cannot_see_the_list(): void

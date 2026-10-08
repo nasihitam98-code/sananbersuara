@@ -116,6 +116,46 @@ class ResultsCalculator
     }
 
     /**
+     * Partisipasi Mode Dadakan per RT (asal peserta yang dicatat di Meja Pintu), tanpa angka per kandidat.
+     * Peserta tanpa RT dikelompokkan sebagai "Tanpa RT".
+     *
+     * @return array<int, array{unit: string, attendees: int, voted: int, not_voted: int, percent: float}>
+     */
+    public function participationByUnit(Election $election, ?Round $round): array
+    {
+        $ballotCount = max(1, $round === null ? $election->ballots()->count() : app(RoundResolver::class)->ballotIds($election, $round)->count());
+
+        $votedIds = $round === null ? collect() : DB::table('attendee_participations')
+            ->where('round_id', $round->id)
+            ->where('active_key', 1)
+            ->select('attendee_id')
+            ->groupBy('attendee_id')
+            ->havingRaw('count(*) >= ?', [$ballotCount])
+            ->pluck('attendee_id')
+            ->flip();
+
+        return $election->attendees()
+            ->with('unit')
+            ->get(['id', 'unit_id'])
+            ->groupBy(fn ($attendee): string => $attendee->unit === null ? "\u{FFFF}" : sprintf('%05d', $attendee->unit->sort).$attendee->unit->name)
+            ->sortKeys()
+            ->map(function ($attendees) use ($votedIds): array {
+                $total = $attendees->count();
+                $voted = $attendees->filter(fn ($attendee): bool => $votedIds->has($attendee->id))->count();
+
+                return [
+                    'unit' => $attendees->first()->unit?->name ?? 'Tanpa RT',
+                    'attendees' => $total,
+                    'voted' => $voted,
+                    'not_voted' => $total - $voted,
+                    'percent' => round($voted * 100 / $total, 1),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
      * Partisipasi Mode Resmi untuk satu surat suara (opsional satu RT). Penyebut = pemilih berhak
      * di snapshot (termasuk tambahan darurat), bukan seluruh pemilih (bagian 5A).
      *
