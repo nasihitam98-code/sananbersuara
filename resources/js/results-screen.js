@@ -39,7 +39,7 @@ function animateRow(row) {
 
     bar.style.width = '0%';
     requestAnimationFrame(() => setTimeout(() => {
-        bar.style.width = `${row.dataset.percent}%`;
+        bar.style.width = `${row.dataset.width}%`;
     }, 60));
 
     const step = (now) => {

@@ -48,24 +48,35 @@
                 <p class="results__hint" data-hint>Peringkat dibuka dari bawah; peringkat teratas paling akhir. (Tombol spasi / panah kanan = berikutnya)</p>
 
                 @if ($top > 0)
+                    {{-- Podium per peringkat (bukan per baris): calon seri berbagi satu tempat, tidak ada yang "dipilih" sistem. --}}
+                    @php($podiumGroups = collect($rows)->filter(fn (array $row): bool => $row['votes'] > 0 && $row['rank'] <= 3)->groupBy('rank')->values()->take(3))
                     <div class="podium hidden" data-podium>
                         @foreach ([1, 0, 2] as $podiumIndex)
-                            @if (isset($rows[$podiumIndex]) && $rows[$podiumIndex]['votes'] > 0)
-                                @php($podium = $rows[$podiumIndex])
-                                <div class="podium__place podium__place--{{ $podiumIndex + 1 }}">
-                                    <span class="podium__badge podium__badge--{{ $podiumIndex + 1 }}">{{ $podiumIndex + 1 }}</span>
-                                    @if ($podium['candidate']->photoUrl('card'))
-                                        <img class="podium__photo" src="{{ $podium['candidate']->photoUrl('card') }}" alt="Foto {{ $podium['candidate']->name }}">
-                                    @else
-                                        <span class="podium__photo podium__photo--initials">{{ $podium['candidate']->initials() }}</span>
-                                    @endif
-                                    <p class="podium__name">{{ $podium['candidate']->name }}</p>
-                                    <p class="muted">{{ $podium['votes'] }} suara · {{ $podium['percent'] }}%</p>
-                                    <div class="podium__block">#{{ $podium['rank'] }}</div>
-                                </div>
-                            @else
+                            @php($group = $podiumGroups->get($podiumIndex))
+                            @if ($group === null)
                                 <div></div>
+                                @continue
                             @endif
+                            @php($first = $group->first())
+                            <div class="podium__place podium__place--{{ $podiumIndex + 1 }}">
+                                <span class="podium__badge podium__badge--{{ $podiumIndex + 1 }}">{{ $first['rank'] }}</span>
+                                @if ($group->count() === 1)
+                                    @if ($first['candidate']->photoUrl('card'))
+                                        <img class="podium__photo" src="{{ $first['candidate']->photoUrl('card') }}" alt="Foto {{ $first['candidate']->name }}">
+                                    @else
+                                        <span class="podium__photo podium__photo--initials">{{ $first['candidate']->initials() }}</span>
+                                    @endif
+                                    <p class="podium__name">{{ $first['candidate']->name }}</p>
+                                @else
+                                    <span class="podium__photo podium__photo--initials podium__photo--tie">{{ $group->count() }}</span>
+                                    <p class="podium__name">{{ $group->count() }} calon seri</p>
+                                    <p class="podium__tie-names">
+                                        {{ $group->take(3)->map(fn (array $row): string => $row['candidate']->name)->implode(', ') }}{{ $group->count() > 3 ? ', dan '.($group->count() - 3).' lainnya' : '' }}
+                                    </p>
+                                @endif
+                                <p class="muted">{{ $first['votes'] }} suara{{ $group->count() > 1 ? ' masing-masing' : '' }} · {{ $first['percent'] }}%</p>
+                                <div class="podium__block">#{{ $first['rank'] }}</div>
+                            </div>
                         @endforeach
                     </div>
                 @endif
@@ -73,7 +84,7 @@
                 <ol class="results__list">
                     @foreach ($rows as $index => $row)
                         @php($candidate = $row['candidate'])
-                        <li class="results__row hidden {{ $top > 0 && $row['votes'] === $top ? 'results__row--top' : '' }}" data-row data-index="{{ $index }}" data-votes="{{ $row['votes'] }}" data-percent="{{ $row['percent'] }}">
+                        <li class="results__row hidden {{ $top > 0 && $row['votes'] === $top ? 'results__row--top' : '' }}" data-row data-index="{{ $index }}" data-votes="{{ $row['votes'] }}" data-width="{{ $top > 0 ? round($row['votes'] / $top * 100, 1) : 0 }}">
                             <span class="results__rank">#{{ $row['rank'] }}</span>
                             @if ($candidate->photoUrl('thumb'))
                                 <img class="results__photo" src="{{ $candidate->photoUrl('thumb') }}" alt="Foto {{ $candidate->name }}">

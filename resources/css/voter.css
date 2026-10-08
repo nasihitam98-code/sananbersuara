@@ -977,8 +977,9 @@ body[data-phase="finished"] .screen__grid {
     transition: width 1s ease-out;
 }
 
+/* Bar diskalakan terhadap suara terbanyak agar selisih terlihat; persen tetap ditulis di kanan. */
 .results__row--top .results__bar-fill {
-    background: var(--c-red-600);
+    background: #c8961e;
 }
 
 .results__score {
@@ -1080,6 +1081,17 @@ body[data-phase="finished"] .screen__grid {
 
 .podium__place--3 .podium__block {
     height: 5rem;
+}
+
+/* Calon seri berbagi satu tempat podium. */
+.podium__photo--tie {
+    font-size: 40px;
+}
+
+.podium__tie-names {
+    max-width: 22rem;
+    font-size: 16px;
+    color: var(--c-muted);
 }
 
 @media (max-width: 640px) {

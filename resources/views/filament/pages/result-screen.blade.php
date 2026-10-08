@@ -113,23 +113,32 @@
                 {{-- Podium tiga teratas, muncul setelah semua peringkat dibuka. --}}
                 @if ($top > 0)
                     <div x-show="shown === total" x-transition.duration.700ms class="mb-8 grid grid-cols-3 items-end gap-4 text-center">
+                        {{-- Per peringkat (bukan per baris): calon seri berbagi satu tempat, tidak ada yang "dipilih" sistem. --}}
+                        @php($podiumGroups = collect($rows)->filter(fn (array $row): bool => $row['votes'] > 0 && $row['rank'] <= 3)->groupBy('rank')->values()->take(3))
                         @foreach ([1 => 'h-28', 0 => 'h-40', 2 => 'h-20'] as $podiumIndex => $height)
-                            @if (isset($rows[$podiumIndex]) && $rows[$podiumIndex]['votes'] > 0)
-                                @php($podium = $rows[$podiumIndex])
+                            @php($group = $podiumGroups->get($podiumIndex))
+                            @if ($group !== null)
+                                @php($podium = $group->first())
                                 <div class="flex flex-col items-center gap-2">
                                     <span @class([
                                         'grid h-11 w-11 place-items-center rounded-full text-lg font-black text-white shadow ring-4 ring-white dark:ring-gray-900',
                                         'bg-amber-500' => $podiumIndex === 0,
                                         'bg-slate-400' => $podiumIndex === 1,
                                         'bg-orange-700' => $podiumIndex === 2,
-                                    ])>{{ $podiumIndex + 1 }}</span>
-                                    @if ($podium['candidate']->photoUrl('card'))
-                                        <img src="{{ $podium['candidate']->photoUrl('card') }}" alt="Foto {{ $podium['candidate']->name }}" class="{{ $podiumIndex === 0 ? 'h-32 w-32' : 'h-24 w-24' }} rounded-full object-cover ring-4 {{ $podiumIndex === 0 ? 'ring-warning-400' : 'ring-gray-300' }}">
+                                    ])>{{ $podium['rank'] }}</span>
+                                    @if ($group->count() > 1)
+                                        <span class="{{ $podiumIndex === 0 ? 'h-32 w-32' : 'h-24 w-24' }} grid place-items-center rounded-full bg-gray-200 text-4xl font-black text-primary-700">{{ $group->count() }}</span>
+                                        <p class="{{ $podiumIndex === 0 ? 'text-2xl' : 'text-lg' }} font-bold">{{ $group->count() }} calon seri</p>
+                                        <p class="max-w-xs text-sm text-gray-500">{{ $group->take(3)->map(fn (array $row): string => $row['candidate']->name)->implode(', ') }}{{ $group->count() > 3 ? ', dan '.($group->count() - 3).' lainnya' : '' }}</p>
                                     @else
-                                        <span class="{{ $podiumIndex === 0 ? 'h-32 w-32 text-4xl' : 'h-24 w-24 text-2xl' }} grid place-items-center rounded-full bg-gray-200 font-black text-primary-700">{{ $podium['candidate']->initials() }}</span>
+                                        @if ($podium['candidate']->photoUrl('card'))
+                                            <img src="{{ $podium['candidate']->photoUrl('card') }}" alt="Foto {{ $podium['candidate']->name }}" class="{{ $podiumIndex === 0 ? 'h-32 w-32' : 'h-24 w-24' }} rounded-full object-cover ring-4 {{ $podiumIndex === 0 ? 'ring-warning-400' : 'ring-gray-300' }}">
+                                        @else
+                                            <span class="{{ $podiumIndex === 0 ? 'h-32 w-32 text-4xl' : 'h-24 w-24 text-2xl' }} grid place-items-center rounded-full bg-gray-200 font-black text-primary-700">{{ $podium['candidate']->initials() }}</span>
+                                        @endif
+                                        <p class="{{ $podiumIndex === 0 ? 'text-2xl' : 'text-lg' }} font-bold">{{ $podium['candidate']->name }}</p>
                                     @endif
-                                    <p class="{{ $podiumIndex === 0 ? 'text-2xl' : 'text-lg' }} font-bold">{{ $podium['candidate']->name }}</p>
-                                    <p class="text-gray-500">{{ $podium['votes'] }} suara · {{ $podium['percent'] }}%</p>
+                                    <p class="text-gray-500">{{ $podium['votes'] }} suara{{ $group->count() > 1 ? ' masing-masing' : '' }} · {{ $podium['percent'] }}%</p>
                                     <div class="{{ $height }} grid w-full place-items-center rounded-t-xl text-3xl font-black text-white {{ $podiumIndex === 0 ? 'bg-warning-400' : 'bg-primary-400' }}">#{{ $podium['rank'] }}</div>
                                 </div>
                             @else
@@ -153,7 +162,7 @@
                             x-data="{ width: 0, count: 0 }"
                             x-effect="
                                 if (isShown({{ $index }})) {
-                                    setTimeout(() => width = {{ $row['percent'] }}, 80);
+                                    setTimeout(() => width = {{ $top > 0 ? round($row['votes'] / $top * 100, 1) : 0 }}, 80);
                                     const started = performance.now();
                                     const step = (now) => {
                                         const progress = Math.min(1, (now - started) / 1200);
@@ -179,7 +188,7 @@
                                     @endif
                                 </p>
                                 <div class="mt-1 h-4 w-full rounded-full bg-gray-100 dark:bg-white/10" role="presentation">
-                                    <div class="h-4 rounded-full transition-[width] duration-1000 ease-out {{ $isTop ? 'bg-danger-500' : 'bg-primary-400' }}" x-bind:style="'width: ' + width + '%'"></div>
+                                    <div class="h-4 rounded-full transition-[width] duration-1000 ease-out {{ $isTop ? 'bg-warning-500' : 'bg-primary-400' }}" x-bind:style="'width: ' + width + '%'"></div>
                                 </div>
                             </div>
                             <div class="text-right tabular-nums">

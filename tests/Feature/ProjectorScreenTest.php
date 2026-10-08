@@ -121,6 +121,28 @@ class ProjectorScreenTest extends TestCase
         $this->assertNotNull($this->election->fresh()->results_revealed_at);
     }
 
+    public function test_results_podium_groups_tied_candidates_instead_of_picking_one(): void
+    {
+        $rival = Candidate::factory()->for($this->ballot)->create(['number' => 2, 'name' => 'Calon Kembar']);
+        $registrar = app(AttendeeRegistrar::class);
+        $voters = collect(['Budi Santoso', 'Siti Aminah'])->map(fn (string $name): array => $registrar->register($this->election, $name, null, $this->superAdmin));
+        app(ElectionLifecycle::class)->start($this->election, $this->superAdmin);
+        app(WaveManager::class)->open($this->election, WaveKind::Terbuka, 5, $this->superAdmin);
+        $box = app(BallotBox::class);
+
+        foreach ($voters as $index => ['attendee' => $voter, 'pin' => $pin]) {
+            $box->cast($this->election, $voter, $box->verifyPin($this->election, $voter, $pin), $this->ballot, $index === 0 ? $this->candidate : $rival);
+        }
+
+        app(ElectionLifecycle::class)->close($this->election, $this->superAdmin);
+
+        $this->actingAs($this->committee)
+            ->get(route('screens.results', $this->election->public_id))
+            ->assertOk()
+            ->assertSee('2 calon seri')
+            ->assertSee('1 suara masing-masing');
+    }
+
     public function test_door_staff_cannot_read_projector_status(): void
     {
         $door = User::factory()->create();

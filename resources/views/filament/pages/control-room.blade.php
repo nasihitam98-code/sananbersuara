@@ -56,7 +56,7 @@
                             <p class="text-sm font-semibold">{{ $d['status']['state'] === 'paused' ? 'DIJEDA' : 'VOTING DIBUKA' }}</p>
                         @else
                             <p class="text-3xl font-bold text-gray-500">Voting tertutup</p>
-                            <p class="text-sm text-gray-500">HP warga menampilkan "Menunggu pemungutan dibuka".</p>
+                            <p class="text-sm text-gray-500">HP warga menampilkan "{{ in_array($election->status, [\App\Enums\ElectionStatus::Draft, \App\Enums\ElectionStatus::Ready, \App\Enums\ElectionStatus::Berlangsung, \App\Enums\ElectionStatus::Paused], true) ? 'Menunggu pemungutan dibuka' : 'Pemungutan suara sudah selesai' }}".</p>
                             @if (($d['round']?->waves()->exists() ?? false) && $d['participation']['not_voted'] > 0 && $election->status === \App\Enums\ElectionStatus::Berlangsung)
                                 <p class="mt-2 text-sm font-semibold text-warning-600">{{ $d['participation']['not_voted'] }} orang belum memilih. Tekan BUKA VOTING untuk sesi berikutnya; yang sudah memilih tidak bisa memilih lagi.</p>
                             @endif
