@@ -83,16 +83,16 @@ class AdminAccessTest extends TestCase
         $this->get(route('screens.qr', $this->election->public_id))->assertRedirect('/admin/login');
     }
 
-    public function test_user_without_mfa_is_forced_to_set_it_up(): void
+    public function test_user_without_mfa_is_not_asked_to_set_it_up(): void
     {
         $user = User::factory()->create();
         $user->forceFill(['must_change_password' => false])->save();
         $user->assignRole(User::ROLE_SUPER_ADMIN);
 
-        $this->actingAs($user)->get('/admin')->assertRedirectContains('multi-factor');
+        $this->actingAs($user)->get('/admin')->assertOk();
     }
 
-    public function test_login_sends_two_factor_code_by_email_before_signing_in(): void
+    public function test_login_signs_in_with_password_only_without_email_code(): void
     {
         NotificationFacade::fake();
         $user = $this->makeUser(User::ROLE_SUPER_ADMIN);
@@ -101,8 +101,8 @@ class AdminAccessTest extends TestCase
             ->fillForm(['email' => $user->email, 'password' => 'password'])
             ->call('authenticate');
 
-        NotificationFacade::assertSentTo($user, VerifyEmailAuthentication::class);
-        $this->assertGuest();
+        NotificationFacade::assertNotSentTo($user, VerifyEmailAuthentication::class);
+        $this->assertAuthenticatedAs($user);
     }
 
     public function test_forgotten_password_can_be_reset_from_server_console(): void

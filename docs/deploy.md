@@ -72,7 +72,7 @@ VOTE_LINK_KEY=
 # Jika memakai Cloudflare, isi dengan rentang IP Cloudflare atau "*" bila hanya bisa diakses lewat Cloudflare
 TRUSTED_PROXIES=
 
-# WAJIB: kode 2FA login admin dikirim lewat email, jadi tanpa SMTP yang jalan tidak ada yang bisa login.
+# Email dipakai untuk notifikasi panitia. 2FA login admin dimatikan (config/voting.php, admin_two_factor).
 # Email juga dipakai untuk notifikasi internal (tidak memakai WhatsApp).
 MAIL_MAILER=smtp
 MAIL_HOST=
@@ -81,8 +81,6 @@ MAIL_USERNAME=
 MAIL_PASSWORD=
 MAIL_FROM_ADDRESS=
 VOTING_ALERT_EMAILS=<email-ketua-panitia>
-# 2FA login admin lewat kode email. Biarkan true (jangan dimatikan di server pemilihan).
-ADMIN_2FA=true
 
 # Backup (menu Sistem > Backup & Restore). Password zip WAJIB diisi.
 # Simpan juga password ini di luar server (mis. dicatat pemilik); tanpa password, backup tidak bisa dibuka.
@@ -249,7 +247,7 @@ curl -I https://<domain>/up        # 200
 php artisan test                   # opsional di server staging (butuh database rtrw_test)
 ```
 
-Lalu login di `https://<domain>/admin`. Saat login pertama akan diminta mengaktifkan 2FA dengan **kode 6 angka yang dikirim ke email akun** (berlaku 4 menit), lalu mengganti password. Setiap login berikutnya juga meminta kode dari email.
+Lalu login di `https://<domain>/admin`. Saat login pertama akan diminta mengganti password. 2FA kode email dimatikan atas keputusan pemilik; untuk menyalakan lagi ubah `admin_two_factor` di `config/voting.php` menjadi `true`.
 
 Jika email belum terkirim, cek pengaturan `MAIL_*` dan `QUEUE_CONNECTION=sync` (kode dikirim lewat antrean; dengan `sync` langsung terkirim tanpa worker).
 
@@ -267,6 +265,6 @@ Terakhir, buka **Sistem > Backup & Restore**, lalu klik **Backup Sekarang**. Sta
 ssh deploy@<ip-server> "cd /var/www/rtrw && php artisan pemilihan:reset-password <email>"
 ```
 
-Password sementara tampil sekali di terminal. Login dengan password itu (plus kode 2FA dari email), lalu langsung buat password baru. Reset ini tercatat di Audit Log.
+Password sementara tampil sekali di terminal. Login dengan password itu, lalu langsung buat password baru. Reset ini tercatat di Audit Log.
 
 Saran: buat **dua akun Super Admin** (mis. ketua panitia dan pemilik) agar saling bisa mereset.

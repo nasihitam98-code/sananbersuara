@@ -110,10 +110,11 @@ return [
     |--------------------------------------------------------------------------
     | 2FA login admin (kode lewat email)
     |--------------------------------------------------------------------------
-    | Bawaan menyala. Matikan hanya di laptop pengembang (ADMIN_2FA=false);
-    | di server pemilihan sungguhan sebaiknya tetap menyala.
+    | Dimatikan atas keputusan pemilik (8 Okt 2026): panel hanya dipakai tim panitia dekat,
+    | sehingga login cukup email + password (minimal 12 karakter). Untuk menyalakan lagi,
+    | ubah nilai di bawah menjadi true, lalu jalankan deploy (config:cache).
     */
 
-    'admin_two_factor' => (bool) env('ADMIN_2FA', true),
+    'admin_two_factor' => false,
 
 ];
