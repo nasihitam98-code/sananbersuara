@@ -123,6 +123,29 @@ class ResultPublicationTest extends TestCase
             ->assertDontSee('%');
     }
 
+    public function test_portal_home_shows_selected_names_and_turnout_but_no_candidate_votes(): void
+    {
+        $this->publishFully();
+
+        $this->get(route('public.index'))
+            ->assertOk()
+            ->assertSee('Hasil resmi')
+            ->assertSee('Lolos')
+            ->assertSee('Partisipasi warga')
+            ->assertSeeInOrder(['<strong>4</strong> dari <strong>4</strong>', 'warga hadir'], false)
+            ->assertSee('id="calon"', false)
+            ->assertSee('Calon Nomor 4')
+            ->assertDontSee('suara sah')
+            ->assertDontSee('2 suara');
+    }
+
+    public function test_old_menu_addresses_jump_to_portal_sections(): void
+    {
+        foreach (['pemilihan', 'cara-memilih', 'hasil', 'calon'] as $section) {
+            $this->get('/'.$section)->assertRedirect(route('public.index').'#'.$section);
+        }
+    }
+
     public function test_unpublished_result_shows_review_notice(): void
     {
         $this->publishFully();

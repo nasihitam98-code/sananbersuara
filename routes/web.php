@@ -25,6 +25,10 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 */
 
 Route::get('/', [PublicResultController::class, 'index'])->name('public.index');
+// Alamat menu lama diarahkan ke bagiannya di portal satu halaman.
+foreach (['pemilihan', 'cara-memilih', 'hasil', 'calon'] as $section) {
+    Route::get('/'.$section, [PublicResultController::class, 'section'])->defaults('section', $section)->name('public.section.'.$section);
+}
 Route::get('/hasil/{election:public_id}', [PublicResultController::class, 'show'])->name('public.show');
 Route::get('/calon/{election:public_id}', [PublicResultController::class, 'candidates'])->name('public.candidates');
 
