@@ -173,6 +173,19 @@ class Workspace
     }
 
     /**
+     * Menu hasil (Layar Hasil, Verifikasi): di Mode Dadakan baru tampil setelah pemilihan yang dikerjakan ditutup,
+     * agar tidak ada menu yang hanya berisi "belum bisa".
+     */
+    public static function showsResultsMenu(): bool
+    {
+        if (! static::showsInElection()) {
+            return false;
+        }
+
+        return static::current() !== ElectionMode::Dadakan || (static::election()?->status->allowsResults() ?? false);
+    }
+
+    /**
      * Menu tampil hanya bila mode kerja sekarang termasuk salah satu mode ini
      * (tanpa argumen: tampil bila sudah ada mode terpilih).
      */

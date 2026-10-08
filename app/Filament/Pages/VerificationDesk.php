@@ -62,7 +62,7 @@ class VerificationDesk extends Page
 
     public static function shouldRegisterNavigation(): bool
     {
-        return Workspace::showsInElection();
+        return Workspace::showsResultsMenu();
     }
 
     #[Url(as: 'pemilihan')]

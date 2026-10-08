@@ -114,7 +114,7 @@ trait InteractsWithAttendanceTable
                 $this->newPinTableAction(),
                 $this->restoreTableAction(),
             ])
-            ->filtersLayout(FiltersLayout::AboveContent)
+            ->filtersLayout(FiltersLayout::AboveContentCollapsible)
             ->filtersFormColumns(3)
             ->deferFilters(false)
             ->filters([
@@ -148,7 +148,8 @@ trait InteractsWithAttendanceTable
             ->icon(Heroicon::OutlinedKey)
             ->button()
             ->size('sm')
-            ->color('primary')
+            ->color('gray')
+            ->outlined()
             ->visible(fn (Attendee $record): bool => $this->canRestore() && ! $this->hasVoted($record))
             ->tooltip('PIN lupa/hilang/terkunci: buat PIN baru. PIN lama tidak berlaku.')
             ->requiresConfirmation()

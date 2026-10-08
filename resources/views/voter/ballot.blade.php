@@ -21,6 +21,15 @@
                     <p class="error" role="alert">{{ $message }}</p>
                 @enderror
 
+                @if ($candidates->count() > 8)
+                    {{-- Daftar calon panjang (mis. penjaringan 27 calon): cari nama atau nomor tanpa menggulir jauh. --}}
+                    <div class="card ballot-filter">
+                        <label for="candidate-filter" class="sr-only">Cari nama atau nomor calon</label>
+                        <input id="candidate-filter" class="input" type="search" inputmode="search" autocomplete="off" placeholder="Cari nama atau nomor calon" data-candidate-filter>
+                        <p class="muted hidden" data-candidate-filter-empty>Tidak ada calon yang cocok. Hapus pencarian untuk melihat semua.</p>
+                    </div>
+                @endif
+
                 <fieldset class="candidates candidates--grid">
                     <legend class="sr-only">Daftar calon {{ $ballot->title }}</legend>
 

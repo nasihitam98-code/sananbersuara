@@ -1247,3 +1247,48 @@ body[data-phase="finished"] .screen__grid {
     font-size: 16px;
     opacity: 0.9;
 }
+
+/* Layar QR proyektor: QR mengikuti tinggi layar (1366×768 pun muat bersama alamatnya tanpa digulir). */
+.screen__qr .qr {
+    width: min(100%, 52vh, 520px);
+    margin: 8px auto;
+}
+
+.screen__qr h1 {
+    margin: 0;
+    font-size: 26px;
+}
+
+.screen__qr .qr__url {
+    margin: 0;
+    font-size: 20px;
+    word-break: break-all;
+}
+
+.screen__qr .muted {
+    margin: 4px 0 0;
+}
+
+/* Periksa pilihan: wadah foto harus blok (span inline mengabaikan ukuran) agar nama tidak tertutup tombol. */
+.review .photo {
+    display: block;
+}
+
+.review .photo img {
+    display: block;
+}
+
+/* Surat suara panjang: kotak cari nama/nomor calon. */
+.ballot-filter {
+    position: sticky;
+    top: 8px;
+    z-index: 5;
+}
+
+.ballot-filter .input {
+    margin: 0;
+}
+
+.ballot-filter p {
+    margin: 8px 0 0;
+}

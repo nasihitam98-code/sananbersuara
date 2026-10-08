@@ -272,7 +272,48 @@ if (page === 'booth-done') {
     setTimeout(() => window.location.replace(body.dataset.startUrl), 5000);
 }
 
+/* Surat suara panjang: saring kartu calon berdasarkan nama atau nomor (mis. "23", "sutr"). */
+function initCandidateFilter() {
+    const input = document.querySelector('[data-candidate-filter]');
+
+    if (!input) {
+        return;
+    }
+
+    const empty = document.querySelector('[data-candidate-filter-empty]');
+    const cards = [...document.querySelectorAll('.candidate')];
+    const normalize = (value) => value.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+
+    // Kotak cari ada di dalam form surat suara: Enter jangan sampai mengirim suara tanpa langkah periksa.
+    input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            input.blur();
+        }
+    });
+
+    input.addEventListener('input', () => {
+        const query = normalize(input.value);
+        const digits = query.replace(/^0+/, '');
+        let shown = 0;
+
+        cards.forEach((card) => {
+            const number = (card.dataset.number || '').replace(/^0+/, '');
+            const match = query === ''
+                || normalize(card.dataset.name || '').includes(query)
+                || (/^\d+$/.test(query) && number === digits);
+
+            card.classList.toggle('hidden', !match);
+            shown += match ? 1 : 0;
+        });
+
+        empty?.classList.toggle('hidden', shown > 0);
+    });
+}
+
 function initBallotSteps(onChoose) {
+    initCandidateFilter();
+
     const form = document.querySelector('[data-ballot-form]');
     const choose = document.querySelector('[data-step="choose"]');
     const review = document.querySelector('[data-step="review"]');

@@ -146,7 +146,7 @@
                         @endforeach
                     </div>
 
-                    <div class="grid gap-6 xl:grid-cols-3">
+                    <div class="grid items-start gap-6 xl:grid-cols-3">
                         <x-filament::section class="xl:col-span-2" heading="Tahapan">
                             <ol class="grid grid-cols-3 gap-2 sm:grid-cols-6">
                                 @foreach ($this->stages($primary) as $index => $item)

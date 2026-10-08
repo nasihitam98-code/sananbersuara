@@ -348,7 +348,9 @@ class CandidateResource extends Resource
             ->modifyQueryUsing(fn (Builder $query) => $query->with('ballot.election')
                 // Calon dari pemilihan yang dibatalkan/diarsipkan tidak ikut ditampilkan.
                 ->whereHas('ballot.election', fn (Builder $election): Builder => $election->whereNotIn('status', [ElectionStatus::Cancelled, ElectionStatus::Archived]))
-                ->when(Workspace::current(), fn (Builder $query, ElectionMode $mode): Builder => $query->whereHas('ballot.election', fn (Builder $election): Builder => $election->where('mode', $mode))))
+                ->when(Workspace::current(), fn (Builder $query, ElectionMode $mode): Builder => $query->whereHas('ballot.election', fn (Builder $election): Builder => $election->where('mode', $mode)))
+                // Pemilihan yang sedang dikerjakan (dipilih di Beranda): hanya calonnya.
+                ->when(Workspace::election(), fn (Builder $query, Election $election): Builder => $query->whereHas('ballot', fn (Builder $ballot): Builder => $ballot->where('election_id', $election->id))))
             ->columns([
                 ImageColumn::make('photo')
                     ->label('Foto')
@@ -405,10 +407,13 @@ class CandidateResource extends Resource
             // Satu pemilihan per tampilan agar calon pemilihan lain tidak tercampur; bawaan = yang sedang disiapkan/berjalan.
             ->filtersLayout(FiltersLayout::AboveContent)
             ->filtersFormColumns(3)
+            ->paginationPageOptions([25, 50, 100, 'all'])
+            ->defaultPaginationPageOption(50)
             ->deferFilters(false)
             ->filters([
                 SelectFilter::make('election')
                     ->label('Pemilihan')
+                    ->visible(fn (): bool => Workspace::election() === null)
                     ->options(fn (): array => static::electionFilterOptions())
                     ->default(fn (): ?int => static::defaultElectionFilter())
                     ->query(fn (Builder $query, array $data): Builder => filled($data['value'] ?? null)
@@ -416,7 +421,11 @@ class CandidateResource extends Resource
                         : $query),
                 SelectFilter::make('ballot_id')
                     ->label('Surat suara')
-                    ->options(fn (): array => Ballot::query()->with('election')->get()->mapWithKeys(fn (Ballot $ballot): array => [$ballot->id => "{$ballot->election->name} — {$ballot->title}"])->all()),
+                    ->options(fn (): array => Ballot::query()->with('election')
+                        ->when(Workspace::election(), fn (Builder $query, Election $election): Builder => $query->where('election_id', $election->id))
+                        ->get()
+                        ->mapWithKeys(fn (Ballot $ballot): array => [$ballot->id => Workspace::election() !== null ? $ballot->title : "{$ballot->election->name} — {$ballot->title}"])
+                        ->all()),
                 Filter::make('without_photo')
                     ->label('Belum ada foto')
                     ->query(fn (Builder $query): Builder => $query->whereNull('photo_key')),
