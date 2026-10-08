@@ -84,6 +84,32 @@ class EditElection extends EditRecord
         return [];
     }
 
+    /**
+     * Saklar tampil/sembunyi di portal publik. Bisa diubah kapan saja (juga setelah diumumkan), tercatat di audit.
+     */
+    private function publicListingAction(): Action
+    {
+        return Action::make('publicListing')
+            ->label(fn (): string => $this->record->isPublic() ? 'Tampil di halaman publik' : 'Tidak tampil di halaman publik')
+            ->icon(fn (): string => $this->record->isPublic() ? 'heroicon-o-globe-alt' : 'heroicon-o-eye-slash')
+            ->color(fn (): string => $this->record->isPublic() ? 'success' : 'gray')
+            ->visible(fn (): bool => auth()->user()?->isSuperAdmin() ?? false)
+            ->requiresConfirmation()
+            ->modalHeading(fn (): string => $this->record->isPublic() ? 'Sembunyikan dari halaman publik?' : 'Tampilkan di halaman publik?')
+            ->modalDescription(fn (): string => $this->record->isPublic()
+                ? 'Pemilihan ini, daftar calon, dan hasilnya tidak lagi muncul di halaman publik. Data tidak berubah.'
+                : 'Pemilihan ini dan daftar calonnya muncul di halaman publik. Hasil (nama yang ditetapkan dan partisipasi, tanpa angka suara calon) muncul setelah diumumkan.')
+            ->modalSubmitActionLabel(fn (): string => $this->record->isPublic() ? 'Sembunyikan' : 'Tampilkan')
+            ->action(function (): void {
+                $show = ! $this->record->isPublic();
+                $this->record->forceFill(['settings' => array_merge($this->record->settings ?? [], ['show_public' => $show])])->save();
+
+                app(AuditLogger::class)->log('election.public_listing', $this->record, $this->record, meta: ['show_public' => $show]);
+
+                Notification::make()->title($show ? 'Tampil di halaman publik.' : 'Disembunyikan dari halaman publik.')->success()->send();
+            });
+    }
+
     private function settingsAction(): Action
     {
         return Action::make('settings')
@@ -115,6 +141,7 @@ class EditElection extends EditRecord
     {
         return [
             $this->settingsAction(),
+            $this->publicListingAction(),
 
             Action::make('controlRoom')
                 ->label('Buka Ruang Kendali')

@@ -303,7 +303,7 @@ class HomeGuide extends Widget implements HasActions, HasSchemas
             [$dadakan ? ($page(ControlRoom::class) ?? $page(DoorDesk::class)) : ($page(DeskPage::class) ?? $page(ParticipationPage::class)), 'Pemilihan dimulai; voting bisa dibuka dan ditutup.'],
             [$page(ResultScreen::class), 'Pemilihan ditutup; hasil boleh ditampilkan.'],
             [$page(VerificationDesk::class), 'Panitia menetapkan yang terpilih/lolos.'],
-            [$election->status === ElectionStatus::Published ? route('public.show', $election->public_id) : null, 'Hasil tampil di halaman publik.'],
+            [$election->status === ElectionStatus::Published && $election->isPublic() ? route('public.show', $election->public_id) : null, $election->isPublic() ? 'Hasil tampil di halaman publik.' : 'Hasil diumumkan (tidak tampil di halaman publik).'],
         ];
 
         return collect(self::STAGES)
@@ -397,9 +397,11 @@ class HomeGuide extends Widget implements HasActions, HasSchemas
                 fn () => $page(VerificationDesk::class, 'Buka Verifikasi'),
                 fn () => $page(ResultScreen::class, 'Buka Layar Hasil'),
             ]],
-            ElectionStatus::Published => ['Hasil sudah diumumkan di halaman publik.', [
-                fn (): array => ['Lihat di halaman publik', route('public.show', $election->public_id), true],
-            ]],
+            ElectionStatus::Published => $election->isPublic()
+                ? ['Hasil sudah diumumkan di halaman publik.', [
+                    fn (): array => ['Lihat di halaman publik', route('public.show', $election->public_id), true],
+                ]]
+                : ['Hasil sudah diumumkan. Pemilihan ini tidak tampil di halaman publik (bisa diubah di Pengaturan pemilihan).', []],
             default => ['', []],
         };
 

@@ -44,11 +44,13 @@ class PublicTurnout
             ->where('status', ElectionStatus::Published)
             ->orderBy('closed_at')
             ->get()
+            ->filter->isPublic()
             ->map(fn (Election $election): array => [
                 'name' => $election->name,
                 'date' => ($election->started_at ?? $election->closed_at)?->translatedFormat('M Y'),
                 'percent' => $this->for($election)['percent'] ?? 0.0,
             ])
+            ->values()
             ->all();
     }
 

@@ -20,7 +20,9 @@
                 <div>
                     <p class="text-sm text-gray-500">Status</p>
                     <x-filament::badge size="lg" :color="$election->status->getColor()">{{ $election->status->getLabel() }}</x-filament::badge>
-                    @if ($election->status === \App\Enums\ElectionStatus::Published)
+                    @if ($election->status === \App\Enums\ElectionStatus::Published && ! $election->isPublic())
+                        <p class="mt-2 text-sm text-gray-500">Tidak tampil di halaman publik (bisa diubah di Pengaturan pemilihan).</p>
+                    @elseif ($election->status === \App\Enums\ElectionStatus::Published)
                         <p class="mt-2 text-sm">Halaman publik: <a class="text-primary-600 underline" href="{{ route('public.show', $election->public_id) }}" target="_blank">{{ route('public.show', $election->public_id) }}</a></p>
                     @endif
                     @if ($election->vote_links_destroyed_at)
@@ -42,7 +44,7 @@
                     ['Mulai verifikasi', $verified, 'Mengunci hasil untuk diperiksa panitia.'],
                     ['Tetapkan yang lolos/terpilih', $verified && $decided === count($slotRows), "{$decided} dari ".count($slotRows).' surat suara sudah ditetapkan (bagian ② di bawah).'],
                     ['Berita acara: buat draf, cetak, tanda tangan, sahkan', $verified && $ratified === count($reportRows), "{$ratified} dari ".count($reportRows).' berita acara disahkan (bagian ③ di bawah).'],
-                    ['Publikasikan ke Halaman Publik', $published, 'Hasil resmi tampil di Halaman Publik (tanpa angka suara).'],
+                    ['Publikasikan hasil resmi', $published, $election->isPublic() ? 'Hasil resmi tampil di Halaman Publik (tanpa angka suara).' : 'Hasil ditetapkan resmi. Pemilihan ini tidak tampil di Halaman Publik (saklar di Pengaturan pemilihan).'],
                 ])
                 @php($current = collect($steps)->search(fn ($step) => ! $step[1]))
 

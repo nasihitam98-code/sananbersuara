@@ -75,6 +75,15 @@ class Election extends Model
         return data_get($this->settings, $key) ?? config("voting.defaults.{$key}");
     }
 
+    /**
+     * Tampil di portal publik? Diatur Super Admin per pemilihan. Bawaan: Mode Resmi tampil, Mode Dadakan
+     * tidak (hasilnya sudah diumumkan langsung di lokasi lewat proyektor).
+     */
+    public function isPublic(): bool
+    {
+        return (bool) (data_get($this->settings, 'show_public') ?? $this->mode === ElectionMode::Resmi);
+    }
+
     public function isDadakan(): bool
     {
         return $this->mode === ElectionMode::Dadakan;

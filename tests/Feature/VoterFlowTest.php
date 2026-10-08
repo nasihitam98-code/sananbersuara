@@ -74,6 +74,9 @@ class VoterFlowTest extends TestCase
     {
         $this->candidate->update(['vision' => 'RW rukun dan aman.', 'mission' => 'Ronda malam bergilir']);
 
+        $this->get(route('public.candidates', $this->election->public_id))->assertNotFound();
+        $this->election->forceFill(['settings' => ['show_public' => true]])->save();
+
         $this->get(route('public.candidates', $this->election->public_id))
             ->assertOk()
             ->assertSee('Kenali calon')

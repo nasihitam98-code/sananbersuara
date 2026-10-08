@@ -8,6 +8,8 @@ use App\Enums\ReportStatus;
 use App\Enums\StaffRole;
 use App\Enums\WaveKind;
 use App\Filament\Pages\VerificationDesk;
+use App\Filament\Resources\Elections\Pages\EditElection;
+use App\Models\AuditLog;
 use App\Models\Ballot;
 use App\Models\Candidate;
 use App\Models\Election;
@@ -49,7 +51,7 @@ class ResultPublicationTest extends TestCase
         $this->admin->forceFill(['has_email_authentication' => true])->save();
         $this->admin->assignRole(User::ROLE_SUPER_ADMIN);
 
-        $this->election = Election::factory()->create(['name' => 'Penjaringan Calon RW 2026']);
+        $this->election = Election::factory()->create(['name' => 'Penjaringan Calon RW 2026', 'settings' => ['show_public' => true]]);
         $this->ballot = Ballot::factory()->for($this->election)->create(['title' => 'Calon Ketua RW']);
         $this->candidates = collect(range(1, 4))
             ->map(fn (int $number): Candidate => Candidate::factory()->for($this->ballot)->create(['number' => $number, 'name' => "Calon Nomor {$number}"]))
@@ -137,6 +139,27 @@ class ResultPublicationTest extends TestCase
             ->assertSee('Calon Nomor 4')
             ->assertDontSee('suara sah')
             ->assertDontSee('2 suara');
+    }
+
+    public function test_dadakan_is_hidden_from_portal_until_super_admin_shows_it(): void
+    {
+        $this->election->forceFill(['settings' => []])->save();
+        $this->publishFully();
+
+        $this->get(route('public.index'))->assertOk()->assertDontSee('Penjaringan Calon RW 2026');
+        $this->get(route('public.show', $this->election->public_id))->assertNotFound();
+        $this->get(route('public.candidates', $this->election->public_id))->assertNotFound();
+
+        Filament::setCurrentPanel('admin');
+        $this->actingAs($this->admin);
+
+        Livewire::test(EditElection::class, ['record' => $this->election->public_id])
+            ->assertActionVisible('publicListing')
+            ->callAction('publicListing');
+
+        $this->assertTrue($this->election->fresh()->isPublic());
+        $this->assertTrue(AuditLog::query()->where('action', 'election.public_listing')->exists());
+        $this->get(route('public.show', $this->election->public_id))->assertOk()->assertSee('Calon Nomor 1');
     }
 
     public function test_old_menu_addresses_jump_to_portal_sections(): void

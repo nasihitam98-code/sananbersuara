@@ -70,7 +70,7 @@ class PublicResultController extends Controller
      */
     public function candidates(Election $election): Response
     {
-        abort_if(in_array($election->status, [ElectionStatus::Draft, ElectionStatus::Cancelled, ElectionStatus::Archived], true), 404);
+        abort_if(in_array($election->status, [ElectionStatus::Draft, ElectionStatus::Cancelled, ElectionStatus::Archived], true) || ! $election->isPublic(), 404);
 
         return $this->publicView('public.candidates', ['election' => $election, 'ballots' => $this->candidateBallots($election)]);
     }
@@ -95,7 +95,7 @@ class PublicResultController extends Controller
 
     public function show(Request $request, Election $election): Response
     {
-        abort_unless(in_array($election->status, self::ANNOUNCED, true), 404);
+        abort_unless(in_array($election->status, self::ANNOUNCED, true) && $election->isPublic(), 404);
 
         $cards = collect();
         $units = collect();
@@ -144,7 +144,7 @@ class PublicResultController extends Controller
      */
     private function running(): Collection
     {
-        return Election::query()->whereIn('status', self::RUNNING)->latest()->get();
+        return Election::query()->whereIn('status', self::RUNNING)->latest()->get()->filter->isPublic()->values();
     }
 
     /**
@@ -152,7 +152,7 @@ class PublicResultController extends Controller
      */
     private function announced(): Collection
     {
-        return Election::query()->whereIn('status', self::ANNOUNCED)->latest('closed_at')->get();
+        return Election::query()->whereIn('status', self::ANNOUNCED)->latest('closed_at')->get()->filter->isPublic()->values();
     }
 
     /**

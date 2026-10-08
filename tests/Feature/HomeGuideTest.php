@@ -198,6 +198,14 @@ class HomeGuideTest extends TestCase
 
     public function test_public_portal_links_to_admin_and_lists_running_elections(): void
     {
+        // Mode Dadakan tidak tampil di portal kecuali Super Admin menyalakannya.
+        $this->get(route('public.index'))
+            ->assertOk()
+            ->assertSee('Masuk panitia dan pengurus')
+            ->assertDontSee('Penjaringan Calon RW');
+
+        $this->election->forceFill(['settings' => ['show_public' => true]])->save();
+
         $this->get(route('public.index'))
             ->assertOk()
             ->assertSee('Masuk panitia dan pengurus')
