@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
 use App\Enums\OutcomeStatus;
 use App\Enums\ReportStatus;
@@ -160,6 +161,20 @@ class ResultPublicationTest extends TestCase
         $this->assertTrue($this->election->fresh()->isPublic());
         $this->assertTrue(AuditLog::query()->where('action', 'election.public_listing')->exists());
         $this->get(route('public.show', $this->election->public_id))->assertOk()->assertSee('Calon Nomor 1');
+    }
+
+    public function test_portal_puts_candidates_first_while_an_election_is_upcoming(): void
+    {
+        $this->publishFully();
+
+        $this->get(route('public.index'))->assertSeeInOrder(['id="hasil"', 'id="calon"'], false);
+
+        Election::factory()->create(['name' => 'Pemilihan RT RW Desember', 'mode' => ElectionMode::Resmi])
+            ->forceFill(['status' => ElectionStatus::Ready])->save();
+
+        $this->get(route('public.index'))
+            ->assertSee('Pemilihan RT RW Desember')
+            ->assertSeeInOrder(['data-section="calon"', 'data-section="hasil"', 'id="calon"', 'id="hasil"'], false);
     }
 
     public function test_old_menu_addresses_jump_to_portal_sections(): void

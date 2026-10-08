@@ -38,13 +38,15 @@
             {{-- Satu halaman: menu meluncur ke bagiannya; di halaman detail, menu kembali ke bagian di beranda. --}}
             @php($onHome = request()->routeIs('public.index'))
             <div class="portal-nav__tabs" data-scrollspy>
-                @foreach ([
-                    ['beranda', 'Beranda', $onHome],
-                    ['hasil', 'Hasil', request()->routeIs('public.show')],
-                    ['calon', 'Calon', request()->routeIs('public.candidates')],
-                    ['pemilihan', 'Pemilihan', false],
-                    ['cara-memilih', 'Cara memilih', false],
-                ] as [$section, $label, $active])
+                @php($labels = ['beranda' => 'Beranda', 'hasil' => 'Hasil', 'calon' => 'Calon', 'pemilihan' => 'Pemilihan', 'cara-memilih' => 'Cara memilih'])
+                @foreach ($sections ?? array_keys($labels) as $section)
+                    @php($label = $labels[$section])
+                    @php($active = match ($section) {
+                        'beranda' => $onHome,
+                        'hasil' => request()->routeIs('public.show'),
+                        'calon' => request()->routeIs('public.candidates'),
+                        default => false,
+                    })
                     <a class="portal-nav__tab {{ $active ? 'is-active' : '' }}" href="{{ $onHome ? '#'.$section : route('public.index').'#'.$section }}" data-section="{{ $section }}" @if ($active) aria-current="page" @endif>{{ $label }}</a>
                 @endforeach
             </div>

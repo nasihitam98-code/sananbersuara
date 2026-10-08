@@ -161,8 +161,21 @@ class PublicResultController extends Controller
     private function publicView(string $view, array $data = []): Response
     {
         return response()
-            ->view($view, $data + ['headline' => $this->headline()])
+            ->view($view, $data + ['headline' => $this->headline(), 'sections' => $this->sectionOrder()])
             ->header('Cache-Control', 'public, max-age=60');
+    }
+
+    /**
+     * Urutan bagian portal (juga urutan menu). Menjelang/selama pemilihan, warga lebih perlu mengenal calon,
+     * jadi Calon didahulukan; setelah selesai, Hasil kembali di depan.
+     *
+     * @return array<int, string>
+     */
+    private function sectionOrder(): array
+    {
+        return $this->running()->isNotEmpty()
+            ? ['beranda', 'calon', 'hasil', 'pemilihan', 'cara-memilih']
+            : ['beranda', 'hasil', 'calon', 'pemilihan', 'cara-memilih'];
     }
 
     /**
