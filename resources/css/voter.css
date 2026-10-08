@@ -66,39 +66,6 @@ body {
     margin: 2px 0 0;
 }
 
-/* Halaman publik: header portal dengan tombol "Masuk Panitia" */
-.topbar--portal {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-}
-
-.topbar--portal a {
-    color: inherit;
-    text-decoration: none;
-}
-
-.topbar__lock {
-    flex: none;
-    display: grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    border: 2px solid rgba(255, 255, 255, 0.6);
-    border-radius: 50%;
-}
-
-.topbar__lock:hover,
-.topbar__lock:focus-visible {
-    background: rgba(255, 255, 255, 0.15);
-}
-
-/* Halaman publik tidak punya bar tombol bawah, jadi tidak perlu ruang kosong di bawah */
-.topbar--portal ~ .wrap {
-    padding-bottom: 32px;
-}
-
 .wrap {
     max-width: 640px;
     margin: 0 auto;
@@ -670,59 +637,6 @@ label {
     word-break: break-all;
     color: var(--c-indigo-700);
 }
-/* Halaman publik hasil resmi */
-.tabs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 16px;
-}
-
-.tabs__item {
-    padding: 8px 14px;
-    border-radius: 999px;
-    border: 2px solid var(--c-border);
-    background: #fff;
-    color: var(--c-indigo-700);
-    font-weight: 700;
-    font-size: 16px;
-    text-decoration: none;
-}
-
-.tabs__item--active {
-    background: var(--c-indigo-700);
-    border-color: var(--c-indigo-700);
-    color: #fff;
-}
-
-.winners {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 20px;
-    margin-top: 12px;
-    text-align: center;
-}
-
-.winner__photo {
-    width: 140px;
-    height: 140px;
-    margin: 0 auto 8px;
-}
-
-.winners--single .winner__photo {
-    width: 200px;
-    height: 200px;
-}
-
-.winner__name {
-    font-size: 22px;
-    font-weight: 800;
-    margin: 0;
-}
-
-.wrap > .result {
-    margin-bottom: 12px;
-}
 /* Layar proyektor panitia: QR + partisipasi live (tanpa angka per calon). */
 .screen__grid {
     display: grid;
@@ -1105,47 +1019,6 @@ body[data-phase="finished"] .screen__grid {
     }
 }
 
-/* Halaman hasil publik: foto pemenang harus blok (span inline mengabaikan ukuran), penjelasan. */
-.winner__photo {
-    display: block;
-}
-
-.winner .photo img {
-    display: block;
-}
-
-.public-facts {
-    display: grid;
-    gap: 8px;
-    margin: 12px 0;
-}
-
-.public-facts div {
-    display: grid;
-    grid-template-columns: 8.5rem 1fr;
-    gap: 8px;
-}
-
-.public-facts dt {
-    color: var(--c-muted);
-    font-weight: 600;
-}
-
-.public-facts dd {
-    margin: 0;
-}
-
-.public-meaning {
-    margin: 10px 0 0;
-}
-
-@media (max-width: 480px) {
-    .public-facts div {
-        grid-template-columns: 1fr;
-        gap: 0;
-    }
-}
-
 /* Visi & misi calon (surat suara HP/bilik dan halaman publik). */
 .candidate__profile-btn {
     margin-top: 6px;
@@ -1218,40 +1091,6 @@ body[data-phase="finished"] .screen__grid {
 
 .profile .btn {
     margin-top: 8px;
-}
-
-/* Halaman publik "Kenali calon". */
-.profiles {
-    display: grid;
-    gap: 16px;
-}
-
-.profile-card {
-    display: grid;
-    grid-template-columns: 96px 1fr;
-    gap: 16px;
-    align-items: start;
-}
-
-.profile-card .photo {
-    display: block;
-    width: 96px;
-    height: 96px;
-}
-
-.profile-card p {
-    margin: 0;
-}
-
-@media (max-width: 480px) {
-    .profile-card {
-        grid-template-columns: 72px 1fr;
-    }
-
-    .profile-card .photo {
-        width: 72px;
-        height: 72px;
-    }
 }
 
 .done__return {
