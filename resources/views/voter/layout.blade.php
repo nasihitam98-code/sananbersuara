@@ -6,6 +6,7 @@
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="#1f1d5c">
     <title>{{ $election->name }} · {{ config('app.name') }}</title>
+    <link rel="icon" href="{{ \App\Models\AppSetting::faviconUrl() }}">
     @vite(['resources/css/voter.css', 'resources/js/voter.js'])
 </head>
 <body
@@ -19,9 +20,12 @@
     @yield('body-attributes')
 >
     @section('header')
-        <header class="topbar">
-            <p class="topbar__label">Pemungutan suara</p>
-            <p class="topbar__title">{{ $election->name }}</p>
+        <header class="topbar topbar--brand">
+            @include('voter.partials.brand-mark')
+            <div>
+                <p class="topbar__label">Pemungutan suara</p>
+                <p class="topbar__title">{{ $election->name }}</p>
+            </div>
         </header>
     @show
 

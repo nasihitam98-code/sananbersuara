@@ -9,6 +9,7 @@ use App\Filament\Resources\Elections\RelationManagers\BallotsRelationManager;
 use App\Filament\Resources\Elections\RelationManagers\StaffRelationManager;
 use App\Filament\Support\Workspace;
 use App\Http\Middleware\EnsurePasswordChanged;
+use App\Models\AppSetting;
 use Filament\Auth\MultiFactor\Email\EmailAuthentication;
 use Filament\FontProviders\LocalFontProvider;
 use Filament\Http\Middleware\Authenticate;
@@ -44,6 +45,7 @@ class AdminPanelProvider extends PanelProvider
             ->brandName(fn (): string => config('app.name'))
             ->brandLogo(fn (): View => view('filament.brand'))
             ->brandLogoHeight('2.25rem')
+            ->favicon(fn (): string => AppSetting::faviconUrl())
             ->maxContentWidth(Width::Full)
             ->login()
             ->profile(EditProfile::class, isSimple: false)

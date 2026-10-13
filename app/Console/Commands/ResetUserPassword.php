@@ -25,6 +25,7 @@ class ResetUserPassword extends Command
 
         if ($user === null) {
             $this->error('Akun dengan email itu tidak ditemukan.');
+            $this->listAccounts();
 
             return self::FAILURE;
         }
@@ -40,5 +41,29 @@ class ResetUserPassword extends Command
         $this->line('Saat login: masukkan kode dari email (bila 2FA aktif), lalu wajib ganti password.');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Bantu yang lupa email akunnya sendiri: tampilkan akun yang ada (Super Admin dulu). Hanya terlihat oleh yang
+     * punya akses terminal server.
+     */
+    private function listAccounts(): void
+    {
+        $users = User::query()->with('roles')->orderBy('email')->get()
+            ->sortByDesc(fn (User $user): bool => $user->isSuperAdmin());
+
+        if ($users->isEmpty()) {
+            $this->line('Belum ada akun sama sekali.');
+
+            return;
+        }
+
+        $this->line('Akun yang ada:');
+        $this->table(['Email', 'Nama', 'Peran', 'Aktif'], $users->map(fn (User $user): array => [
+            $user->email,
+            $user->name,
+            $user->roles->pluck('name')->implode(', ') ?: '-',
+            $user->is_active ? 'ya' : 'tidak',
+        ])->values()->all());
     }
 }

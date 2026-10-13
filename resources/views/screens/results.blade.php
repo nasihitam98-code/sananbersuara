@@ -5,13 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <title>Hasil · {{ $election->name }}</title>
+    <link rel="icon" href="{{ \App\Models\AppSetting::faviconUrl() }}">
     @vite(['resources/css/voter.css', 'resources/js/results-screen.js'])
 </head>
 <body class="screen results">
     <header class="topbar screen__topbar">
-        <div>
-            <p class="topbar__label">Hasil pemungutan suara</p>
-            <p class="topbar__title">{{ $election->name }}</p>
+        <div class="topbar--brand">
+            @include('voter.partials.brand-mark')
+            <div>
+                <p class="topbar__label">Hasil pemungutan suara</p>
+                <p class="topbar__title">{{ $election->name }}</p>
+            </div>
         </div>
         <button type="button" class="screen__fullscreen" data-fullscreen>⛶ Layar penuh</button>
     </header>

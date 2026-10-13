@@ -116,7 +116,11 @@ class AdminAccessTest extends TestCase
         $this->assertTrue($this->superAdmin->must_change_password);
         $this->assertTrue(AuditLog::query()->where('action', 'user.password_reset_by_console')->exists());
 
-        $this->artisan('pemilihan:reset-password', ['email' => 'tidak-ada@example.test'])->assertFailed();
+        // Email salah: daftar akun yang ada ditampilkan agar pemilik server bisa memilih email yang benar.
+        $this->artisan('pemilihan:reset-password', ['email' => 'tidak-ada@example.test'])
+            ->expectsOutputToContain('Akun yang ada:')
+            ->expectsOutputToContain($this->superAdmin->email)
+            ->assertFailed();
     }
 
     public function test_user_must_change_temporary_password_first(): void

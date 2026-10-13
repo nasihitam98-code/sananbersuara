@@ -5,19 +5,25 @@ namespace App\Filament\Pages;
 use App\Models\AppSetting;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\SiteLogoProcessor;
 use BackedEnum;
+use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Image;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Text;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use RuntimeException;
 use UnitEnum;
 
 /**
- * Pengaturan Tampilan (Super Admin): nama aplikasi, nama wilayah, dan pengumuman halaman publik,
- * agar teks bisa diubah tanpa menyentuh kode atau .env.
+ * Pengaturan Tampilan (Super Admin): nama aplikasi, nama wilayah, pengumuman halaman publik, dan logo,
+ * agar tampilan bisa diubah tanpa menyentuh kode atau .env.
  *
  * @property-read Schema $form
  */
@@ -83,6 +89,27 @@ class SiteSettings extends Page
                             ->rows(3)
                             ->maxLength(500),
                     ]),
+                Section::make('Logo')
+                    ->description('Tampil di header halaman publik, panel admin, halaman login, HP pemilih, laptop bilik, layar proyektor, dan ikon tab browser.')
+                    ->schema([
+                        Image::make(fn (): string => AppSetting::faviconUrl(), 'Logo yang dipakai sekarang')
+                            ->imageHeight('4rem'),
+                        Text::make(fn (): string => AppSetting::logoUrl() === null
+                            ? 'Sekarang memakai logo bawaan (kotak merah bercentang).'
+                            : 'Sekarang memakai logo yang diunggah.'),
+                        FileUpload::make('logo_upload')
+                            ->label('Unggah logo baru (opsional)')
+                            ->helperText('PNG, JPG, atau WebP, maks. 2 MB. Paling bagus logo persegi berlatar transparan (PNG). Logo diperkecil otomatis tanpa dipotong.')
+                            ->image()
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                            ->maxSize(2048)
+                            ->disk('local')
+                            ->directory('unggahan-sementara')
+                            ->visibility('private'),
+                        Checkbox::make('remove_logo')
+                            ->label('Hapus logo, kembali ke logo bawaan')
+                            ->visible(fn (): bool => AppSetting::logoUrl() !== null),
+                    ]),
             ]);
     }
 
@@ -96,6 +123,20 @@ class SiteSettings extends Page
             AppSetting::AREA_NAME => $data[AppSetting::AREA_NAME] ?? null,
             AppSetting::PUBLIC_NOTICE => $data[AppSetting::PUBLIC_NOTICE] ?? null,
         ]);
+
+        $logos = app(SiteLogoProcessor::class);
+
+        try {
+            if (filled($data['logo_upload'] ?? null)) {
+                $logos->replace($data['logo_upload']);
+            } elseif ($data['remove_logo'] ?? false) {
+                $logos->remove();
+            }
+        } catch (RuntimeException $exception) {
+            Notification::make()->title('Logo tidak bisa dipakai')->body($exception->getMessage())->danger()->send();
+
+            return;
+        }
 
         app(AuditLogger::class)->log('settings.display_updated', meta: ['before' => $before, 'after' => AppSetting::allValues()]);
 

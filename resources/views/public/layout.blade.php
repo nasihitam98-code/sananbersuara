@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#1f1d5c">
     <title>@yield('title') · {{ config('app.name') }}</title>
+    <link rel="icon" href="{{ \App\Models\AppSetting::faviconUrl() }}">
     {{-- Pratinjau link saat dibagikan (WhatsApp, Telegram, dll.). --}}
     <meta name="description" content="@yield('description', 'Pengumuman resmi pemilihan warga dari panitia.')">
     <meta property="og:type" content="website">
@@ -22,9 +23,14 @@
     <header class="masthead">
         <div class="masthead__inner">
             <a class="masthead__brand" href="{{ route('public.index') }}">
-                <span class="masthead__logo" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"></path></svg>
-                </span>
+                {{-- Logo dari Pengaturan Tampilan, atau kotak merah bercentang bawaan. --}}
+                @if ($logo = \App\Models\AppSetting::logoUrl())
+                    <span class="masthead__logo masthead__logo--image" aria-hidden="true"><img src="{{ $logo }}" alt="" width="40" height="40"></span>
+                @else
+                    <span class="masthead__logo" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"></path></svg>
+                    </span>
+                @endif
                 <span>
                     <span class="masthead__area">{{ $areaName }}</span>
                     <span class="masthead__title">{{ config('app.name') }}</span>

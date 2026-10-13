@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Pengaturan tampilan sederhana (kunci → nilai) yang diubah dari menu Pengaturan Tampilan.
@@ -19,6 +20,12 @@ class AppSetting extends Model
     public const AREA_NAME = 'area_name';
 
     public const PUBLIC_NOTICE = 'public_notice';
+
+    /** Path logo (WebP hasil olahan SiteLogoProcessor) di disk "public"; kosong = logo bawaan. */
+    public const LOGO_PATH = 'logo_path';
+
+    /** Ikon tab browser bawaan (kotak merah bercentang) bila belum ada logo. */
+    public const DEFAULT_FAVICON = 'favicon.svg';
 
     protected $primaryKey = 'key';
 
@@ -39,6 +46,24 @@ class AppSetting extends Model
         $value = static::allValues()[$key] ?? null;
 
         return filled($value) ? $value : $default;
+    }
+
+    /**
+     * Alamat logo yang diunggah di Pengaturan Tampilan, atau null bila memakai logo bawaan.
+     */
+    public static function logoUrl(): ?string
+    {
+        $path = static::get(self::LOGO_PATH);
+
+        return $path === null ? null : Storage::disk('public')->url($path);
+    }
+
+    /**
+     * Ikon tab browser: logo yang diunggah, atau kotak merah bercentang bawaan.
+     */
+    public static function faviconUrl(): string
+    {
+        return static::logoUrl() ?? asset(self::DEFAULT_FAVICON);
     }
 
     /**

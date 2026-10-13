@@ -5,13 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <title>QR · {{ $election->name }}</title>
+    <link rel="icon" href="{{ \App\Models\AppSetting::faviconUrl() }}">
     @vite(['resources/css/voter.css', 'resources/js/screen.js'])
 </head>
 <body class="screen" data-status-url="{{ route('screens.qr.status', $election->public_id) }}" data-phase="{{ $status['phase'] }}">
     <header class="topbar screen__topbar">
-        <div>
-            <p class="topbar__label">Pindai untuk memilih</p>
-            <p class="topbar__title">{{ $election->name }}</p>
+        <div class="topbar--brand">
+            @include('voter.partials.brand-mark')
+            <div>
+                <p class="topbar__label">Pindai untuk memilih</p>
+                <p class="topbar__title">{{ $election->name }}</p>
+            </div>
         </div>
         <button type="button" class="screen__fullscreen" data-fullscreen>⛶ Layar penuh</button>
     </header>

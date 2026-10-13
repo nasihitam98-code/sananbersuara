@@ -21,6 +21,8 @@ use App\Services\Voting\ElectionLifecycle;
 use Database\Seeders\DatabaseSeeder;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -194,6 +196,66 @@ class HomeGuideTest extends TestCase
 
         $committee = $this->makeUser(User::ROLE_STAFF, StaffRole::Panitia);
         $this->actingAs($committee)->get(SiteSettings::getUrl())->assertForbidden();
+    }
+
+    public function test_super_admin_uploads_and_removes_logo_used_across_the_app(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        $this->actingAs($this->superAdmin);
+
+        // Tanpa logo: kotak merah bawaan dan ikon tab bawaan.
+        $this->get(route('public.index'))->assertOk()->assertSee(asset(AppSetting::DEFAULT_FAVICON), false);
+
+        Livewire::test(SiteSettings::class)
+            ->fillForm(['logo_upload' => UploadedFile::fake()->image('logo-rw.png', 800, 400)])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $first = AppSetting::get(AppSetting::LOGO_PATH);
+        $this->assertNotNull($first);
+        $this->assertStringEndsWith('.webp', $first);
+        Storage::disk('public')->assertExists($first);
+        $this->assertTrue(AuditLog::query()->where('action', 'settings.logo_replaced')->exists());
+
+        // Logo dipakai di header portal dan sebagai ikon tab.
+        $logoUrl = Storage::disk('public')->url($first);
+        $this->get(route('public.index'))
+            ->assertSee('masthead__logo--image', false)
+            ->assertSee('<link rel="icon" href="'.$logoUrl.'">', false);
+
+        // Logo baru menggantikan yang lama (file lama dihapus).
+        Livewire::test(SiteSettings::class)
+            ->fillForm(['logo_upload' => UploadedFile::fake()->image('logo-baru.jpg', 300, 300)])
+            ->call('save');
+
+        $second = AppSetting::get(AppSetting::LOGO_PATH);
+        $this->assertNotSame($first, $second);
+        Storage::disk('public')->assertMissing($first);
+        Storage::disk('public')->assertExists($second);
+
+        // Hapus logo → kembali ke bawaan.
+        Livewire::test(SiteSettings::class)
+            ->fillForm(['remove_logo' => true])
+            ->call('save');
+
+        $this->assertNull(AppSetting::get(AppSetting::LOGO_PATH));
+        Storage::disk('public')->assertMissing($second);
+        $this->get(route('public.index'))->assertDontSee('masthead__logo--image', false);
+    }
+
+    public function test_logo_upload_rejects_files_that_are_not_images(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        $this->actingAs($this->superAdmin);
+
+        Livewire::test(SiteSettings::class)
+            ->fillForm(['logo_upload' => UploadedFile::fake()->create('logo.png.php', 10, 'application/x-php')])
+            ->call('save')
+            ->assertHasFormErrors(['logo_upload']);
+
+        $this->assertNull(AppSetting::get(AppSetting::LOGO_PATH));
     }
 
     public function test_public_portal_links_to_admin_and_lists_running_elections(): void
