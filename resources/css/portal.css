@@ -2,33 +2,56 @@
  * Portal publik (laptop dan HP). Susunan diadaptasi dari referensi portal pemilihan:
  * pita header gelap dengan penanda di kanan, menu bergaris bawah, kartu hasil yang bisa digeser,
  * peta wilayah dengan panel samping, dan bagian-bagian berjudul kecil.
+ * Font, warna, dan bentuk mengikuti contoh dasbor pemilu (Noto Sans KR, palet indigo/ungu/biru/slate).
  * Tanpa font/skrip dari luar; tanpa atribut style (CSP ketat).
  */
 
+/* Noto Sans KR, potongan huruf Latin (variabel, tebal 300–900), disimpan sendiri. Lisensi SIL Open Font License 1.1. */
+@font-face {
+    font-family: "Noto Sans KR";
+    font-style: normal;
+    font-weight: 300 900;
+    font-display: swap;
+    src: url("../fonts/noto-sans-kr-latin.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
-    --p-ink: #14142b;
-    --p-muted: #5b5b73;
-    --p-line: #e4e3ef;
-    --p-bg: #f5f5fa;
+    --p-ink: #1e293b;
+    --p-ink-strong: #0f172a;
+    --p-muted: #64748b;
+    --p-line: #e2e8f0;
+    --p-line-soft: #f1f5f9;
+    --p-bg: #f1f5f9;
     --p-card: #ffffff;
-    --p-indigo-950: #17154a;
-    --p-indigo-900: #1f1d5c;
-    --p-indigo-700: #2e2a86;
-    --p-indigo-600: #3c35b0;
-    --p-indigo-500: #4b44c4;
-    --p-indigo-100: #e7e6fb;
-    --p-indigo-50: #f2f1fe;
-    --p-red: #d6303a;
-    --p-green: #0f8f6a;
-    --p-green-50: #e3f6ef;
-    --p-amber: #b7791f;
-    --p-amber-50: #fff5e0;
-    --p-gold: #c8961e;
+    --p-indigo-950: #1e1b4b;
+    --p-indigo-900: #312e81;
+    --p-indigo-700: #4338ca;
+    --p-indigo-600: #4f46e5;
+    --p-indigo-500: #6366f1;
+    --p-indigo-300: #a5b4fc;
+    --p-indigo-200: #c7d2fe;
+    --p-indigo-100: #e0e7ff;
+    --p-indigo-50: #eef2ff;
+    --p-purple-900: #581c87;
+    --p-blue-700: #1d4ed8;
+    --p-blue-600: #2563eb;
+    --p-blue-500: #3b82f6;
+    --p-blue-200: #bfdbfe;
+    --p-blue-50: #eff6ff;
+    --p-red: #dc2626;
+    --p-red-50: #fef2f2;
+    --p-green: #059669;
+    --p-green-50: #ecfdf5;
+    --p-amber: #b45309;
+    --p-amber-50: #fffbeb;
+    --p-yellow: #facc15;
+    --p-gold: #f59e0b;
     --p-radius: 16px;
-    --p-shadow: 0 1px 2px rgba(20, 20, 43, 0.05), 0 8px 24px rgba(20, 20, 43, 0.06);
-    --p-shadow-lift: 0 2px 4px rgba(20, 20, 43, 0.06), 0 16px 36px rgba(20, 20, 43, 0.12);
+    --p-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+    --p-shadow-lift: 0 10px 28px -4px rgba(15, 23, 42, 0.12);
     --p-max: 1180px;
-    --p-font: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    --p-font: "Noto Sans KR", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 *,
@@ -87,32 +110,8 @@ h4 {
     position: relative;
     overflow: hidden;
     color: #fff;
-    background: linear-gradient(110deg, var(--p-indigo-950) 0%, var(--p-indigo-700) 55%, #5a3fd0 100%);
-}
-
-/* Bentuk dekoratif lembut seperti pita di referensi. */
-.masthead::before,
-.masthead::after {
-    content: "";
-    position: absolute;
-    border-radius: 50%;
-    pointer-events: none;
-}
-
-.masthead::before {
-    width: 520px;
-    height: 520px;
-    right: -120px;
-    top: -330px;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 70%);
-}
-
-.masthead::after {
-    width: 300px;
-    height: 300px;
-    left: 30%;
-    bottom: -230px;
-    background: radial-gradient(circle, rgba(140, 120, 255, 0.35), rgba(140, 120, 255, 0) 70%);
+    background: linear-gradient(90deg, var(--p-indigo-950), var(--p-purple-900) 50%, var(--p-indigo-900));
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18);
 }
 
 .masthead__inner {
@@ -120,7 +119,7 @@ h4 {
     z-index: 1;
     max-width: var(--p-max);
     margin: 0 auto;
-    padding: 18px 20px;
+    padding: 14px 20px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -140,24 +139,24 @@ h4 {
     flex: none;
     display: grid;
     place-items: center;
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.16);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: var(--p-red);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
 .masthead__area {
     display: block;
-    font-size: 13px;
-    opacity: 0.8;
+    font-size: 12px;
+    color: var(--p-indigo-200);
 }
 
 .masthead__title {
     display: block;
     font-size: 22px;
-    font-weight: 800;
-    letter-spacing: -0.01em;
+    font-weight: 900;
+    letter-spacing: -0.02em;
 }
 
 /* Penanda kanan (seperti "투표율 60.2%" di referensi). */
@@ -167,17 +166,17 @@ h4 {
     flex-direction: column;
     align-items: flex-end;
     max-width: 46%;
-    padding: 8px 14px;
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.12);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+    padding: 6px 14px;
+    border-radius: 8px;
+    background: rgba(49, 46, 129, 0.8);
+    border: 1px solid rgba(99, 102, 241, 0.3);
     color: #fff;
     text-decoration: none;
     transition: background 0.2s;
 }
 
 .headline:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(67, 56, 202, 0.85);
 }
 
 .headline__label {
@@ -186,8 +185,9 @@ h4 {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    color: var(--p-indigo-200);
     font-size: 12px;
-    font-weight: 800;
+    font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
 }
@@ -200,20 +200,21 @@ h4 {
 }
 
 .headline--live .headline__dot {
-    background: #ff5a62;
+    background: #ef4444;
     animation: pulse 1.6s ease-out infinite;
 }
 
 .headline--soon .headline__dot {
-    background: #ffc857;
+    background: var(--p-yellow);
 }
 
 .headline--done .headline__dot {
-    background: #4ade9b;
+    background: #34d399;
 }
 
 .headline__text {
-    font-size: 15px;
+    color: var(--p-yellow);
+    font-size: 16px;
     font-weight: 700;
     white-space: nowrap;
     overflow: hidden;
@@ -222,9 +223,9 @@ h4 {
 }
 
 @keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(255, 90, 98, 0.7); }
-    70% { box-shadow: 0 0 0 9px rgba(255, 90, 98, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(255, 90, 98, 0); }
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    70% { box-shadow: 0 0 0 9px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
 }
 
 /* ---------- Menu ---------- */
@@ -232,9 +233,10 @@ h4 {
     position: sticky;
     top: 0;
     z-index: 20;
-    background: rgba(255, 255, 255, 0.92);
+    background: rgba(49, 46, 129, 0.96);
     backdrop-filter: saturate(1.4) blur(10px);
-    border-bottom: 1px solid var(--p-line);
+    border-top: 1px solid rgba(55, 48, 163, 0.6);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15);
 }
 
 .portal-nav__inner {
@@ -261,9 +263,10 @@ h4 {
 .portal-nav__tab {
     position: relative;
     flex: none;
-    padding: 16px 14px;
-    color: var(--p-muted);
-    font-weight: 700;
+    padding: 14px 14px;
+    color: var(--p-indigo-200);
+    font-size: 15px;
+    font-weight: 500;
     text-decoration: none;
     white-space: nowrap;
     transition: color 0.2s;
@@ -275,23 +278,22 @@ h4 {
     left: 12px;
     right: 12px;
     bottom: 0;
-    height: 3px;
-    border-radius: 3px 3px 0 0;
-    background: var(--p-indigo-600);
+    height: 2px;
+    background: var(--p-yellow);
     transform: scaleX(0);
     transition: transform 0.25s ease;
 }
 
 .portal-nav__tab:hover {
-    color: var(--p-ink);
+    color: #fff;
 }
 
 .portal-nav__tab.is-active {
-    color: var(--p-indigo-700);
+    color: var(--p-yellow);
+    font-weight: 700;
 }
 
-.portal-nav__tab.is-active::after,
-.portal-nav__tab:hover::after {
+.portal-nav__tab.is-active::after {
     transform: scaleX(1);
 }
 
@@ -300,19 +302,18 @@ h4 {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 8px 14px;
+    padding: 7px 14px;
     border-radius: 999px;
-    border: 1px solid var(--p-line);
-    color: var(--p-ink);
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
     font-size: 14px;
     font-weight: 700;
     text-decoration: none;
-    transition: border-color 0.2s, background 0.2s;
+    transition: background 0.2s;
 }
 
 .portal-nav__login:hover {
-    border-color: var(--p-indigo-500);
-    background: var(--p-indigo-50);
+    background: rgba(255, 255, 255, 0.2);
 }
 
 /* ---------- Isi ---------- */
@@ -347,7 +348,9 @@ h4 {
 
 .section__title {
     margin: 0;
-    font-size: 26px;
+    color: var(--p-ink-strong);
+    font-size: 24px;
+    font-weight: 700;
     letter-spacing: -0.01em;
 }
 
@@ -414,7 +417,7 @@ h4 {
     justify-content: center;
     min-height: 44px;
     padding: 10px 18px;
-    border-radius: 12px;
+    border-radius: 8px;
     border: 1px solid transparent;
     font-weight: 700;
     font-size: 15px;
@@ -429,7 +432,7 @@ h4 {
 .button--primary {
     background: var(--p-indigo-600);
     color: #fff;
-    box-shadow: 0 6px 16px rgba(60, 53, 176, 0.28);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
 }
 
 .button--outline {
@@ -452,10 +455,10 @@ h4 {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 4px 10px;
-    border-radius: 999px;
+    padding: 3px 9px;
+    border-radius: 4px;
     font-size: 13px;
-    font-weight: 800;
+    font-weight: 700;
     white-space: nowrap;
 }
 
@@ -467,7 +470,7 @@ h4 {
 }
 
 .chip--live {
-    background: #ffe8ea;
+    background: var(--p-red-50);
     color: var(--p-red);
 }
 
@@ -491,7 +494,7 @@ h4 {
 }
 
 .chip--muted {
-    background: #efeff5;
+    background: var(--p-line-soft);
     color: var(--p-muted);
 }
 
@@ -538,9 +541,9 @@ h4 {
     justify-content: space-between;
     gap: 24px;
     padding: 32px 36px;
-    border-radius: 22px;
+    border-radius: var(--p-radius);
     color: #fff;
-    background: linear-gradient(120deg, var(--p-indigo-900), var(--p-indigo-600) 60%, #6d4fe0);
+    background: linear-gradient(135deg, var(--p-indigo-900), var(--p-purple-900));
     box-shadow: var(--p-shadow-lift);
 }
 
@@ -571,6 +574,7 @@ h4 {
 
 .hero__title {
     margin: 14px 0 8px;
+    font-weight: 900;
     font-size: clamp(26px, 3.6vw, 38px);
     letter-spacing: -0.02em;
 }
@@ -620,7 +624,7 @@ h4 {
 }
 
 .race:hover {
-    transform: translateY(-3px);
+    border-color: var(--p-indigo-300);
     box-shadow: var(--p-shadow-lift);
 }
 
@@ -629,9 +633,9 @@ h4 {
     align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
-    padding-bottom: 14px;
+    padding-bottom: 12px;
     margin-bottom: 16px;
-    border-bottom: 1px solid var(--p-line);
+    border-bottom: 1px solid var(--p-line-soft);
 }
 
 .race__office {
@@ -643,7 +647,9 @@ h4 {
 
 .race__title {
     margin: 2px 0 0;
+    color: var(--p-ink-strong);
     font-size: 21px;
+    font-weight: 700;
 }
 
 /* Cap "Terpilih"/"Lolos" (seperti cap 당선 di referensi). */
@@ -694,7 +700,7 @@ h4 {
     place-items: center;
     min-height: 140px;
     border-radius: 12px;
-    background: #f7f7fb;
+    background: var(--p-line-soft);
 }
 
 /* ---------- Orang (foto + nama) ---------- */
@@ -710,8 +716,9 @@ h4 {
 
 .person__name {
     margin: 10px 0 0;
+    color: var(--p-ink-strong);
     font-size: 18px;
-    font-weight: 800;
+    font-weight: 900;
 }
 
 .person__meta {
@@ -804,7 +811,7 @@ h4 {
     padding: 0;
     border: 0;
     border-radius: 999px;
-    background: #cfcfe0;
+    background: #cbd5e1;
     cursor: pointer;
     transition: width 0.25s, background 0.25s;
 }
@@ -850,8 +857,8 @@ h4 {
     gap: 4px;
     min-height: 96px;
     padding: 14px;
-    border-radius: 14px;
-    background: linear-gradient(140deg, var(--p-indigo-600), var(--p-indigo-500));
+    border-radius: 12px;
+    background: var(--p-blue-600);
     color: #fff;
     text-decoration: none;
     box-shadow: inset 0 0 0 0 transparent;
@@ -860,16 +867,20 @@ h4 {
 
 .tile:hover {
     transform: translateY(-2px);
-    filter: brightness(1.08);
+    background: var(--p-blue-700);
 }
 
 .tile.is-active {
-    background: linear-gradient(140deg, var(--p-indigo-950), var(--p-indigo-700));
-    box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--p-gold);
+    background: var(--p-indigo-950);
+    box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--p-yellow);
+}
+
+.tile.is-active .tile__name {
+    color: var(--p-yellow);
 }
 
 .tile--pending {
-    background: #e9e9f2;
+    background: #e2e8f0;
     color: var(--p-muted);
 }
 
@@ -911,7 +922,7 @@ h4 {
 }
 
 .election-card:hover {
-    transform: translateY(-3px);
+    border-color: var(--p-indigo-300);
     box-shadow: var(--p-shadow-lift);
 }
 
@@ -1084,11 +1095,11 @@ h4 {
 
 .pill {
     padding: 8px 16px;
-    border-radius: 999px;
+    border-radius: 6px;
     border: 1px solid var(--p-line);
     background: #fff;
     color: var(--p-ink);
-    font-weight: 700;
+    font-weight: 500;
     text-decoration: none;
     transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
@@ -1101,6 +1112,7 @@ h4 {
     border-color: var(--p-indigo-600);
     background: var(--p-indigo-600);
     color: #fff;
+    font-weight: 700;
 }
 
 /* ---------- Kenali calon ---------- */
@@ -1151,7 +1163,7 @@ h4 {
 }
 
 .profile:hover {
-    transform: translateY(-3px);
+    border-color: var(--p-indigo-300);
     box-shadow: var(--p-shadow-lift);
 }
 
@@ -1249,7 +1261,8 @@ h4 {
 /* ---------- Footer ---------- */
 .portal-footer {
     background: var(--p-indigo-950);
-    color: rgba(255, 255, 255, 0.78);
+    border-top: 1px solid var(--p-indigo-900);
+    color: var(--p-indigo-300);
     font-size: 14px;
 }
 
@@ -1363,10 +1376,10 @@ h4 {
     display: block;
     width: 150px;
     aspect-ratio: 1;
-    border-radius: 28px;
-    padding: 4px;
-    background: linear-gradient(150deg, #cfcaf6, #ece9ff 55%, #dcd6ff);
-    box-shadow: 0 8px 20px rgba(46, 42, 134, 0.18);
+    border-radius: 50%;
+    padding: 3px;
+    background: var(--p-indigo-500);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
 }
 
 .portrait__img,
@@ -1374,25 +1387,26 @@ h4 {
     display: block;
     width: 100%;
     height: 100%;
-    border-radius: 24px;
+    border-radius: 50%;
+    border: 2px solid #fff;
     object-fit: cover;
-    background: linear-gradient(180deg, #eeedfb, #d9d6f5);
+    background: var(--p-line-soft);
 }
 
 .portrait__silhouette {
-    fill: #9d97d8;
+    fill: #94a3b8;
 }
 
 .portrait__number {
     position: absolute;
-    left: -6px;
-    top: -6px;
-    min-width: 36px;
-    height: 36px;
+    left: 2%;
+    top: 2%;
+    min-width: 34px;
+    height: 34px;
     padding: 0 8px;
     display: grid;
     place-items: center;
-    border-radius: 12px;
+    border-radius: 999px;
     border: 3px solid #fff;
     background: var(--p-indigo-600);
     color: #fff;
@@ -1401,9 +1415,10 @@ h4 {
     box-shadow: var(--p-shadow);
 }
 
-/* Yang ditetapkan: bingkai emas; satu orang tampil paling besar. */
+/* Yang ditetapkan: bingkai biru tebal (seperti calon unggul di contoh); satu orang tampil paling besar. */
 .portrait--winner {
-    background: linear-gradient(150deg, var(--p-gold), #f6dc8f 50%, #c8961e);
+    padding: 4px;
+    background: var(--p-blue-600);
 }
 
 .race--single .portrait {
@@ -1412,12 +1427,6 @@ h4 {
 
 .race--many .portrait {
     width: 112px;
-    border-radius: 22px;
-}
-
-.race--many .portrait__img,
-.race--many .portrait__silhouette {
-    border-radius: 18px;
 }
 
 .profile .portrait {
@@ -1426,7 +1435,7 @@ h4 {
 
 /* ---------- Banner tanpa pemilihan berjalan ---------- */
 .hero--calm {
-    background: linear-gradient(120deg, var(--p-indigo-950), var(--p-indigo-700) 60%, #5a3fd0);
+    background: linear-gradient(135deg, var(--p-indigo-950), var(--p-purple-900));
 }
 
 .hero__stat {
@@ -1452,6 +1461,7 @@ h4 {
 }
 
 .hero__stat-value {
+    color: var(--p-yellow);
     font-size: 56px;
     font-weight: 900;
     line-height: 1.1;
@@ -1530,6 +1540,7 @@ h4 {
 }
 
 .gauge__number {
+    color: var(--p-indigo-600);
     font-size: 38px;
     font-weight: 900;
     font-variant-numeric: tabular-nums;
@@ -1578,11 +1589,11 @@ h4 {
 }
 
 .chart__track {
-    fill: #f1f0fa;
+    fill: var(--p-line-soft);
 }
 
 .chart__fill {
-    fill: #7c74e0;
+    fill: var(--p-blue-500);
     transform-box: fill-box;
     transform-origin: bottom;
 }
@@ -1651,6 +1662,223 @@ h4 {
 .empty h3 {
     margin: 0 0 6px;
     color: var(--p-ink);
+}
+
+/* ---------- Galeri terpilih per RT (seperti kotak "당선" di contoh) ---------- */
+.subsection__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px 16px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.subsection__head .subsection__title {
+    margin: 0;
+}
+
+.tally {
+    display: flex;
+    gap: 14px;
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.tally__done {
+    color: var(--p-blue-600);
+}
+
+.tally__pending {
+    color: var(--p-muted);
+}
+
+.winners {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 12px;
+    padding: 20px;
+    border-radius: var(--p-radius);
+    background: var(--p-card);
+    border: 1px solid var(--p-line);
+    box-shadow: var(--p-shadow);
+}
+
+.winner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 12px;
+    border-radius: 12px;
+    background: var(--p-blue-50);
+    border: 1px solid var(--p-blue-200);
+    color: inherit;
+    text-align: center;
+    text-decoration: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.winner:hover {
+    border-color: var(--p-blue-600);
+    box-shadow: var(--p-shadow-lift);
+}
+
+.winner__unit {
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--p-blue-700);
+    font-size: 13px;
+    font-weight: 700;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.winner__faces {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    margin: 4px 0 2px;
+}
+
+.winner .portrait {
+    width: 76px;
+}
+
+.winner .portrait__number {
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    border-width: 2px;
+    font-size: 12px;
+}
+
+.winner__name {
+    color: var(--p-ink-strong);
+    font-size: 15px;
+    font-weight: 900;
+    line-height: 1.3;
+}
+
+.winner__office {
+    color: var(--p-blue-600);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.winner--pending {
+    background: #f8fafc;
+    border-color: var(--p-line);
+}
+
+.winner--pending .winner__unit,
+.winner--pending .winner__office {
+    color: var(--p-muted);
+}
+
+.winner__empty {
+    display: grid;
+    place-items: center;
+    min-height: 82px;
+    color: var(--p-muted);
+    font-size: 14px;
+}
+
+/* ---------- Tabel rekap per RT (seperti tabel rekap di contoh) ---------- */
+.recap {
+    overflow-x: auto;
+    border-radius: var(--p-radius);
+    background: var(--p-card);
+    border: 1px solid var(--p-line);
+    box-shadow: var(--p-shadow);
+}
+
+.recap__table {
+    width: 100%;
+    min-width: 600px;
+    border-collapse: collapse;
+    font-size: 15px;
+}
+
+.recap__table th,
+.recap__table td {
+    padding: 12px 16px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.recap__table thead th {
+    background: #f8fafc;
+    border-bottom: 1px solid var(--p-line);
+    color: var(--p-ink-strong);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.recap__table tbody tr + tr > * {
+    border-top: 1px solid var(--p-line-soft);
+}
+
+.recap__table tbody tr:hover > * {
+    background: #f8fafc;
+}
+
+.recap__table tfoot > tr > * {
+    background: #f8fafc;
+    border-top: 1px solid var(--p-line);
+    font-weight: 700;
+}
+
+.recap__table .recap__num {
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.recap__table .recap__center {
+    text-align: center;
+}
+
+.recap__unit {
+    white-space: nowrap;
+    font-weight: 700;
+}
+
+.recap__dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-right: 8px;
+    border-radius: 50%;
+    background: var(--p-blue-600);
+}
+
+.recap__dot--pending {
+    background: #cbd5e1;
+}
+
+.recap__who {
+    color: var(--p-ink-strong);
+    font-weight: 700;
+}
+
+.recap__num strong {
+    color: var(--p-blue-600);
+}
+
+.recap__detail {
+    margin-left: 6px;
+    color: var(--p-muted);
+    font-size: 13px;
+    font-weight: 400;
+}
+
+.recap__note {
+    margin: 8px 0 0;
+    color: var(--p-muted);
+    font-size: 13px;
 }
 
 
@@ -1765,7 +1993,6 @@ h4 {
 
     .profile .portrait {
         width: 104px;
-        border-radius: 22px;
     }
 
     .race--single .portrait {
@@ -1782,6 +2009,16 @@ h4 {
 
     .unit-map {
         padding: 14px;
+    }
+
+    .winners {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        padding: 12px;
+    }
+
+    .winner .portrait {
+        width: 64px;
     }
 
     /* Grafik tetap ukuran asli di HP; digeser ke samping bila lebih lebar dari layar. */

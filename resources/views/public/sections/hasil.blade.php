@@ -36,6 +36,10 @@
             </div>
         @endif
 
+        @if ($unitCards->count() > 1)
+            @include('public.partials.winner-gallery', ['unitCards' => $unitCards, 'election' => $featured])
+        @endif
+
         {{-- Peta RT (pengganti peta wilayah di referensi): pilih RT, panel kanan menampilkan yang terpilih. --}}
         @if ($unitCards->count() > 1)
             <div class="subsection reveal">
@@ -91,6 +95,10 @@
                     @endif
                 </div>
             </div>
+        @endif
+
+        @if ($unitCards->count() > 1)
+            @include('public.partials.unit-recap', ['unitCards' => $unitCards, 'unitTurnout' => $unitTurnout, 'turnout' => $turnout, 'election' => $featured])
         @endif
 
         @if (count($history) > 1)

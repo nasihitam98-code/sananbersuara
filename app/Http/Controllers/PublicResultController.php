@@ -43,6 +43,7 @@ class PublicResultController extends Controller
         $announced = $this->announced();
         $featured = $announced->firstWhere('status', ElectionStatus::Published);
         $cards = $featured === null ? collect() : $this->resultCards($featured);
+        $turnout = $featured === null ? null : $this->turnout->for($featured);
         $focus = $running->first() ?? $featured ?? $announced->first();
 
         return $this->publicView('public.index', [
@@ -51,7 +52,8 @@ class PublicResultController extends Controller
             'featured' => $featured,
             'cards' => $cards,
             'unitCards' => $cards->filter(fn (array $card): bool => $card['unit'] !== null)->values(),
-            'turnout' => $featured === null ? null : $this->turnout->for($featured),
+            'turnout' => $turnout,
+            'unitTurnout' => collect($turnout['units'] ?? [])->keyBy('unit'),
             'history' => $this->turnout->history(),
             'focus' => $focus,
             'ballots' => $focus === null ? collect() : $this->candidateBallots($focus),

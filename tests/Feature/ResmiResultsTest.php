@@ -280,6 +280,17 @@ class ResmiResultsTest extends TestCase
         $this->actingAs($this->adminRt03)->get(route('reports.show', $reports->current($this->election, $this->rt04)->public_id))->assertForbidden();
     }
 
+    public function test_home_shows_winner_gallery_and_recap_per_rt_without_vote_counts(): void
+    {
+        $this->publishAll();
+
+        $this->get(route('public.index'))
+            ->assertOk()
+            ->assertSeeInOrder(['Terpilih di setiap RT', 'Ditetapkan: 2', 'RT 03', 'Calon RT Tiga', 'RT 04', 'Calon RT Empat'])
+            ->assertSee(route('public.show', [$this->election->public_id, 'rt' => '04']), false)
+            ->assertSeeInOrder(['Rekap per RT', 'RT 03', 'Calon RT Tiga', '100%', '3/3', 'RT 04', 'Calon RT Empat', '50%', '1/2', 'Semua RT', '80%', '4/5']);
+    }
+
     private function publishAll(): void
     {
         $lifecycle = app(ElectionLifecycle::class);
