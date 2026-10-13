@@ -1,6 +1,6 @@
 /*
- * Portal publik: animasi muncul saat digulir, carousel kartu hasil, peta RT dengan panel samping,
- * dan pencarian calon. Tanpa skrip inline (CSP ketat). Semua tetap berfungsi tanpa JavaScript.
+ * Portal publik: animasi muncul saat digulir dan carousel kartu hasil.
+ * Tanpa skrip inline (CSP ketat). Semua tetap berfungsi tanpa JavaScript.
  */
 
 document.documentElement.classList.add('js');
@@ -28,19 +28,22 @@ function initReveal() {
 
 function initCarousel(root) {
     const track = root.querySelector('[data-carousel-track]');
-    const slides = [...root.querySelectorAll('[data-carousel-slide]')];
+    const pageSlides = [...root.querySelectorAll('[data-carousel-slide]')];
+    const cardSlides = [...root.querySelectorAll('[data-carousel-card]')];
+    // Di HP halaman berisi 6 kartu dilepas (display: contents); yang digeser jadi kartunya.
+    const items = () => (pageSlides.length > 0 && getComputedStyle(pageSlides[0]).display === 'contents' ? cardSlides : pageSlides);
     const prev = root.querySelector('[data-carousel-prev]');
     const next = root.querySelector('[data-carousel-next]');
     const dots = root.querySelector('[data-carousel-dots]');
     const count = root.querySelector('[data-carousel-count]');
 
-    if (!track || slides.length === 0) {
+    if (!track || pageSlides.length === 0) {
         return;
     }
 
-    const step = () => slides[0].getBoundingClientRect().width + parseFloat(getComputedStyle(track).columnGap || '0');
+    const step = () => items()[0].getBoundingClientRect().width + parseFloat(getComputedStyle(track).columnGap || '0');
     const perView = () => Math.max(1, Math.round(track.clientWidth / step()));
-    const pages = () => Math.max(1, slides.length - perView() + 1);
+    const pages = () => Math.max(1, items().length - perView() + 1);
     const current = () => Math.min(pages() - 1, Math.round(track.scrollLeft / step()));
     const goTo = (index) => track.scrollTo({ left: index * step(), behavior: 'smooth' });
 
@@ -100,71 +103,8 @@ function initCarousel(root) {
     update();
 }
 
-function initUnitMap(root) {
-    const tiles = [...root.querySelectorAll('[data-unit-tile]')];
-    const panels = [...root.querySelectorAll('[data-unit-panel]')];
-
-    tiles.forEach((tile) => {
-        tile.addEventListener('click', (event) => {
-            // Tanpa JavaScript, ubin membuka halaman hasil RT tersebut.
-            event.preventDefault();
-            const code = tile.dataset.unitTile;
-
-            tiles.forEach((other) => {
-                const active = other === tile;
-                other.classList.toggle('is-active', active);
-                other.setAttribute('aria-selected', active ? 'true' : 'false');
-            });
-
-            panels.forEach((panel) => {
-                panel.hidden = panel.dataset.unitPanel !== code;
-                panel.querySelectorAll('.stamp').forEach((stamp) => {
-                    stamp.classList.remove('stamp--animate');
-                    void stamp.offsetWidth;
-                    stamp.classList.add('stamp--animate');
-                });
-            });
-        });
-    });
-}
-
-function initCandidateSearch(group) {
-    const input = group.querySelector('[data-candidate-search]');
-    const empty = group.querySelector('[data-candidate-empty]');
-
-    if (!input) {
-        return;
-    }
-
-    const cards = [...group.querySelectorAll('[data-candidate]')];
-    const normalize = (text) => text.toLowerCase().replace(/^0+(?=\d)/, '').trim();
-
-    input.addEventListener('input', () => {
-        const query = normalize(input.value);
-        let shown = 0;
-
-        cards.forEach((card) => {
-            const haystack = card.dataset.search;
-            const words = haystack.split(' ').map((word) => word.replace(/^0+(?=\d)/, ''));
-            const match = query === '' || haystack.includes(query) || words.includes(query);
-            card.hidden = !match;
-            shown += match ? 1 : 0;
-        });
-
-        empty.hidden = shown > 0;
-    });
-
-    input.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-        }
-    });
-}
-
 initReveal();
 document.querySelectorAll('[data-carousel]').forEach(initCarousel);
-document.querySelectorAll('[data-unit-map]').forEach(initUnitMap);
-document.querySelectorAll('[data-candidate-group]').forEach(initCandidateSearch);
 
 /* Angka berhitung naik saat terlihat (format Indonesia: koma desimal). */
 function countUp(element) {

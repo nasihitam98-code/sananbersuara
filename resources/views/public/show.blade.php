@@ -26,7 +26,7 @@
             <p>Panitia sedang memeriksa kembali hasil pemilihan ini. Silakan kembali lagi nanti.</p>
         </section>
     @else
-        <p class="lead reveal">Yang ditampilkan adalah calon yang <strong>ditetapkan panitia</strong> berdasarkan hasil penghitungan suara dan berita acara yang telah disahkan. Rincian jumlah suara tercatat di berita acara.</p>
+        <p class="lead reveal">Perolehan suara resmi tiap calon, dan calon yang <strong>ditetapkan panitia</strong> berdasarkan penghitungan suara dan berita acara yang telah disahkan.</p>
 
         {{-- Pilihan RT sebagai pil (seperti pilihan jenis pemilihan di referensi). --}}
         @if ($units->count() > 1)
@@ -47,8 +47,10 @@
     @endif
 
     <p class="back-links">
-        <a href="{{ route('public.candidates', $election->public_id) }}">Visi &amp; misi semua calon</a>
-        <span aria-hidden="true">·</span>
-        <a href="{{ route('public.index') }}#pemilihan">Semua pemilihan</a>
+        @if ($showElections)
+            <a href="{{ route('public.index') }}#pemilihan">Semua pemilihan</a>
+        @else
+            <a href="{{ route('public.index') }}">Kembali ke beranda</a>
+        @endif
     </p>
 @endsection

@@ -108,7 +108,7 @@ class ResultPublicationTest extends TestCase
         $lifecycle->publish($this->election, $this->admin);
     }
 
-    public function test_full_flow_publishes_only_selected_names_without_vote_counts(): void
+    public function test_full_flow_publishes_selected_names_with_official_votes(): void
     {
         $this->publishFully();
 
@@ -119,27 +119,38 @@ class ResultPublicationTest extends TestCase
         $this->get(route('public.show', $this->election->public_id))
             ->assertOk()
             ->assertSee('Lolos')
-            ->assertSee('Calon Nomor 1')
-            ->assertSee('Calon Nomor 3')
-            ->assertDontSee('Calon Nomor 4')
-            ->assertDontSee('suara sah', false)
-            ->assertDontSee('%');
+            ->assertSeeInOrder(['contender tone--blue is-elected', 'Calon Nomor 1', 'contender tone--blue is-elected', 'Calon Nomor 2', 'contender tone--blue is-elected', 'Calon Nomor 3', 'contender tone--red', 'Calon Nomor 4'], false)
+            ->assertSee('4 suara sah.');
     }
 
-    public function test_portal_home_shows_selected_names_and_turnout_but_no_candidate_votes(): void
+    public function test_portal_home_shows_official_votes_per_candidate_after_publication(): void
     {
         $this->publishFully();
 
+        // Suara: Calon 1 = 2, Calon 2 = 1, Calon 3 = 1, Calon 4 = 0 (urut perolehan, seri urut nomor).
         $this->get(route('public.index'))
             ->assertOk()
             ->assertSee('Hasil resmi')
             ->assertSee('Lolos')
             ->assertSee('Partisipasi warga')
             ->assertSeeInOrder(['<strong>4</strong> dari <strong>4</strong>', 'warga hadir'], false)
-            ->assertSee('id="calon"', false)
-            ->assertSee('Calon Nomor 4')
-            ->assertDontSee('suara sah')
-            ->assertDontSee('2 suara');
+            ->assertDontSee('id="calon"', false)
+            ->assertSeeInOrder([
+                'Calon Nomor 1', '50,0', '2 suara',
+                'Calon Nomor 2', '25,0', '1 suara',
+                'Calon Nomor 3', '25,0', '1 suara',
+                'Calon Nomor 4', '0,0', '0 suara',
+                '4 suara sah.',
+            ]);
+    }
+
+    public function test_votes_are_hidden_again_while_result_is_under_review(): void
+    {
+        $this->publishFully();
+        app(ElectionLifecycle::class)->unpublish($this->election, $this->admin, 'Ada pengaduan saksi');
+
+        $this->get(route('public.index'))->assertOk()->assertDontSee('suara sah')->assertDontSee('2 suara');
+        $this->get(route('public.show', $this->election->public_id))->assertOk()->assertDontSee('suara sah');
     }
 
     public function test_dadakan_is_hidden_from_portal_until_super_admin_shows_it(): void
@@ -149,7 +160,6 @@ class ResultPublicationTest extends TestCase
 
         $this->get(route('public.index'))->assertOk()->assertDontSee('Penjaringan Calon RW 2026');
         $this->get(route('public.show', $this->election->public_id))->assertNotFound();
-        $this->get(route('public.candidates', $this->election->public_id))->assertNotFound();
 
         Filament::setCurrentPanel('admin');
         $this->actingAs($this->admin);
@@ -163,23 +173,23 @@ class ResultPublicationTest extends TestCase
         $this->get(route('public.show', $this->election->public_id))->assertOk()->assertSee('Calon Nomor 1');
     }
 
-    public function test_portal_puts_candidates_first_while_an_election_is_upcoming(): void
+    public function test_upcoming_election_is_announced_without_candidate_list_and_results_stay_first(): void
     {
         $this->publishFully();
-
-        $this->get(route('public.index'))->assertSeeInOrder(['id="hasil"', 'id="calon"'], false);
 
         Election::factory()->create(['name' => 'Pemilihan RT RW Desember', 'mode' => ElectionMode::Resmi])
             ->forceFill(['status' => ElectionStatus::Ready])->save();
 
         $this->get(route('public.index'))
             ->assertSee('Pemilihan RT RW Desember')
-            ->assertSeeInOrder(['data-section="calon"', 'data-section="hasil"', 'id="calon"', 'id="hasil"'], false);
+            ->assertSeeInOrder(['data-section="hasil"', 'data-section="pemilihan"', 'id="hasil"', 'id="pemilihan"'], false)
+            ->assertDontSee('data-section="calon"', false)
+            ->assertDontSee('Kenali calon');
     }
 
     public function test_old_menu_addresses_jump_to_portal_sections(): void
     {
-        foreach (['pemilihan', 'cara-memilih', 'hasil', 'calon'] as $section) {
+        foreach (['pemilihan', 'cara-memilih', 'hasil'] as $section) {
             $this->get('/'.$section)->assertRedirect(route('public.index').'#'.$section);
         }
     }

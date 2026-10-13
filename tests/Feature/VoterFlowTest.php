@@ -70,24 +70,20 @@ class VoterFlowTest extends TestCase
         $this->assertSame(1, substr_count($page->getContent(), 'data-profile-open='), 'Hanya calon yang mengisi profil');
     }
 
-    public function test_public_can_read_candidate_profiles_before_the_election_but_not_drafts(): void
+    public function test_portal_is_for_announcements_only_and_old_candidate_links_go_home(): void
     {
         $this->candidate->update(['vision' => 'RW rukun dan aman.', 'mission' => 'Ronda malam bergilir']);
-
-        $this->get(route('public.candidates', $this->election->public_id))->assertNotFound();
         $this->election->forceFill(['settings' => ['show_public' => true]])->save();
 
-        $this->get(route('public.candidates', $this->election->public_id))
+        $this->get(route('public.index'))
             ->assertOk()
-            ->assertSee('Kenali calon')
-            ->assertSee('Bapak Sutrisno')
-            ->assertSee('RW rukun dan aman.')
-            ->assertSee('Visi &amp; misi belum diisi.', false);
+            ->assertSee($this->election->name)
+            ->assertDontSee('Kenali calon')
+            ->assertDontSee('Bapak Sutrisno')
+            ->assertDontSee('RW rukun dan aman.');
 
-        $this->get(route('public.index'))->assertSee(route('public.candidates', $this->election->public_id), false);
-
-        $draft = Election::factory()->create();
-        $this->get(route('public.candidates', $draft->public_id))->assertNotFound();
+        $this->get('/calon/'.$this->election->public_id)->assertRedirect('/');
+        $this->get('/calon')->assertRedirect('/');
     }
 
     public function test_full_flow_from_waiting_to_done(): void

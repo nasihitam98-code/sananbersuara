@@ -1,9 +1,10 @@
 {{-- ============ HASIL ============ --}}
 <section id="hasil" class="anchor section" aria-labelledby="hasil-judul">
+    {{-- Nama pemilihan sudah ada di banner; di sini cukup judul pendek (kecuali banner sedang menampilkan pemilihan lain). --}}
     <div class="section__head reveal">
         <div>
             <p class="section__kicker">Hasil resmi</p>
-            <h2 class="section__title" id="hasil-judul">{{ $featured?->name ?? 'Hasil pemilihan' }}</h2>
+            <h2 class="section__title" id="hasil-judul">{{ $featured && $running->isNotEmpty() ? $featured->name : 'Hasil' }}</h2>
         </div>
         @if ($featured)
             <a class="section__link" href="{{ route('public.show', $featured->public_id) }}">Hasil lengkap per RT →</a>
@@ -11,87 +12,73 @@
     </div>
 
     @if ($featured)
-        {{-- Kartu per jabatan/RT: digeser bila banyak (seperti kartu hasil di referensi), lebar bila hanya 1–2. --}}
-        @if ($cards->count() <= 2)
-            <div class="grid feature feature--{{ $cards->count() }} reveal">
-                @foreach ($cards as $card)
+        @php($areaCards = $cards->filter(fn (array $card): bool => $card['unit'] === null)->values())
+
+        {{-- Jabatan untuk semua RT (mis. Ketua RW) berdiri sendiri di atas, kartu besar. --}}
+        @if ($areaCards->isNotEmpty())
+            <div class="grid feature feature--{{ min(2, $areaCards->count()) }} reveal">
+                @foreach ($areaCards as $card)
                     @include('public.partials.result-card', ['card' => $card, 'wide' => true])
                 @endforeach
             </div>
-        @else
-            <div class="carousel reveal" data-carousel>
+        @endif
+
+        {{-- Kartu per RT: digeser bila banyak (seperti kartu hasil di contoh), lebar bila hanya 1–2. --}}
+        @if ($unitCards->count() > 0 && $unitCards->count() <= 2)
+            <div class="grid feature feature--{{ $unitCards->count() }} subsection reveal">
+                @foreach ($unitCards as $card)
+                    @include('public.partials.result-card', ['card' => $card, 'wide' => true])
+                @endforeach
+            </div>
+        @elseif ($unitCards->count() > 2)
+            {{--
+                Lebih dari 3 RT: halaman berisi 6 kartu (3 kolom × 2 baris, urut RT) yang digeser per halaman.
+                Di HP halaman dilepas (display: contents) sehingga kartu digeser satu per satu.
+            --}}
+            @php($perPage = $unitCards->count() > 3 ? 6 : 1)
+            <div class="carousel {{ $perPage > 1 ? 'carousel--pages' : '' }} subsection reveal" data-carousel>
                 <button type="button" class="carousel__nav carousel__nav--prev" data-carousel-prev aria-label="Sebelumnya">‹</button>
-                <div class="carousel__track" data-carousel-track tabindex="0" aria-label="Kartu hasil">
-                    @foreach ($cards as $card)
-                        <div class="carousel__slide" data-carousel-slide>
-                            @include('public.partials.result-card', ['card' => $card])
+                <div class="carousel__track" data-carousel-track tabindex="0" aria-label="Kartu hasil per RT">
+                    @foreach ($unitCards->chunk($perPage) as $page)
+                        <div class="carousel__slide {{ $perPage > 1 ? 'carousel__page' : '' }}" data-carousel-slide>
+                            @foreach ($page as $card)
+                                <div class="carousel__card" data-carousel-card>
+                                    @include('public.partials.result-card', ['card' => $card])
+                                </div>
+                            @endforeach
                         </div>
                     @endforeach
                 </div>
                 <button type="button" class="carousel__nav carousel__nav--next" data-carousel-next aria-label="Berikutnya">›</button>
                 <div class="carousel__foot">
                     <div class="carousel__dots" data-carousel-dots></div>
-                    <span class="carousel__count" data-carousel-count>1 / {{ $cards->count() }}</span>
+                    <span class="carousel__count" data-carousel-count></span>
                 </div>
             </div>
         @endif
 
-        @if ($unitCards->count() > 1)
-            @include('public.partials.winner-gallery', ['unitCards' => $unitCards, 'election' => $featured])
-        @endif
-
-        {{-- Peta RT (pengganti peta wilayah di referensi): pilih RT, panel kanan menampilkan yang terpilih. --}}
-        @if ($unitCards->count() > 1)
-            <div class="subsection reveal">
-                <h3 class="subsection__title">Peta hasil RT</h3>
-                <div class="unit-map" data-unit-map>
-                    <div class="unit-map__tiles" role="tablist" aria-label="Pilih RT">
-                        @foreach ($unitCards as $index => $card)
-                            <a class="tile {{ $index === 0 ? 'is-active' : '' }} {{ $card['decided'] ? '' : 'tile--pending' }}"
-                               href="{{ route('public.show', [$featured->public_id, 'rt' => $card['unit']->code]) }}"
-                               role="tab" aria-selected="{{ $index === 0 ? 'true' : 'false' }}"
-                               data-unit-tile="{{ $card['unit']->code }}">
-                                <span class="tile__name">{{ $card['unit']->name }}</span>
-                                <span class="tile__who">{{ $card['decided'] ? $card['candidates']->pluck('name')->implode(', ') : 'Belum ditetapkan' }}</span>
-                            </a>
-                        @endforeach
-                    </div>
-                    <div class="unit-map__panel">
-                        @foreach ($unitCards as $index => $card)
-                            <div data-unit-panel="{{ $card['unit']->code }}" role="tabpanel" @if ($index !== 0) hidden @endif>
-                                @include('public.partials.result-card', ['card' => $card])
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-        @endif
-
-        {{-- Partisipasi warga (bukan suara calon): lingkaran keseluruhan + batang per RT. --}}
-        @if ($turnout && $turnout['total'] > 0)
+        {{--
+            Partisipasi warga: grafik batang per RT (seperti grafik 투표율 di contoh). Angka keseluruhan sudah ada
+            di banner; ditulis di sini hanya bila banner sedang menampilkan pemilihan yang berjalan, atau tanpa grafik.
+        --}}
+        @php($hasUnitChart = $turnout && count($turnout['units']) > 1)
+        @php($showOverall = $turnout && ($running->isNotEmpty() || ! $hasUnitChart))
+        @if ($turnout && $turnout['total'] > 0 && ($hasUnitChart || $showOverall))
             <div class="subsection reveal">
                 <h3 class="subsection__title">Partisipasi warga</h3>
-                <div class="turnout">
-                    <div class="gauge">
-                        <svg class="gauge__svg" viewBox="0 0 140 140" aria-hidden="true">
-                            <circle class="gauge__track" cx="70" cy="70" r="56" pathLength="100"></circle>
-                            <circle class="gauge__value" cx="70" cy="70" r="56" pathLength="100" stroke-dasharray="{{ $turnout['percent'] }} 100"></circle>
-                        </svg>
-                        <div class="gauge__center">
-                            <span class="gauge__number"><span data-count-to="{{ $turnout['percent'] }}">{{ number_format($turnout['percent'], 1, ',', '') }}</span>%</span>
-                            <span class="gauge__label">memilih</span>
-                        </div>
-                        <p class="gauge__caption"><strong>{{ $turnout['voted'] }}</strong> dari <strong>{{ $turnout['total'] }}</strong> {{ $featured->isDadakan() ? 'warga hadir' : 'pemilih terdaftar' }}</p>
-                    </div>
-
-                    @if (count($turnout['units']) > 1)
-                        <div class="turnout__chart">
-                            <p class="turnout__note">Persentase warga yang memilih di setiap RT. Batang merah = partisipasi tertinggi.</p>
-                            @include('public.partials.bar-chart', [
-                                'label' => 'Partisipasi per RT',
-                                'bars' => collect($turnout['units'])->map(fn (array $unit): array => ['label' => $unit['unit'], 'value' => $unit['percent'], 'detail' => $unit['voted'].'/'.$unit['total']])->all(),
-                            ])
-                        </div>
+                <div class="card-box">
+                    @if ($showOverall)
+                        <p class="turnout__overall">
+                            <span class="turnout__overall-value">{{ number_format($turnout['percent'], 1, ',', '') }}%</span>
+                            <span><strong>{{ $turnout['voted'] }}</strong> dari <strong>{{ $turnout['total'] }}</strong> {{ $featured->isDadakan() ? 'warga hadir' : 'pemilih terdaftar' }} memilih</span>
+                        </p>
+                    @endif
+                    @if ($hasUnitChart)
+                        <p class="turnout__note">Persentase warga yang memilih di setiap RT. Batang merah = partisipasi tertinggi.</p>
+                        @include('public.partials.bar-chart', [
+                            'label' => 'Partisipasi per RT',
+                            'bars' => collect($turnout['units'])->map(fn (array $unit): array => ['label' => $unit['unit'], 'value' => $unit['percent'], 'detail' => $unit['voted'].'/'.$unit['total']])->all(),
+                        ])
                     @endif
                 </div>
             </div>

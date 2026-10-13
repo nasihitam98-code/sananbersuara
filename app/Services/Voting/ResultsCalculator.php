@@ -53,7 +53,7 @@ class ResultsCalculator
                 'votes' => (int) ($counts[$candidate->id] ?? 0),
                 'percent' => $valid === 0 ? 0.0 : round(((int) ($counts[$candidate->id] ?? 0)) * 100 / $valid, 1),
             ])
-            ->sortBy([['votes', 'desc'], [fn (array $row): int => $row['candidate']->number, 'asc']])
+            ->sortBy([['votes', 'desc'], fn (array $a, array $b): int => $a['candidate']->number <=> $b['candidate']->number])
             ->values();
 
         $rank = 0;

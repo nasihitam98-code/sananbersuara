@@ -59,6 +59,6 @@
     </span>
     <div>
         <h3 class="notice__title">Pilihan Anda dirahasiakan</h3>
-        <p>Hasil baru dibuka panitia setelah pemungutan suara ditutup. Pilihan seseorang hanya dapat dibuka Super Admin bila ada sengketa hasil, dengan alasan yang tercatat, dan dihapus otomatis setelah masa sengketa berakhir. Halaman ini tidak menampilkan jumlah suara calon.</p>
+        <p>Hasil baru dibuka panitia setelah pemungutan suara ditutup. Pilihan seseorang hanya dapat dibuka Super Admin bila ada sengketa hasil, dengan alasan yang tercatat, dan dihapus otomatis setelah masa sengketa berakhir. Halaman ini menampilkan jumlah suara tiap calon setelah hasil resmi diumumkan, bukan pilihan masing-masing warga.</p>
     </div>
 </div>

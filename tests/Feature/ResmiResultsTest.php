@@ -280,15 +280,20 @@ class ResmiResultsTest extends TestCase
         $this->actingAs($this->adminRt03)->get(route('reports.show', $reports->current($this->election, $this->rt04)->public_id))->assertForbidden();
     }
 
-    public function test_home_shows_winner_gallery_and_recap_per_rt_without_vote_counts(): void
+    public function test_home_shows_rw_card_first_then_rt_cards_and_recap_with_official_votes(): void
     {
         $this->publishAll();
 
+        // RW: Calon RW Dua 3 suara (75%), Calon RW Satu 1 suara (25%). RT 03: 3/3, RT 04: 1/2.
         $this->get(route('public.index'))
             ->assertOk()
-            ->assertSeeInOrder(['Terpilih di setiap RT', 'Ditetapkan: 2', 'RT 03', 'Calon RT Tiga', 'RT 04', 'Calon RT Empat'])
-            ->assertSee(route('public.show', [$this->election->public_id, 'rt' => '04']), false)
-            ->assertSeeInOrder(['Rekap per RT', 'RT 03', 'Calon RT Tiga', '100%', '3/3', 'RT 04', 'Calon RT Empat', '50%', '1/2', 'Semua RT', '80%', '4/5']);
+            ->assertSeeInOrder(['Ketua RW', 'Calon RW Dua', '75,0', '3 suara', 'Calon RW Satu', '25,0', '1 suara'])
+            ->assertSeeInOrder(['RT 03', 'Calon RT Tiga', '100,0', 'RT 04', 'Calon RT Empat', '100,0', 'Rekap per RT'])
+            ->assertSeeInOrder(['Rekap per RT', 'RT 03', 'Calon RT Tiga', '100%', '3 suara', '100%', '3/3', 'RT 04', 'Calon RT Empat', '100%', '1 suara', '50%', '1/2', 'Semua RT', '80%', '4/5'])
+            ->assertDontSee('Terpilih di setiap RT')
+            // Satu pemilihan saja: bagian dan menu "Pemilihan" tidak ditampilkan.
+            ->assertDontSee('id="pemilihan"', false)
+            ->assertDontSee('data-section="pemilihan"', false);
     }
 
     private function publishAll(): void

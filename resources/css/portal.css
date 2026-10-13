@@ -50,7 +50,7 @@
     --p-radius: 16px;
     --p-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
     --p-shadow-lift: 0 10px 28px -4px rgba(15, 23, 42, 0.12);
-    --p-max: 1180px;
+    --p-max: 1280px;
     --p-font: "Noto Sans KR", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
@@ -119,7 +119,7 @@ h4 {
     z-index: 1;
     max-width: var(--p-max);
     margin: 0 auto;
-    padding: 14px 20px;
+    padding: 14px 24px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -242,7 +242,7 @@ h4 {
 .portal-nav__inner {
     max-width: var(--p-max);
     margin: 0 auto;
-    padding: 0 20px;
+    padding: 0 24px;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -322,7 +322,7 @@ h4 {
     width: 100%;
     max-width: var(--p-max);
     margin: 0 auto;
-    padding: 28px 20px 56px;
+    padding: 24px 24px 56px;
     display: flex;
     flex-direction: column;
     gap: 36px;
@@ -404,10 +404,6 @@ h4 {
 
 .grid--results {
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-}
-
-.grid--people {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
 }
 
 /* ---------- Tombol & chip ---------- */
@@ -611,90 +607,75 @@ h4 {
 }
 
 /* ---------- Kartu hasil ---------- */
+/* Kartu hasil: ukuran dan jarak mengikuti contoh (p-4, rounded-xl, kepala dengan garis tipis). */
 .race {
     height: 100%;
     display: flex;
     flex-direction: column;
-    padding: 20px;
-    border-radius: var(--p-radius);
+    padding: 16px;
+    border-radius: 12px;
     background: var(--p-card);
     border: 1px solid var(--p-line);
     box-shadow: var(--p-shadow);
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: border-color 0.2s;
 }
 
 .race:hover {
     border-color: var(--p-indigo-300);
-    box-shadow: var(--p-shadow-lift);
 }
 
 .race__head {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding-bottom: 12px;
-    margin-bottom: 16px;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
     border-bottom: 1px solid var(--p-line-soft);
 }
 
-.race__office {
-    margin: 0;
-    color: var(--p-muted);
-    font-size: 13px;
-    font-weight: 700;
-}
-
 .race__title {
-    margin: 2px 0 0;
+    margin: 0;
     color: var(--p-ink-strong);
-    font-size: 21px;
+    font-size: 16px;
     font-weight: 700;
 }
 
-/* Cap "Terpilih"/"Lolos" (seperti cap 당선 di referensi). */
-.stamp {
+.race__office {
+    margin-left: 6px;
+    color: var(--p-muted);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* Lencana kecil (seperti "확정/유력" di contoh). */
+.badge {
     flex: none;
-    display: inline-grid;
-    place-items: center;
-    padding: 4px 12px;
-    border: 2.5px solid var(--p-red);
-    border-radius: 8px;
-    color: var(--p-red);
-    font-size: 14px;
-    font-weight: 900;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    transform: rotate(-6deg);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
 }
 
-.is-visible .stamp,
-.stamp--animate {
-    animation: stamp 0.55s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+.badge--done {
+    background: var(--p-green-50);
+    color: var(--p-green);
 }
 
-@keyframes stamp {
-    0% { opacity: 0; transform: rotate(-6deg) scale(2.2); }
-    100% { opacity: 1; transform: rotate(-6deg) scale(1); }
-}
-
-.race__people {
-    flex: 1;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 16px;
-    justify-items: center;
-    text-align: center;
+.badge--muted {
+    background: var(--p-line-soft);
+    color: var(--p-muted);
 }
 
 .race__meaning,
 .race__empty {
-    margin: 16px 0 0;
+    margin: 8px 0 0;
     color: var(--p-muted);
-    font-size: 14px;
+    font-size: 12px;
 }
 
-.race--pending .race__empty {
+.race__empty {
     flex: 1;
     display: grid;
     place-items: center;
@@ -703,28 +684,223 @@ h4 {
     background: var(--p-line-soft);
 }
 
-/* ---------- Orang (foto + nama) ---------- */
-.person {
+/* ---------- Warna per calon (yang ditetapkan biru; lainnya merah, kuning, hijau, abu-abu) ---------- */
+.tone--blue { --tone: var(--p-blue-600); }
+.tone--red { --tone: #dc2626; }
+.tone--amber { --tone: #d97706; }
+.tone--green { --tone: #059669; }
+.tone--slate { --tone: #64748b; }
+
+/* Dua kelas agar menang atas warna dasar .portrait yang ditulis lebih bawah. */
+.portrait.portrait--blue { background: var(--p-blue-600); }
+.portrait.portrait--red { background: #ef4444; }
+.portrait.portrait--amber { background: #f59e0b; }
+.portrait.portrait--green { background: #10b981; }
+.portrait.portrait--slate { background: #94a3b8; }
+
+.share__seg--blue { fill: var(--p-blue-600); }
+.share__seg--red { fill: #ef4444; }
+.share__seg--amber { fill: #fbbf24; }
+.share__seg--green { fill: #34d399; }
+.share__seg--slate { fill: #94a3b8; }
+
+/* ---------- Calon berjajar (seperti kartu hasil di contoh) ---------- */
+/* Ukuran mengikuti contoh: kotak p-2 rounded-lg, foto 64px (w-16) bingkai 2px, nama 14px, persen 20px. */
+/* Semua calon dalam satu baris (2 atau 3 kolom); 4 calon jadi 2×2. */
+.duel {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    align-items: start;
+}
+
+.duel--1 {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.duel--3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.contender {
     display: flex;
     flex-direction: column;
     align-items: center;
+    padding: 8px;
+    border-radius: 8px;
+    background: #f8fafc;
+    border: 1px solid var(--p-line);
+    text-align: center;
+    opacity: 0.9;
 }
 
+.contender.is-elected {
+    background: var(--p-blue-50);
+    border-color: var(--p-blue-200);
+    opacity: 1;
+}
 
+.contender .portrait {
+    width: 64px;
+    padding: 2px;
+    margin-bottom: 8px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.1);
+}
 
+.contender .portrait__img,
+.contender .portrait__silhouette {
+    border-width: 0;
+}
 
+.contender .portrait__number,
+.standing .portrait__number {
+    display: none;
+}
 
-.person__name {
-    margin: 10px 0 0;
+.contender__number {
+    margin: 0;
+    color: var(--tone);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.contender__name {
+    margin: 0;
     color: var(--p-ink-strong);
+    font-size: 14px;
+    font-weight: 900;
+    line-height: 1.35;
+}
+
+.contender__percent {
+    margin: 4px 0 0;
+    color: var(--tone);
+    font-size: 20px;
+    font-weight: 900;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+}
+
+.contender__percent small {
+    font-size: 12px;
+}
+
+.contender__votes {
+    margin: 0;
+    color: var(--p-muted);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Batang perbandingan (h-2) menempel di bawah kartu, walau kartu lain di baris yang sama lebih tinggi. */
+.share {
+    display: block;
+    height: 8px;
+    margin-top: auto;
+    border-radius: 999px;
+    overflow: hidden;
+    background: #e2e8f0;
+}
+
+.duel {
+    margin-bottom: 12px;
+}
+
+.share svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* ---------- Banyak calon: daftar peringkat ---------- */
+.standings {
+    display: grid;
+    gap: 8px;
+    margin: 0 0 12px;
+    padding: 0;
+    list-style: none;
+}
+
+.standing {
+    display: grid;
+    grid-template-columns: 26px 44px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px 8px 8px;
+    border-radius: 10px;
+    border: 1px solid var(--p-line-soft);
+    background: #fff;
+}
+
+.standing.is-elected {
+    background: var(--p-blue-50);
+    border-color: var(--p-blue-200);
+}
+
+.standing__rank {
+    color: var(--p-muted);
+    font-weight: 900;
+    text-align: center;
+}
+
+.standing .portrait {
+    width: 44px;
+    padding: 2px;
+    box-shadow: none;
+}
+
+.standing .portrait__img,
+.standing .portrait__silhouette {
+    border-width: 1px;
+}
+
+.standing__body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.standing__name {
+    overflow: hidden;
+    color: var(--p-ink-strong);
+    font-weight: 700;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.standing__meta {
+    color: var(--p-muted);
+    font-size: 12px;
+}
+
+.standing__bar {
+    display: block;
+    width: 100%;
+    height: 6px;
+    margin-top: 4px;
+}
+
+.standing__track {
+    fill: var(--p-line-soft);
+}
+
+.standing__figures {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    font-variant-numeric: tabular-nums;
+}
+
+.standing__percent {
+    color: var(--tone);
     font-size: 18px;
     font-weight: 900;
 }
 
-.person__meta {
-    margin: 2px 0 0;
+.standing__votes {
     color: var(--p-muted);
-    font-size: 14px;
+    font-size: 12px;
 }
 
 /* ---------- Carousel ---------- */
@@ -735,13 +911,30 @@ h4 {
 .carousel__track {
     display: grid;
     grid-auto-flow: column;
-    grid-auto-columns: calc((100% - 36px) / 3);
-    gap: 18px;
+    grid-auto-columns: calc((100% - 32px) / 3);
+    gap: 16px;
+    align-items: start;
     overflow-x: auto;
     scroll-snap-type: x mandatory;
     scroll-behavior: smooth;
     padding: 4px 2px 12px;
     scrollbar-width: none;
+}
+
+/* Banyak RT: satu halaman = 6 kartu (3 kolom × 2 baris, urut RT); digeser per halaman. */
+.carousel--pages .carousel__track {
+    grid-auto-columns: 100%;
+}
+
+.carousel__page {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    align-items: start;
+}
+
+.carousel__card {
+    height: 100%;
 }
 
 .carousel__track::-webkit-scrollbar {
@@ -830,82 +1023,6 @@ h4 {
     font-size: 13px;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
-}
-
-/* ---------- Peta RT ---------- */
-.unit-map {
-    display: grid;
-    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-    gap: 20px;
-    padding: 20px;
-    border-radius: 20px;
-    background: var(--p-card);
-    border: 1px solid var(--p-line);
-    box-shadow: var(--p-shadow);
-}
-
-.unit-map__tiles {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-    align-content: start;
-}
-
-.tile {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-height: 96px;
-    padding: 14px;
-    border-radius: 12px;
-    background: var(--p-blue-600);
-    color: #fff;
-    text-decoration: none;
-    box-shadow: inset 0 0 0 0 transparent;
-    transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
-}
-
-.tile:hover {
-    transform: translateY(-2px);
-    background: var(--p-blue-700);
-}
-
-.tile.is-active {
-    background: var(--p-indigo-950);
-    box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--p-yellow);
-}
-
-.tile.is-active .tile__name {
-    color: var(--p-yellow);
-}
-
-.tile--pending {
-    background: #e2e8f0;
-    color: var(--p-muted);
-}
-
-.tile__name {
-    font-size: 18px;
-    font-weight: 900;
-}
-
-.tile__who {
-    font-size: 13px;
-    opacity: 0.9;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-}
-
-.unit-map__panel > div {
-    height: 100%;
-    animation: fade-in 0.35s ease;
-}
-
-@keyframes fade-in {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
 }
 
 /* ---------- Kartu pemilihan ---------- */
@@ -1115,122 +1232,6 @@ h4 {
     font-weight: 700;
 }
 
-/* ---------- Kenali calon ---------- */
-.search {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: min(100%, 320px);
-    padding: 0 14px;
-    border-radius: 12px;
-    border: 1px solid var(--p-line);
-    background: #fff;
-    color: var(--p-muted);
-}
-
-.search:focus-within {
-    border-color: var(--p-indigo-500);
-    box-shadow: 0 0 0 3px var(--p-indigo-100);
-}
-
-.search input {
-    flex: 1;
-    min-height: 44px;
-    border: 0;
-    outline: 0;
-    background: transparent;
-    font: inherit;
-    color: var(--p-ink);
-}
-
-.search-empty {
-    padding: 24px;
-    text-align: center;
-    color: var(--p-muted);
-}
-
-.profile {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 20px 18px;
-    border-radius: var(--p-radius);
-    background: var(--p-card);
-    border: 1px solid var(--p-line);
-    box-shadow: var(--p-shadow);
-    text-align: center;
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.profile:hover {
-    border-color: var(--p-indigo-300);
-    box-shadow: var(--p-shadow-lift);
-}
-
-
-.profile__body {
-    width: 100%;
-}
-
-.profile__body .person__name {
-    margin-top: 2px;
-}
-
-.profile__body > .person__meta:first-child {
-    margin-top: 12px;
-}
-
-.profile__details {
-    margin-top: 12px;
-    text-align: left;
-    border-top: 1px solid var(--p-line);
-    padding-top: 10px;
-}
-
-.profile__details summary {
-    cursor: pointer;
-    color: var(--p-indigo-600);
-    font-weight: 800;
-    text-align: center;
-    list-style: none;
-}
-
-.profile__details summary::-webkit-details-marker {
-    display: none;
-}
-
-.profile__details summary::after {
-    content: " ▾";
-}
-
-.profile__details[open] summary::after {
-    content: " ▴";
-}
-
-.profile__details h5 {
-    margin: 10px 0 2px;
-    color: var(--p-muted);
-    font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.profile__details p,
-.profile__details ol {
-    margin: 0;
-    font-size: 15px;
-}
-
-.profile__details ol {
-    padding-left: 20px;
-}
-
-.profile__empty {
-    margin: 12px 0 0;
-    color: var(--p-muted);
-    font-size: 14px;
-}
-
 /* ---------- Kosong & tautan ---------- */
 .empty {
     padding: 40px 24px;
@@ -1269,7 +1270,7 @@ h4 {
 .portal-footer__inner {
     max-width: var(--p-max);
     margin: 0 auto;
-    padding: 28px 20px;
+    padding: 28px 24px;
     display: flex;
     justify-content: space-between;
     gap: 24px;
@@ -1313,17 +1314,58 @@ h4 {
 }
 
 .race--wide {
-    padding: 24px 28px;
+    padding: 20px 24px;
 }
 
-.race--wide .race__people {
-    grid-template-columns: repeat(auto-fit, minmax(170px, 230px));
+.race--wide .race__title {
+    font-size: 20px;
+}
+
+/* Kartu besar di atas (mis. Ketua RW): calon berjajar lebih besar di tengah. */
+.race--wide .duel {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 300px));
     justify-content: center;
-    gap: 28px;
+    gap: 20px;
 }
 
-.race--wide.race--many .portrait {
-    width: 170px;
+.race--wide .contender {
+    padding: 18px 12px 16px;
+    border-radius: 12px;
+}
+
+.race--wide .contender .portrait {
+    width: 128px;
+    padding: 3px;
+    margin-bottom: 12px;
+}
+
+.race--wide .contender__number {
+    font-size: 14px;
+}
+
+.race--wide .contender__name {
+    font-size: 19px;
+}
+
+.race--wide .contender__percent {
+    margin-top: 6px;
+    font-size: 36px;
+}
+
+.race--wide .contender__percent small {
+    font-size: 18px;
+}
+
+.race--wide .contender__votes {
+    font-size: 14px;
+}
+
+.race--wide .share {
+    height: 10px;
+}
+
+.race--wide .race__meaning {
+    font-size: 14px;
 }
 
 .race--wide .race__meaning {
@@ -1339,18 +1381,6 @@ h4 {
     display: flex;
     flex-direction: column;
     gap: 18px;
-}
-
-.section__head--sub {
-    margin-top: 8px;
-}
-
-.section__title--sm {
-    font-size: 20px;
-}
-
-.candidate-group + .candidate-group {
-    margin-top: 28px;
 }
 
 .subsection {
@@ -1415,24 +1445,6 @@ h4 {
     box-shadow: var(--p-shadow);
 }
 
-/* Yang ditetapkan: bingkai biru tebal (seperti calon unggul di contoh); satu orang tampil paling besar. */
-.portrait--winner {
-    padding: 4px;
-    background: var(--p-blue-600);
-}
-
-.race--single .portrait {
-    width: 190px;
-}
-
-.race--many .portrait {
-    width: 112px;
-}
-
-.profile .portrait {
-    width: 140px;
-}
-
 /* ---------- Banner tanpa pemilihan berjalan ---------- */
 .hero--calm {
     background: linear-gradient(135deg, var(--p-indigo-950), var(--p-purple-900));
@@ -1473,92 +1485,25 @@ h4 {
     opacity: 0.85;
 }
 
-/* ---------- Partisipasi: lingkaran + grafik ---------- */
-.turnout {
-    display: grid;
-    grid-template-columns: 280px minmax(0, 1fr);
-    gap: 20px;
-}
-
-.gauge,
-.turnout__chart {
-    padding: 20px;
-    border-radius: 20px;
-    background: var(--p-card);
-    border: 1px solid var(--p-line);
-    box-shadow: var(--p-shadow);
-}
-
-.gauge {
-    position: relative;
+/* ---------- Partisipasi: grafik per RT (+ ringkasan keseluruhan bila perlu) ---------- */
+.turnout__overall {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    margin: 0 0 12px;
+    color: var(--p-muted);
 }
 
-.gauge__svg {
-    width: 200px;
-    height: 200px;
-    transform: rotate(-90deg);
+.turnout__overall strong {
+    color: var(--p-ink);
 }
 
-.gauge__track,
-.gauge__value {
-    fill: none;
-    stroke-width: 14;
-}
-
-.gauge__track {
-    stroke: var(--p-indigo-100);
-}
-
-.gauge__value {
-    stroke: var(--p-indigo-600);
-    stroke-linecap: round;
-}
-
-.is-visible .gauge__value {
-    animation: gauge 1.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-
-@keyframes gauge {
-    from { stroke-dasharray: 0 100; }
-}
-
-.gauge__center {
-    position: absolute;
-    top: 20px;
-    left: 0;
-    right: 0;
-    height: 200px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
-.gauge__number {
+.turnout__overall-value {
     color: var(--p-indigo-600);
-    font-size: 38px;
+    font-size: 32px;
     font-weight: 900;
     font-variant-numeric: tabular-nums;
-}
-
-.gauge__label {
-    color: var(--p-muted);
-    font-size: 14px;
-    font-weight: 700;
-}
-
-.gauge__caption {
-    margin: 10px 0 0;
-    color: var(--p-muted);
-}
-
-.gauge__caption strong {
-    color: var(--p-ink);
 }
 
 .turnout__note {
@@ -1664,128 +1609,6 @@ h4 {
     color: var(--p-ink);
 }
 
-/* ---------- Galeri terpilih per RT (seperti kotak "당선" di contoh) ---------- */
-.subsection__head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 8px 16px;
-    flex-wrap: wrap;
-    margin-bottom: 12px;
-}
-
-.subsection__head .subsection__title {
-    margin: 0;
-}
-
-.tally {
-    display: flex;
-    gap: 14px;
-    margin: 0;
-    font-size: 14px;
-    font-weight: 700;
-}
-
-.tally__done {
-    color: var(--p-blue-600);
-}
-
-.tally__pending {
-    color: var(--p-muted);
-}
-
-.winners {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-    gap: 12px;
-    padding: 20px;
-    border-radius: var(--p-radius);
-    background: var(--p-card);
-    border: 1px solid var(--p-line);
-    box-shadow: var(--p-shadow);
-}
-
-.winner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    padding: 14px 12px;
-    border-radius: 12px;
-    background: var(--p-blue-50);
-    border: 1px solid var(--p-blue-200);
-    color: inherit;
-    text-align: center;
-    text-decoration: none;
-    transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.winner:hover {
-    border-color: var(--p-blue-600);
-    box-shadow: var(--p-shadow-lift);
-}
-
-.winner__unit {
-    padding: 2px 10px;
-    border-radius: 999px;
-    background: #fff;
-    color: var(--p-blue-700);
-    font-size: 13px;
-    font-weight: 700;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
-}
-
-.winner__faces {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 6px;
-    margin: 4px 0 2px;
-}
-
-.winner .portrait {
-    width: 76px;
-}
-
-.winner .portrait__number {
-    min-width: 24px;
-    height: 24px;
-    padding: 0 6px;
-    border-width: 2px;
-    font-size: 12px;
-}
-
-.winner__name {
-    color: var(--p-ink-strong);
-    font-size: 15px;
-    font-weight: 900;
-    line-height: 1.3;
-}
-
-.winner__office {
-    color: var(--p-blue-600);
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.winner--pending {
-    background: #f8fafc;
-    border-color: var(--p-line);
-}
-
-.winner--pending .winner__unit,
-.winner--pending .winner__office {
-    color: var(--p-muted);
-}
-
-.winner__empty {
-    display: grid;
-    place-items: center;
-    min-height: 82px;
-    color: var(--p-muted);
-    font-size: 14px;
-}
-
 /* ---------- Tabel rekap per RT (seperti tabel rekap di contoh) ---------- */
 .recap {
     overflow-x: auto;
@@ -1868,6 +1691,10 @@ h4 {
     color: var(--p-blue-600);
 }
 
+.recap__line {
+    display: block;
+}
+
 .recap__detail {
     margin-left: 6px;
     color: var(--p-muted);
@@ -1888,12 +1715,11 @@ h4 {
     }
 
     .carousel__track {
-        grid-auto-columns: calc((100% - 18px) / 2);
+        grid-auto-columns: calc((100% - 16px) / 2);
     }
 
-    .unit-map,
-    .turnout {
-        grid-template-columns: 1fr;
+    .carousel__page {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
@@ -1951,27 +1777,46 @@ h4 {
     }
 
     .race--wide {
-        padding: 18px;
+        padding: 16px;
     }
 
-    .race--wide .race__people {
+    /* Di HP: tetap satu baris (3 calon berjajar), ukuran diperkecil. */
+    .race--wide .duel {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 16px;
+        gap: 8px;
     }
 
-    .race--wide.race--many .portrait {
-        width: 120px;
+    .race--wide .duel--1 {
+        grid-template-columns: minmax(0, 1fr);
     }
 
-    .grid--people {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
+    .race--wide .duel--3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
-    .profile {
-        padding: 14px 10px;
+    .race--wide .contender {
+        padding: 10px 6px;
     }
 
+    .race--wide .contender .portrait {
+        width: 76px;
+    }
+
+    .race--wide .contender__name {
+        font-size: 15px;
+    }
+
+    .race--wide .contender__percent {
+        font-size: 24px;
+    }
+
+    .race--wide .contender__percent small {
+        font-size: 13px;
+    }
+
+    .race--wide .contender__votes {
+        font-size: 12px;
+    }
 
     .hero {
         flex-direction: column;
@@ -1991,34 +1836,25 @@ h4 {
         font-size: 44px;
     }
 
-    .profile .portrait {
-        width: 104px;
-    }
-
-    .race--single .portrait {
-        width: 160px;
-    }
-
     .carousel__track {
         grid-auto-columns: 86%;
     }
 
+    /* Di HP halaman dilepas: kartu jadi item carousel langsung dan digeser satu per satu. */
+    .carousel--pages .carousel__track {
+        grid-auto-columns: 86%;
+    }
+
+    .carousel__page {
+        display: contents;
+    }
+
+    .carousel__card {
+        scroll-snap-align: start;
+    }
+
     .carousel__nav {
         display: none;
-    }
-
-    .unit-map {
-        padding: 14px;
-    }
-
-    .winners {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-        padding: 12px;
-    }
-
-    .winner .portrait {
-        width: 64px;
     }
 
     /* Grafik tetap ukuran asli di HP; digeser ke samping bila lebih lebar dari layar. */

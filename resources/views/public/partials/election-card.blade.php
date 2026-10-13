@@ -27,12 +27,15 @@
         @endif
     </p>
 
-    <div class="election-card__actions">
-        @if ($status === \App\Enums\ElectionStatus::Published)
-            <a class="button button--primary" href="{{ route('public.show', $election->public_id) }}">Lihat hasil</a>
-        @elseif ($status === \App\Enums\ElectionStatus::Unpublished)
-            <a class="button button--outline" href="{{ route('public.show', $election->public_id) }}">Lihat keterangan</a>
-        @endif
-        <a class="button {{ $isAnnounced ? 'button--outline' : 'button--primary' }}" href="{{ route('public.candidates', $election->public_id) }}">Kenali calon</a>
-    </div>
+    @if ($isAnnounced)
+        <div class="election-card__actions">
+            @if ($status === \App\Enums\ElectionStatus::Published)
+                <a class="button button--primary" href="{{ route('public.show', $election->public_id) }}">Lihat hasil</a>
+            @else
+                <a class="button button--outline" href="{{ route('public.show', $election->public_id) }}">Lihat keterangan</a>
+            @endif
+        </div>
+    @else
+        <p class="election-card__date">Hasil diumumkan di sini setelah ditetapkan panitia.</p>
+    @endif
 </article>

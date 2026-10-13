@@ -28,11 +28,10 @@
                         {{ $election->isDadakan()
                             ? 'Pemungutan suara di lokasi acara: warga yang hadir mendaftar di meja pintu, lalu memilih lewat HP dengan nama dan PIN.'
                             : 'Pemungutan suara di TPS masing-masing RT: pemilih terdaftar memilih di bilik suara.' }}
-                        Cara memilih diumumkan langsung oleh panitia di lokasi.
+                        Hasil resmi diumumkan di halaman ini setelah panitia menetapkannya.
                     </p>
                     <div class="hero__actions">
-                        <a class="button button--light" href="#calon">Kenali calon &amp; visi-misi</a>
-                        <a class="button button--ghost-light" href="#cara-memilih">Cara memilih</a>
+                        <a class="button button--light" href="#cara-memilih">Cara memilih</a>
                     </div>
                 </div>
                 <div class="hero__art" aria-hidden="true">
@@ -44,7 +43,7 @@
                 <div class="hero__body">
                     <span class="chip chip--done">{{ $featured ? 'Hasil resmi sudah diumumkan' : 'Portal pemilihan warga' }}</span>
                     <h1 class="hero__title">{{ $featured?->name ?? 'Informasi pemilihan warga' }}</h1>
-                    <p class="hero__text">Informasi resmi pemilihan: calon, hasil yang ditetapkan panitia, partisipasi warga, dan cara memilih.</p>
+                    <p class="hero__text">Pengumuman resmi pemilihan: hasil yang ditetapkan panitia, partisipasi warga, dan cara memilih.</p>
                     <div class="hero__actions">
                         <a class="button button--light" href="#hasil">Lihat hasil</a>
                         <a class="button button--ghost-light" href="#cara-memilih">Cara memilih</a>
@@ -61,34 +60,26 @@
         @endforelse
     </section>
 
-    {{-- Hasil dan Calon: saat ada pemilihan yang akan/sedang berjalan, Calon didahulukan (urutan dari controller). --}}
-    @foreach ($sections as $section)
-        @if (in_array($section, ['hasil', 'calon'], true))
-            @include('public.sections.'.$section)
-        @endif
-    @endforeach
+    @include('public.sections.hasil')
 
     {{-- ============ PEMILIHAN ============ --}}
-    <section id="pemilihan" class="anchor section" aria-labelledby="pemilihan-judul">
-        <div class="section__head reveal">
-            <div>
-                <p class="section__kicker">Pemilihan</p>
-                <h2 class="section__title" id="pemilihan-judul">Semua pemilihan</h2>
+    {{-- Hanya bila ada lebih dari satu pemilihan; satu pemilihan sudah tampil di banner dan bagian Hasil. --}}
+    @if ($showElections)
+        <section id="pemilihan" class="anchor section" aria-labelledby="pemilihan-judul">
+            <div class="section__head reveal">
+                <div>
+                    <p class="section__kicker">Pemilihan</p>
+                    <h2 class="section__title" id="pemilihan-judul">Semua pemilihan</h2>
+                </div>
             </div>
-        </div>
 
-        @if ($running->isNotEmpty() || $announced->isNotEmpty())
             <div class="grid grid--3 reveal">
                 @foreach ($running->concat($announced) as $election)
                     @include('public.partials.election-card', ['election' => $election])
                 @endforeach
             </div>
-        @else
-            <div class="empty reveal">
-                <p>Belum ada pemilihan yang diumumkan.</p>
-            </div>
-        @endif
-    </section>
+        </section>
+    @endif
 
     {{-- ============ CARA MEMILIH ============ --}}
     <section id="cara-memilih" class="anchor section" aria-labelledby="cara-judul">

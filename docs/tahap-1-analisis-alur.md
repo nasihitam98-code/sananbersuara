@@ -704,7 +704,7 @@ Penjaringan calon RW dijalankan di Mode Dadakan. Konsekuensinya:
 - **Layar HP**: 27 kartu tidak muat satu layar. Usulan: daftar bergulir dengan foto kecil, nomor urut besar, dan nama; urut nomor tetap; tanpa fitur pencarian kandidat (agar semua calon diperlakukan sama). Alternatif tata letak diajukan di Tahap 2.
 - **Timer gelombang**: cari nama + PIN + membaca 27 calon butuh lebih lama dari surat suara biasa. Usulan default 10 menit untuk surat suara > 10 kandidat ⟨K05⟩.
 - **Beban server**: ratusan HP × 27 foto. Foto ukuran kecil yang dioptimalkan, cache HTTP, dimuat saat layar "Menunggu" agar siap saat gelombang dibuka.
-- **Hasil**: total, per calon, dan ranking di Layar Hasil internal setelah DITUTUP; sistem tidak menentukan siapa yang lolos; halaman publik hanya menampilkan nama yang lolos yang ditetapkan panitia ⟨K21⟩.
+- **Hasil**: total, per calon, dan ranking di Layar Hasil internal setelah DITUTUP; sistem tidak menentukan siapa yang lolos; halaman publik menampilkan nama yang lolos yang ditetapkan panitia, dan (sejak 2026-10-12) perolehan suara resmi tiap calon setelah diumumkan ⟨K21⟩.
 - **Urutan fase**: Mode Dadakan dijadwalkan di Fase 2, sedangkan penjaringan biasanya berlangsung **sebelum** pemilihan Ketua RW ⟨K33⟩.
 - **Siapa boleh ikut**: daftar hadir diisi bebas, atau dipilih dari data warga terdaftar ⟨K34⟩.
 
@@ -1063,7 +1063,7 @@ Kolom "Usulan" adalah rekomendasi saya. Anda bisa menjawab misalnya "setuju semu
 |---|---|---|---|
 | K19 | Hasil untuk Admin RT setelah DITUTUP | Admin RT melihat hasil surat suara RT-nya; untuk surat suara semua RT (RW/penjaringan) hanya **total**, tanpa sebaran per RT | Admin RT juga melihat sebaran RW di RT-nya / tidak melihat hasil RW |
 | K20 | [Tampilkan Hasil] | Aktif saat status **VERIFIKASI**, sebelum berita acara ditandatangani (warga dan saksi melihat hasil, lalu tanda tangan). Bisa dipakai SA (semua unit) dan Admin RT (RT sendiri) | Hanya SA / hanya setelah berita acara disahkan |
-| K21 | Penetapan terpilih dan publik penjaringan | Karena sistem tidak memutuskan, SA **menetapkan terpilih** per unit di VERIFIKASI (sistem menyarankan peringkat 1, SA konfirmasi atau memilih "Belum ditetapkan"). Penjaringan: halaman publik menampilkan daftar **nama yang lolos** (ditetapkan panitia), tanpa angka | Penjaringan tidak ditampilkan di publik |
+| K21 | Penetapan terpilih dan publik penjaringan | Karena sistem tidak memutuskan, SA **menetapkan terpilih** per unit di VERIFIKASI (sistem menyarankan peringkat 1, SA konfirmasi atau memilih "Belum ditetapkan"). Penjaringan: halaman publik menampilkan daftar **nama yang lolos** (ditetapkan panitia), tanpa angka. **Diubah pemilik 2026-10-12:** setelah DIPUBLIKASIKAN, portal publik juga menampilkan perolehan suara resmi tiap calon (persen + jumlah suara + batang perbandingan); saat ditinjau ulang angka disembunyikan lagi | Penjaringan tidak ditampilkan di publik |
 
 ### Peran, notifikasi, keamanan
 

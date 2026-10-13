@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\CandidateStatus;
 use App\Enums\ElectionStatus;
 use App\Enums\OutcomeStatus;
 use App\Models\Candidate;
@@ -11,14 +10,18 @@ use App\Models\Unit;
 use App\Services\Results\PublicTurnout;
 use App\Services\Results\ResultPublication;
 use App\Services\Results\ResultSlots;
+use App\Services\Voting\ResultsCalculator;
+use App\Services\Voting\RoundResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
 
 /**
- * Portal publik (tanpa login): pemilihan yang berjalan, profil calon, dan hasil resmi yang sudah
- * DIPUBLIKASIKAN. Tidak ada ranking, jumlah suara calon, atau data pemilih (bagian 9, K21); yang ditampilkan\n * hanya nama yang ditetapkan panitia dan partisipasi warga.
+ * Portal publik (tanpa login) untuk pengumuman akhir: hasil resmi yang sudah DIPUBLIKASIKAN, plus penanda
+ * pemilihan yang sedang berjalan. Profil calon tidak ditampilkan di sini (visi & misi ada di surat suara pemilih).
+ * Setelah diumumkan, yang ditampilkan: nama yang ditetapkan panitia, perolehan suara resmi tiap calon (K21 diubah
+ * pemilik 2026-10-12), dan partisipasi warga. Data pemilih tidak pernah ditampilkan.
  */
 class PublicResultController extends Controller
 {
@@ -32,6 +35,8 @@ class PublicResultController extends Controller
         private ResultSlots $slots,
         private ResultPublication $publication,
         private PublicTurnout $turnout,
+        private ResultsCalculator $calculator,
+        private RoundResolver $rounds,
     ) {}
 
     /**
@@ -44,7 +49,6 @@ class PublicResultController extends Controller
         $featured = $announced->firstWhere('status', ElectionStatus::Published);
         $cards = $featured === null ? collect() : $this->resultCards($featured);
         $turnout = $featured === null ? null : $this->turnout->for($featured);
-        $focus = $running->first() ?? $featured ?? $announced->first();
 
         return $this->publicView('public.index', [
             'running' => $running,
@@ -55,44 +59,13 @@ class PublicResultController extends Controller
             'turnout' => $turnout,
             'unitTurnout' => collect($turnout['units'] ?? [])->keyBy('unit'),
             'history' => $this->turnout->history(),
-            'focus' => $focus,
-            'ballots' => $focus === null ? collect() : $this->candidateBallots($focus),
         ]);
     }
 
-    /** Alamat lama menu (/pemilihan, /cara-memilih, /hasil, /calon) diarahkan ke bagiannya di beranda. */
+    /** Alamat lama menu (/pemilihan, /cara-memilih, /hasil) diarahkan ke bagiannya di beranda. */
     public function section(string $section): RedirectResponse
     {
         return redirect()->to(route('public.index').'#'.$section);
-    }
-
-    /**
-     * "Kenali calon": nama, nomor, asal RT, visi & misi. Untuk pemilihan yang siap/berjalan/sudah selesai;
-     * tidak memuat angka suara.
-     */
-    public function candidates(Election $election): Response
-    {
-        abort_if(in_array($election->status, [ElectionStatus::Draft, ElectionStatus::Cancelled, ElectionStatus::Archived], true) || ! $election->isPublic(), 404);
-
-        return $this->publicView('public.candidates', ['election' => $election, 'ballots' => $this->candidateBallots($election)]);
-    }
-
-    /**
-     * @return Collection<int, array{title: string, candidates: Collection<int, Candidate>}>
-     */
-    private function candidateBallots(Election $election): Collection
-    {
-        return $election->ballots()
-            ->get()
-            ->map(fn ($ballot): array => [
-                'title' => $ballot->title,
-                'candidates' => $ballot->ballotCandidates()
-                    ->with(['unit', 'originUnit'])
-                    ->where('status', CandidateStatus::Aktif)
-                    ->orderBy('unit_id')
-                    ->orderBy('number')
-                    ->get(),
-            ]);
     }
 
     public function show(Request $request, Election $election): Response
@@ -119,23 +92,37 @@ class PublicResultController extends Controller
     }
 
     /**
-     * Satu kartu per slot hasil (surat suara, atau satu RT pada surat suara per RT): siapa yang ditetapkan panitia.
+     * Satu kartu per slot hasil (surat suara, atau satu RT pada surat suara per RT): siapa yang ditetapkan panitia
+     * dan perolehan suara resmi tiap calon (putaran yang sama dengan Meja Verifikasi dan berita acara).
+     * Hanya dipanggil untuk pemilihan yang sudah DIPUBLIKASIKAN.
      *
-     * @return Collection<int, array{title: string, office: string, unit: ?Unit, label: string, decided: bool, candidates: Collection<int, Candidate>}>
+     * @return Collection<int, array{title: string, office: string, unit: ?Unit, label: string, decided: bool, candidates: Collection<int, Candidate>, tally: array{valid: int, rows: array<int, array{candidate: Candidate, votes: int, percent: float, rank: int, elected: bool}>}}>
      */
     private function resultCards(Election $election): Collection
     {
+        $fallbackRound = $election->currentRound();
+
         return $this->slots->slots($election)
-            ->map(function (array $slot): array {
+            ->map(function (array $slot) use ($election, $fallbackRound): array {
                 $outcome = $this->publication->outcome($slot['ballot'], $slot['unit']);
+                $decided = $outcome?->status === OutcomeStatus::Ditetapkan;
+                $electedIds = $decided ? $outcome->candidates->modelKeys() : [];
+                $round = $this->rounds->roundFor($election, $slot['ballot'], $slot['unit']?->id) ?? $fallbackRound;
+                $tally = $round === null ? ['valid' => 0, 'candidates' => []] : $this->calculator->tally($slot['ballot'], $round, $slot['unit']);
 
                 return [
                     'title' => $slot['ballot']->title.($slot['unit'] instanceof Unit ? ' '.$slot['unit']->name : ''),
                     'office' => $slot['ballot']->title,
                     'unit' => $slot['unit'],
                     'label' => $outcome?->label() ?? 'Belum ditetapkan',
-                    'decided' => $outcome?->status === OutcomeStatus::Ditetapkan,
+                    'decided' => $decided,
                     'candidates' => $outcome?->candidates ?? collect(),
+                    'tally' => [
+                        'valid' => $tally['valid'],
+                        'rows' => collect($tally['candidates'])
+                            ->map(fn (array $row): array => $row + ['elected' => in_array($row['candidate']->id, $electedIds, true)])
+                            ->all(),
+                    ],
                 ];
             })
             ->values();
@@ -163,21 +150,12 @@ class PublicResultController extends Controller
     private function publicView(string $view, array $data = []): Response
     {
         return response()
-            ->view($view, $data + ['headline' => $this->headline(), 'sections' => $this->sectionOrder()])
+            ->view($view, $data + [
+                'headline' => $this->headline(),
+                // Bagian/menu "Pemilihan" hanya berguna bila ada lebih dari satu pemilihan.
+                'showElections' => $this->running()->count() + $this->announced()->count() > 1,
+            ])
             ->header('Cache-Control', 'public, max-age=60');
-    }
-
-    /**
-     * Urutan bagian portal (juga urutan menu). Menjelang/selama pemilihan, warga lebih perlu mengenal calon,
-     * jadi Calon didahulukan; setelah selesai, Hasil kembali di depan.
-     *
-     * @return array<int, string>
-     */
-    private function sectionOrder(): array
-    {
-        return $this->running()->isNotEmpty()
-            ? ['beranda', 'calon', 'hasil', 'pemilihan', 'cara-memilih']
-            : ['beranda', 'hasil', 'calon', 'pemilihan', 'cara-memilih'];
     }
 
     /**
@@ -195,7 +173,7 @@ class PublicResultController extends Controller
                 'tone' => $running->status->isLive() ? 'live' : 'soon',
                 'label' => $running->status->isLive() ? 'Sedang berlangsung' : 'Segera dimulai',
                 'text' => $running->name,
-                'url' => route('public.candidates', $running->public_id),
+                'url' => route('public.index'),
             ];
         }
 

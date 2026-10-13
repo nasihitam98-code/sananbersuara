@@ -38,13 +38,11 @@
             {{-- Satu halaman: menu meluncur ke bagiannya; di halaman detail, menu kembali ke bagian di beranda. --}}
             @php($onHome = request()->routeIs('public.index'))
             <div class="portal-nav__tabs" data-scrollspy>
-                @php($labels = ['beranda' => 'Beranda', 'hasil' => 'Hasil', 'calon' => 'Calon', 'pemilihan' => 'Pemilihan', 'cara-memilih' => 'Cara memilih'])
-                @foreach ($sections ?? array_keys($labels) as $section)
-                    @php($label = $labels[$section])
+                @php($labels = ['beranda' => 'Beranda', 'hasil' => 'Hasil', 'pemilihan' => 'Pemilihan', 'cara-memilih' => 'Cara memilih'])
+                @foreach (($showElections ?? true) ? $labels : array_diff_key($labels, ['pemilihan' => true]) as $section => $label)
                     @php($active = match ($section) {
                         'beranda' => $onHome,
                         'hasil' => request()->routeIs('public.show'),
-                        'calon' => request()->routeIs('public.candidates'),
                         default => false,
                     })
                     <a class="portal-nav__tab {{ $active ? 'is-active' : '' }}" href="{{ $onHome ? '#'.$section : route('public.index').'#'.$section }}" data-section="{{ $section }}" @if ($active) aria-current="page" @endif>{{ $label }}</a>
@@ -70,7 +68,7 @@
                 <p class="portal-footer__title">{{ config('app.name') }}</p>
                 <p>{{ $areaName }}</p>
             </div>
-            <p class="portal-footer__note">Halaman ini hanya menampilkan informasi resmi dari panitia. Jumlah suara tidak ditampilkan di sini; rinciannya tercatat di berita acara.</p>
+            <p class="portal-footer__note">Halaman ini hanya menampilkan informasi resmi dari panitia. Angka suara baru tampil setelah hasil ditetapkan dan diumumkan, sesuai berita acara yang disahkan.</p>
         </div>
     </footer>
 </body>
