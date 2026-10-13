@@ -132,8 +132,7 @@ class ResultPublicationTest extends TestCase
             ->assertOk()
             ->assertSee('Hasil resmi')
             ->assertSee('Lolos')
-            ->assertSee('Partisipasi warga')
-            ->assertSeeInOrder(['<strong>4</strong> dari <strong>4</strong>', 'warga hadir'], false)
+            ->assertSeeInOrder(['Partisipasi', '100,0', '(4 dari 4 warga hadir)'])
             ->assertDontSee('id="calon"', false)
             ->assertSeeInOrder([
                 'Calon Nomor 1', '50,0', '2 suara',
@@ -183,6 +182,7 @@ class ResultPublicationTest extends TestCase
         $this->get(route('public.index'))
             ->assertSee('Pemilihan RT RW Desember')
             ->assertSeeInOrder(['data-section="hasil"', 'data-section="pemilihan"', 'id="hasil"', 'id="pemilihan"'], false)
+            ->assertSee('id="cara-memilih"', false)
             ->assertDontSee('data-section="calon"', false)
             ->assertDontSee('Kenali calon');
     }

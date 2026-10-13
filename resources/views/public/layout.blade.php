@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#1f1d5c">
     <title>@yield('title') · {{ config('app.name') }}</title>
+    {{-- Pratinjau link saat dibagikan (WhatsApp, Telegram, dll.). --}}
+    <meta name="description" content="@yield('description', 'Pengumuman resmi pemilihan warga dari panitia.')">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="id_ID">
+    <meta property="og:site_name" content="{{ config('app.name') }}">
+    <meta property="og:title" content="@yield('title') · {{ config('app.name') }}">
+    <meta property="og:description" content="@yield('description', 'Pengumuman resmi pemilihan warga dari panitia.')">
+    <meta property="og:url" content="{{ url()->current() }}">
     @vite(['resources/css/portal.css', 'resources/js/portal.js'])
 </head>
 <body class="portal">
@@ -39,7 +47,8 @@
             @php($onHome = request()->routeIs('public.index'))
             <div class="portal-nav__tabs" data-scrollspy>
                 @php($labels = ['beranda' => 'Beranda', 'hasil' => 'Hasil', 'pemilihan' => 'Pemilihan', 'cara-memilih' => 'Cara memilih'])
-                @foreach (($showElections ?? true) ? $labels : array_diff_key($labels, ['pemilihan' => true]) as $section => $label)
+                @php($hidden = array_filter(['pemilihan' => ! ($showElections ?? true), 'cara-memilih' => ! ($showGuide ?? true)]))
+                @foreach (array_diff_key($labels, $hidden) as $section => $label)
                     @php($active = match ($section) {
                         'beranda' => $onHome,
                         'hasil' => request()->routeIs('public.show'),

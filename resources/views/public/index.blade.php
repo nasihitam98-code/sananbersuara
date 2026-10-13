@@ -1,6 +1,10 @@
 @extends('public.layout')
 
-@section('title', 'Beranda')
+{{-- Judul & deskripsi juga dipakai pratinjau link (WhatsApp dll.), jadi berisi nama pemilihan yang diumumkan. --}}
+@section('title', $featured?->name ?? 'Beranda')
+@if ($featured)
+    @section('description', 'Hasil resmi '.$featured->name.($featured->published_at ? ', diumumkan '.$featured->published_at->translatedFormat('d F Y') : '').'. Lihat yang terpilih dan perolehan suaranya.')
+@endif
 
 @section('content')
     {{-- ============ BERANDA ============ --}}
@@ -39,23 +43,24 @@
                 </div>
             </div>
         @empty
-            <div class="hero hero--calm reveal">
+            {{-- Banner ringkas setelah selesai: nama, tanggal diumumkan, partisipasi. Hasil langsung di bawahnya. --}}
+            <div class="hero hero--calm hero--compact reveal">
                 <div class="hero__body">
-                    <span class="chip chip--done">{{ $featured ? 'Hasil resmi sudah diumumkan' : 'Portal pemilihan warga' }}</span>
+                    <span class="chip chip--done">{{ $featured ? 'Hasil resmi' : 'Portal pemilihan warga' }}</span>
                     <h1 class="hero__title">{{ $featured?->name ?? 'Informasi pemilihan warga' }}</h1>
-                    <p class="hero__text">Pengumuman resmi pemilihan: hasil yang ditetapkan panitia, partisipasi warga, dan cara memilih.</p>
-                    <div class="hero__actions">
-                        <a class="button button--light" href="#hasil">Lihat hasil</a>
-                        <a class="button button--ghost-light" href="#cara-memilih">Cara memilih</a>
-                    </div>
+                    @if ($featured)
+                        <p class="hero__meta">
+                            @if ($featured->published_at)
+                                <span>Diumumkan {{ $featured->published_at->translatedFormat('d F Y') }}</span>
+                            @endif
+                            @if ($turnout && $turnout['total'] > 0)
+                                <span>Partisipasi <strong class="hero__meta-value"><span data-count-to="{{ $turnout['percent'] }}">{{ number_format($turnout['percent'], 1, ',', '') }}</span>%</strong> ({{ $turnout['voted'] }} dari {{ $turnout['total'] }} {{ $featured->isDadakan() ? 'warga hadir' : 'pemilih terdaftar' }})</span>
+                            @endif
+                        </p>
+                    @else
+                        <p class="hero__text">Informasi resmi pemilihan warga dari panitia.</p>
+                    @endif
                 </div>
-                @if ($turnout && $turnout['total'] > 0)
-                    <div class="hero__stat">
-                        <span class="hero__stat-label">Partisipasi</span>
-                        <span class="hero__stat-value"><span data-count-to="{{ $turnout['percent'] }}">{{ number_format($turnout['percent'], 1, ',', '') }}</span>%</span>
-                        <span class="hero__stat-sub">{{ $turnout['voted'] }} dari {{ $turnout['total'] }} warga memilih</span>
-                    </div>
-                @endif
             </div>
         @endforelse
     </section>
@@ -82,13 +87,16 @@
     @endif
 
     {{-- ============ CARA MEMILIH ============ --}}
-    <section id="cara-memilih" class="anchor section" aria-labelledby="cara-judul">
-        <div class="section__head reveal">
-            <div>
-                <p class="section__kicker">Panduan</p>
-                <h2 class="section__title" id="cara-judul">Cara memilih</h2>
+    {{-- Hanya saat ada pemilihan akan/sedang berjalan; setelah selesai portal khusus pengumuman hasil. --}}
+    @if ($showGuide)
+        <section id="cara-memilih" class="anchor section" aria-labelledby="cara-judul">
+            <div class="section__head reveal">
+                <div>
+                    <p class="section__kicker">Panduan</p>
+                    <h2 class="section__title" id="cara-judul">Cara memilih</h2>
+                </div>
             </div>
-        </div>
-        @include('public.partials.guide')
-    </section>
+            @include('public.partials.guide')
+        </section>
+    @endif
 @endsection

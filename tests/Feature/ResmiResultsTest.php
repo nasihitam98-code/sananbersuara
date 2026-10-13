@@ -293,7 +293,19 @@ class ResmiResultsTest extends TestCase
             ->assertDontSee('Terpilih di setiap RT')
             // Satu pemilihan saja: bagian dan menu "Pemilihan" tidak ditampilkan.
             ->assertDontSee('id="pemilihan"', false)
-            ->assertDontSee('data-section="pemilihan"', false);
+            ->assertDontSee('data-section="pemilihan"', false)
+            // Sudah selesai: portal khusus pengumuman, tanpa panduan "Cara memilih".
+            ->assertDontSee('id="cara-memilih"', false)
+            ->assertDontSee('data-section="cara-memilih"', false)
+            // Pratinjau link untuk dibagikan ke warga.
+            ->assertSee('<meta property="og:title" content="Pemilihan RT dan RW 2026', false)
+            ->assertSee('Hasil resmi Pemilihan RT dan RW 2026, diumumkan', false);
+
+        // Halaman per RT: Ketua RW di atas, lalu RT yang dipilih.
+        $this->get(route('public.show', [$this->election->public_id, 'rt' => '04']))
+            ->assertOk()
+            ->assertSeeInOrder(['Ketua RW', 'Calon RW Dua', 'RT 04', 'Calon RT Empat'])
+            ->assertSee('<meta property="og:title" content="Pemilihan RT dan RW 2026 · RT 04', false);
     }
 
     private function publishAll(): void

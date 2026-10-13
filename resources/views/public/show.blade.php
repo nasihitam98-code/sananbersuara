@@ -1,6 +1,7 @@
 @extends('public.layout')
 
-@section('title', $election->name)
+@section('title', $election->name.($selectedUnit ? ' · '.$selectedUnit->name : ''))
+@section('description', 'Hasil resmi '.$election->name.($selectedUnit ? ' untuk '.$selectedUnit->name : '').': yang terpilih dan perolehan suara tiap calon.')
 
 @section('content')
     <section class="page-head reveal">
@@ -28,6 +29,13 @@
     @else
         <p class="lead reveal">Perolehan suara resmi tiap calon, dan calon yang <strong>ditetapkan panitia</strong> berdasarkan penghitungan suara dan berita acara yang telah disahkan.</p>
 
+        {{-- Sama seperti beranda: jabatan semua RT (Ketua RW) kartu besar di atas, lalu pilih RT dan kartunya. --}}
+        @foreach ($cards->where('unit', null) as $card)
+            <div class="grid feature feature--1 reveal">
+                @include('public.partials.result-card', ['card' => $card, 'wide' => true])
+            </div>
+        @endforeach
+
         {{-- Pilihan RT sebagai pil (seperti pilihan jenis pemilihan di referensi). --}}
         @if ($units->count() > 1)
             <nav class="pills reveal" aria-label="Pilih RT">
@@ -39,11 +47,13 @@
             </nav>
         @endif
 
-        <div class="grid grid--results reveal">
-            @foreach ($cards as $card)
-                @include('public.partials.result-card', ['card' => $card])
-            @endforeach
-        </div>
+        @if ($cards->whereNotNull('unit')->isNotEmpty())
+            <div class="grid grid--results reveal">
+                @foreach ($cards->whereNotNull('unit') as $card)
+                    @include('public.partials.result-card', ['card' => $card])
+                @endforeach
+            </div>
+        @endif
     @endif
 
     <p class="back-links">

@@ -59,6 +59,8 @@ class PublicResultController extends Controller
             'turnout' => $turnout,
             'unitTurnout' => collect($turnout['units'] ?? [])->keyBy('unit'),
             'history' => $this->turnout->history(),
+            // Tanpa pemilihan berjalan, banner beranda sudah memuat hasil resmi yang sama; penanda header tidak perlu.
+            ...($running->isEmpty() ? ['headline' => null] : []),
         ]);
     }
 
@@ -80,7 +82,10 @@ class PublicResultController extends Controller
             $allCards = $this->resultCards($election);
             $units = $allCards->pluck('unit')->filter()->unique('id')->sortBy('sort')->values();
             $selectedUnit = $units->firstWhere('code', (string) $request->query('rt')) ?? $units->first();
-            $cards = $allCards->filter(fn (array $card): bool => $card['unit'] === null || $card['unit']->is($selectedUnit))->values();
+            // Sama seperti beranda: jabatan semua RT (Ketua RW) di atas, lalu RT yang dipilih.
+            $cards = $allCards->filter(fn (array $card): bool => $card['unit'] === null || $card['unit']->is($selectedUnit))
+                ->sortBy(fn (array $card): int => $card['unit'] === null ? 0 : 1)
+                ->values();
         }
 
         return $this->publicView('public.show', [
@@ -154,6 +159,8 @@ class PublicResultController extends Controller
                 'headline' => $this->headline(),
                 // Bagian/menu "Pemilihan" hanya berguna bila ada lebih dari satu pemilihan.
                 'showElections' => $this->running()->count() + $this->announced()->count() > 1,
+                // Portal dibagikan ke warga setelah selesai: panduan "Cara memilih" hanya saat ada pemilihan akan/sedang berjalan.
+                'showGuide' => $this->running()->isNotEmpty(),
             ])
             ->header('Cache-Control', 'public, max-age=60');
     }

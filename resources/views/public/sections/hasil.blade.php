@@ -59,10 +59,10 @@
 
         {{--
             Partisipasi warga: grafik batang per RT (seperti grafik 투표율 di contoh). Angka keseluruhan sudah ada
-            di banner; ditulis di sini hanya bila banner sedang menampilkan pemilihan yang berjalan, atau tanpa grafik.
+            di banner; ditulis di sini hanya bila banner sedang menampilkan pemilihan lain yang berjalan.
         --}}
         @php($hasUnitChart = $turnout && count($turnout['units']) > 1)
-        @php($showOverall = $turnout && ($running->isNotEmpty() || ! $hasUnitChart))
+        @php($showOverall = $turnout && $running->isNotEmpty())
         @if ($turnout && $turnout['total'] > 0 && ($hasUnitChart || $showOverall))
             <div class="subsection reveal">
                 <h3 class="subsection__title">Partisipasi warga</h3>
