@@ -28,7 +28,8 @@ class ElectionChecklist
     {
         $ballots = $election->ballots()->withCount('ballotCandidates')->get();
         $candidates = Candidate::query()->whereIn('ballot_id', $ballots->pluck('id'))->get(['id', 'ballot_id', 'unit_id', 'photo_key']);
-        $editUrl = fn (int $tab): string => ElectionResource::getUrl('edit', ['record' => $election, 'relation' => (string) $tab]);
+        // #kelola: layar langsung bergulir ke tabel tab itu (penanda dipasang di AdminPanelProvider).
+        $editUrl = fn (int $tab): string => ElectionResource::getUrl('edit', ['record' => $election, 'relation' => (string) $tab]).'#kelola';
         $withoutPhoto = $candidates->whereNull('photo_key')->count();
 
         $steps = [[

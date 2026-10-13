@@ -818,7 +818,7 @@ Isi mengikuti bagian 9A kebutuhan. Tidak memuat siapa memilih siapa. Unit berita
 
 - Prasyarat publish: lihat tabel 4.2.
 - Halaman publik menampilkan per unit: judul jabatan + foto besar + nama **terpilih**. Contoh: pilih "RT 01 ▼" → "Ketua RT 01 Terpilih: Bapak X"; "Ketua RW Terpilih: Bapak Y".
-- **Tidak ada** ranking, jumlah suara, partisipasi per kandidat, atau data pemilih.
+- ~~Tidak ada ranking, jumlah suara, partisipasi per kandidat, atau data pemilih.~~ **Diubah pemilik 2026-10-12 (K21):** setelah DIPUBLIKASIKAN, perolehan suara resmi tiap calon (persen + jumlah + batang perbandingan) ditampilkan; data pemilih tetap tidak pernah ditampilkan.
 - Penjaringan (27 calon): yang ditampilkan publik ⟨K21⟩.
 - Unit yang belum ditetapkan (mis. seri menunggu putaran 2): "Belum ditetapkan".
 

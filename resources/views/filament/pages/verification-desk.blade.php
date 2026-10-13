@@ -44,7 +44,7 @@
                     ['Mulai verifikasi', $verified, 'Mengunci hasil untuk diperiksa panitia.'],
                     ['Tetapkan yang lolos/terpilih', $verified && $decided === count($slotRows), "{$decided} dari ".count($slotRows).' surat suara sudah ditetapkan (bagian ② di bawah).'],
                     ['Berita acara: buat draf, cetak, tanda tangan, sahkan', $verified && $ratified === count($reportRows), "{$ratified} dari ".count($reportRows).' berita acara disahkan (bagian ③ di bawah).'],
-                    ['Publikasikan hasil resmi', $published, $election->isPublic() ? 'Hasil resmi tampil di Halaman Publik (tanpa angka suara).' : 'Hasil ditetapkan resmi. Pemilihan ini tidak tampil di Halaman Publik (saklar di Pengaturan pemilihan).'],
+                    ['Publikasikan hasil resmi', $published, $election->isPublic() ? 'Hasil resmi tampil di Halaman Publik, lengkap dengan perolehan suara tiap calon.' : 'Hasil ditetapkan resmi. Pemilihan ini tidak tampil di Halaman Publik (saklar di Pengaturan pemilihan).'],
                 ])
                 @php($current = collect($steps)->search(fn ($step) => ! $step[1]))
 
@@ -132,7 +132,7 @@
                                         <td class="py-1">{{ $line['rank'] }}</td>
                                         <td>{{ $line['candidate']->displayNumber() }} · {{ $line['candidate']->nameWithOrigin() }}</td>
                                         <td class="text-right tabular-nums">{{ $line['votes'] }}</td>
-                                        <td class="text-right tabular-nums">{{ $line['percent'] }}</td>
+                                        <td class="text-right tabular-nums">{{ \Illuminate\Support\Number::format($line['percent'], maxPrecision: 1) }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>

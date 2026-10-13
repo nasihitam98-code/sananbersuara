@@ -29,7 +29,7 @@
                                 'election' => $election->name,
                                 'note' => 'PIN BARU. PIN lama tidak berlaku.',
                             ]])
-                            <x-filament::button color="success" wire:click="acknowledgeReissue" class="w-full">Sudah dicatat</x-filament::button>
+                            <x-filament::button color="primary" wire:click="acknowledgeReissue" class="w-full">Sudah diberikan</x-filament::button>
                         </div>
                     </div>
                 </x-filament::section>
@@ -92,7 +92,7 @@
                     ['Hadir terdata', $p['attendees']],
                     ['Sudah memilih', $p['voted']],
                     ['Belum memilih', $p['not_voted']],
-                    ['Partisipasi', $p['percent'].'%'],
+                    ['Partisipasi', \Illuminate\Support\Number::percentage($p['percent'], maxPrecision: 1)],
                     ['PIN terkunci', $p['locked']],
                 ] as [$label, $value])
                     <x-filament::section>
@@ -110,7 +110,7 @@
                             <div>
                                 <div class="flex items-baseline justify-between text-sm">
                                     <span class="font-semibold">{{ $unit['unit'] }}</span>
-                                    <span class="tabular-nums text-gray-500">{{ $unit['voted'] }} / {{ $unit['attendees'] }} · <strong class="text-gray-900 dark:text-white">{{ $unit['percent'] }}%</strong></span>
+                                    <span class="tabular-nums text-gray-500">{{ $unit['voted'] }} / {{ $unit['attendees'] }} · <strong class="text-gray-900 dark:text-white">{{ \Illuminate\Support\Number::percentage($unit['percent'], maxPrecision: 1) }}</strong></span>
                                 </div>
                                 <div class="mt-1 h-2.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
                                     <div class="h-full rounded-full {{ $unit['percent'] >= 100 ? 'bg-success-500' : 'bg-primary-500' }}" style="width: {{ $unit['percent'] }}%"></div>

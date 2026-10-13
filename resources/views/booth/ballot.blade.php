@@ -5,7 +5,7 @@
 @section('heading', $ballot->title)
 
 @section('content')
-    <main class="wrap">
+    <main class="wrap wrap--wide">
         <form method="POST" action="{{ route('booth.cast') }}" data-ballot-form data-once>
             @csrf
             <input type="hidden" name="ballot" value="{{ $ballot->public_id }}">
@@ -23,35 +23,12 @@
                     <p class="error" role="alert">{{ $message }}</p>
                 @enderror
 
-                <fieldset class="candidates">
+                {{-- Laptop bilik: calon berjajar seperti kartu Ketua RW di portal (3 calon dalam satu baris). --}}
+                <fieldset class="candidates candidates--grid candidates--booth">
                     <legend class="sr-only">Daftar calon {{ $ballot->title }}</legend>
 
                     @foreach ($candidates as $candidate)
-                        <label
-                            class="candidate"
-                            data-number="{{ $candidate->displayNumber() }}"
-                            data-name="{{ $candidate->name }}"
-                            data-origin="{{ $candidate->originLabel() }}"
-                            data-initials="{{ $candidate->initials() }}"
-                            data-photo-large="{{ $candidate->photoUrl('card') }}"
-                        >
-                            <input type="radio" name="candidate" value="{{ $candidate->public_id }}" required>
-                            <span class="candidate__body">
-                                @include('voter.partials.photo', ['candidate' => $candidate, 'size' => 'thumb'])
-                                <span>
-                                    <span class="candidate__number">Nomor {{ $candidate->displayNumber() }}</span><br>
-                                    <span class="candidate__name">{{ $candidate->name }}</span>
-                                    @if ($candidate->originLabel())
-                                        <br><span class="candidate__origin">Asal {{ $candidate->originLabel() }}</span>
-                                    @endif
-                                    @include('voter.partials.profile-button')
-                                    @if ($candidate->status->value === 'MUNDUR')
-                                        <br><span class="tag">Mengundurkan diri</span>
-                                    @endif
-                                </span>
-                                <span class="candidate__check" aria-hidden="true">✓</span>
-                            </span>
-                        </label>
+                        @include('voter.partials.candidate-option', ['candidate' => $candidate])
                     @endforeach
                 </fieldset>
 

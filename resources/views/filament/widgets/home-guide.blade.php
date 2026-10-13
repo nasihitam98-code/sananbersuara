@@ -103,7 +103,7 @@
 
                 {{-- Dashboard pemilihan: kepala, angka, tahapan + langkah sekarang, akses cepat. --}}
                 <div class="space-y-6">
-                    <div class="relative overflow-hidden rounded-2xl bg-linear-to-br from-primary-600 to-primary-800 p-6 text-white shadow-sm">
+                    <div class="fi-hero relative overflow-hidden rounded-2xl p-6 text-white shadow-sm">
                         <div class="flex flex-wrap items-start justify-between gap-4">
                             <div class="space-y-2">
                                 <p class="text-sm font-medium text-white/70">Mode {{ $primary->mode->getLabel() }}</p>

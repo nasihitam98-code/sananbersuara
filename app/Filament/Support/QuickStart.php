@@ -17,6 +17,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Database\Eloquent\Model;
+use Livewire\Component;
 
 /**
  * "Mulai Pemilihan" satu langkah (Super Admin): periksa kelengkapan, tandai Siap bila masih Draf, mulai,
@@ -43,10 +44,13 @@ class QuickStart
             ->modalSubmitActionLabel('Mulai sekarang')
             ->schema(fn (array $arguments, ?Model $record = null): array => array_values(array_filter([
                 Reauthenticate::field(),
+                // Belum ada warga terdata → bawaan JANGAN langsung buka voting: warga yang didata sesudahnya tercatat "terlambat".
                 $election($arguments, $record)?->isDadakan() ? Toggle::make('open_now')
                     ->label('Langsung buka voting')
-                    ->helperText('HP warga bisa langsung memilih. Matikan bila ingin membuka voting nanti dari Ruang Kendali.')
-                    ->default(true)
+                    ->helperText(fn (): string => $election($arguments, $record)?->attendees()->exists()
+                        ? 'HP warga bisa langsung memilih. Matikan bila ingin membuka voting nanti dari Ruang Kendali.'
+                        : 'Belum ada warga yang didata di Meja Pintu. Sebaiknya data warga dulu, lalu buka voting dari Ruang Kendali.')
+                    ->default(fn (): bool => (bool) $election($arguments, $record)?->attendees()->exists())
                     ->live() : null,
                 $election($arguments, $record)?->isDadakan() ? TextInput::make('minutes')
                     ->label('Durasi (menit)')
@@ -55,7 +59,7 @@ class QuickStart
                     ->default(fn (): int => $election($arguments, $record)?->defaultWaveMinutes() ?? 5)
                     ->visible(fn (Get $get): bool => (bool) $get('open_now')) : null,
             ])))
-            ->action(function (array $data, array $arguments, ?Model $record = null) use ($election, $isSuperAdmin, $after): void {
+            ->action(function (array $data, array $arguments, Component $livewire, ?Model $record = null) use ($election, $isSuperAdmin, $after): void {
                 $record = $election($arguments, $record);
                 abort_unless($record !== null && $isSuperAdmin(), 403);
 
@@ -91,6 +95,8 @@ class QuickStart
                 if ($after !== null) {
                     $after($record->fresh());
                 }
+
+                ReloadPage::now($livewire);
             });
     }
 
@@ -118,7 +124,7 @@ class QuickStart
                 Textarea::make('note')->label('Alasan')->default('Data latihan')->required()->maxLength(500),
                 Reauthenticate::field(),
             ])
-            ->action(function (array $data, array $arguments, ?Model $record = null) use ($election, $isSuperAdmin): void {
+            ->action(function (array $data, array $arguments, Component $livewire, ?Model $record = null) use ($election, $isSuperAdmin): void {
                 $target = $election($arguments, $record);
                 abort_unless($target !== null && $isSuperAdmin(), 403);
 
@@ -134,6 +140,7 @@ class QuickStart
                 }
 
                 Notification::make()->title("Pemilihan \"{$target->name}\" dibatalkan dan disembunyikan.")->success()->send();
+                ReloadPage::now($livewire);
             });
     }
 }

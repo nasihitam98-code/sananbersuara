@@ -45,7 +45,7 @@
                     <x-filament::section>
                         <p class="text-sm text-gray-500">{{ $row['title'] }}</p>
                         <p class="text-3xl font-black tabular-nums">{{ $row['voted'] }} <span class="text-base font-normal text-gray-500">dari {{ $row['eligible'] }}</span></p>
-                        <p class="text-sm">{{ $row['percent'] }}% sudah memilih</p>
+                        <p class="text-sm">{{ \Illuminate\Support\Number::percentage($row['percent'], maxPrecision: 1) }} sudah memilih</p>
                     </x-filament::section>
                 @endforeach
             </div>

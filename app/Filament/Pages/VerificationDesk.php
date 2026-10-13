@@ -7,6 +7,7 @@ use App\Enums\OutcomeStatus;
 use App\Enums\ReportStatus;
 use App\Filament\Support\InElectionMenu;
 use App\Filament\Support\Reauthenticate;
+use App\Filament\Support\ReloadPage;
 use App\Filament\Support\Workspace;
 use App\Models\Ballot;
 use App\Models\Election;
@@ -174,7 +175,7 @@ class VerificationDesk extends Page
             ->visible(fn (): bool => in_array($this->election()?->status, [ElectionStatus::Verifikasi, ElectionStatus::Unpublished], true))
             ->disabled(fn (): bool => $this->publishProblems() !== [])
             ->modalHeading('Publikasikan hasil resmi?')
-            ->modalDescription('Halaman publik akan menampilkan calon yang terpilih/lolos (tanpa jumlah suara).')
+            ->modalDescription('Halaman publik akan menampilkan calon yang terpilih/lolos beserta perolehan suara resmi tiap calon.')
             ->schema([Reauthenticate::field()])
             ->action(fn () => $this->guard(fn () => app(ElectionLifecycle::class)->publish($this->authorizedElection(), auth()->user()), 'Hasil dipublikasikan.'));
     }
@@ -437,6 +438,8 @@ class VerificationDesk extends Page
 
     private function guard(callable $callback, string $success): void
     {
+        $statusBefore = $this->election()?->status;
+
         try {
             $callback();
         } catch (VotingException $exception) {
@@ -446,6 +449,10 @@ class VerificationDesk extends Page
         }
 
         Notification::make()->title($success)->success()->send();
+
+        if ($this->election()?->fresh()?->status !== $statusBefore) {
+            ReloadPage::now($this);
+        }
     }
 
     public function reportStatusColor(?ReportStatus $status): string

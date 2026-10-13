@@ -42,7 +42,7 @@
                             <td>{{ $ballot['title'] }}</td>
                             <td class="num">{{ $ballot['participation']['eligible'] ?? '-' }}</td>
                             <td class="num">{{ $ballot['participation']['voted'] ?? '-' }}</td>
-                            <td class="num">{{ $ballot['participation']['percent'] ?? '-' }}</td>
+                            <td class="num">{{ isset($ballot['participation']['percent']) ? \Illuminate\Support\Number::format($ballot['participation']['percent'], maxPrecision: 1) : '-' }}</td>
                             <td class="num">{{ $ballot['participation']['added_during_live'] ?? '-' }}</td>
                         </tr>
                     @endforeach
@@ -66,7 +66,7 @@
             @php($p = $data['participation'])
             <table class="kv">
                 <tr><th>Peserta hadir terdata</th><td>{{ $p['registered'] }}</td></tr>
-                <tr><th>Peserta yang memilih</th><td>{{ $p['voted'] }} ({{ $p['percent'] }}%)</td></tr>
+                <tr><th>Peserta yang memilih</th><td>{{ $p['voted'] }} ({{ \Illuminate\Support\Number::percentage($p['percent'], maxPrecision: 1) }})</td></tr>
                 <tr><th>Memilih dengan bantuan panitia</th><td>{{ $p['assisted'] }}</td></tr>
                 <tr><th>Datang terlambat (didata setelah voting dibuka)</th><td>{{ $p['late'] }}</td></tr>
                 <tr>
@@ -100,7 +100,7 @@
                                 <td>{{ $row['number'] }}</td>
                                 <td>{{ $row['name'] }}{{ $row['withdrawn'] ? ' (mengundurkan diri)' : '' }}</td>
                                 <td class="num">{{ $row['votes'] }}</td>
-                                <td class="num">{{ $row['percent'] }}</td>
+                                <td class="num">{{ \Illuminate\Support\Number::format($row['percent'], maxPrecision: 1) }}</td>
                             </tr>
                         @endforeach
                     </tbody>

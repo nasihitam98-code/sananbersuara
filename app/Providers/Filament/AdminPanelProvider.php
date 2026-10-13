@@ -5,9 +5,12 @@ namespace App\Providers\Filament;
 use App\Enums\ElectionMode;
 use App\Filament\Pages\Auth\EditProfile;
 use App\Filament\Resources\Elections\ElectionResource;
+use App\Filament\Resources\Elections\RelationManagers\BallotsRelationManager;
+use App\Filament\Resources\Elections\RelationManagers\StaffRelationManager;
 use App\Filament\Support\Workspace;
 use App\Http\Middleware\EnsurePasswordChanged;
 use Filament\Auth\MultiFactor\Email\EmailAuthentication;
+use Filament\FontProviders\LocalFontProvider;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -26,6 +29,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\HtmlString;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class AdminPanelProvider extends PanelProvider
@@ -47,10 +51,12 @@ class AdminPanelProvider extends PanelProvider
                 config('voting.admin_two_factor') ? [EmailAuthentication::make()] : [],
                 isRequired: (bool) config('voting.admin_two_factor'),
             )
+            // Font & warna sama dengan portal publik. Font disimpan sendiri (CSP font-src 'self'); @font-face di tema admin.
+            ->font('Noto Sans KR', provider: LocalFontProvider::class)
             ->colors([
                 'primary' => Color::Indigo,
                 'info' => Color::Blue,
-                'success' => Color::Teal,
+                'success' => Color::Emerald,
                 'warning' => Color::Amber,
                 'danger' => Color::Red,
                 'gray' => Color::Slate,
@@ -78,6 +84,12 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->sidebarCollapsibleOnDesktop()
             ->renderHook(PanelsRenderHook::GLOBAL_SEARCH_BEFORE, fn (): View => view('filament.workspace-switcher'))
+            // Tujuan tombol "Kelola surat suara" / "Tugaskan" di daftar Persiapan: layar langsung bergulir ke tabelnya.
+            ->renderHook(
+                PanelsRenderHook::RESOURCE_RELATION_MANAGER_BEFORE,
+                fn (): HtmlString => new HtmlString('<span id="kelola" class="block scroll-mt-24"></span>'),
+                scopes: [BallotsRelationManager::class, StaffRelationManager::class],
+            )
             ->databaseNotifications()
             ->databaseNotificationsPolling('30s')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')

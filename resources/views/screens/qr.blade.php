@@ -39,7 +39,7 @@
             <div class="screen__bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $status['percent'] }}" data-bar>
                 <div class="screen__bar-fill" data-bar-fill></div>
             </div>
-            <p class="screen__percent"><span data-percent>{{ $status['percent'] }}</span>%</p>
+            <p class="screen__percent"><span data-percent>{{ \Illuminate\Support\Number::format($status['percent'], maxPrecision: 1) }}</span>%</p>
 
             <p class="screen__hint" data-hint>Siapkan kertas PIN Anda. Halaman di HP berubah sendiri saat voting dibuka.</p>
         </section>

@@ -25,6 +25,9 @@ class BallotsRelationManager extends RelationManager
 {
     protected static string $relationship = 'ballots';
 
+    /** Dimuat langsung (bukan saat digulir) agar tombol "Kelola surat suara" tidak berakhir di kotak kosong. */
+    protected static bool $isLazy = false;
+
     protected static ?string $title = 'Surat suara';
 
     protected static ?string $modelLabel = 'surat suara';

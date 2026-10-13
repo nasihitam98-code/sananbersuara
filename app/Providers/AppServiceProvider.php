@@ -6,6 +6,7 @@ use App\Models\AppSetting;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Number;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Throwable;
@@ -27,6 +28,9 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureRateLimits();
         $this->applyDisplaySettings();
+
+        // Angka & persen mengikuti bahasa aplikasi (Indonesia: "66,7%", bukan "66.7%").
+        Number::useLocale(config('app.locale'));
 
         Password::defaults(fn (): Password => Password::min(12)
             ->letters()

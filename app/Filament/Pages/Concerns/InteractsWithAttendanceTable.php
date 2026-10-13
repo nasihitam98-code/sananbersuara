@@ -37,7 +37,7 @@ trait InteractsWithAttendanceTable
     protected const PARTICIPATION_COUNT_SQL = '(select count(*) from attendee_participations p where p.attendee_id = attendees.id and p.round_id = ? and p.active_key = 1)';
 
     /**
-     * PIN baru yang baru dibuat; tampil sekali sampai ditekan "Sudah dicatat".
+     * PIN baru yang baru dibuat; tampil sekali sampai ditekan "Sudah diberikan".
      *
      * @var array{name: string, number: string, pin: string, cancelled: int}|null
      */

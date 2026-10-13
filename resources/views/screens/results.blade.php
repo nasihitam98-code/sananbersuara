@@ -21,7 +21,7 @@
             <p class="results__participation">
                 Hadir terdata <strong>{{ $participation['attendees'] }}</strong>
                 · Memilih <strong>{{ $participation['voted'] }}</strong>
-                · Partisipasi <strong>{{ $participation['percent'] }}%</strong>
+                · Partisipasi <strong>{{ \Illuminate\Support\Number::percentage($participation['percent'], maxPrecision: 1) }}</strong>
             </p>
         @endif
 
@@ -50,13 +50,11 @@
                 @if ($top > 0)
                     {{-- Podium per peringkat (bukan per baris): calon seri berbagi satu tempat, tidak ada yang "dipilih" sistem. --}}
                     @php($podiumGroups = collect($rows)->filter(fn (array $row): bool => $row['votes'] > 0 && $row['rank'] <= 3)->groupBy('rank')->values()->take(3))
-                    <div class="podium hidden" data-podium>
-                        @foreach ([1, 0, 2] as $podiumIndex)
+                    {{-- Hanya tempat yang terisi (calon dengan suara); urutan klasik #2 · #1 · #3, tetap di tengah. --}}
+                    @php($podiumOrder = match ($podiumGroups->count()) { 1 => [0], 2 => [1, 0], default => [1, 0, 2] })
+                    <div class="podium podium--{{ count($podiumOrder) }} hidden" data-podium>
+                        @foreach ($podiumOrder as $podiumIndex)
                             @php($group = $podiumGroups->get($podiumIndex))
-                            @if ($group === null)
-                                <div></div>
-                                @continue
-                            @endif
                             @php($first = $group->first())
                             <div class="podium__place podium__place--{{ $podiumIndex + 1 }}">
                                 <span class="podium__badge podium__badge--{{ $podiumIndex + 1 }}">{{ $first['rank'] }}</span>
@@ -74,7 +72,7 @@
                                         {{ $group->take(3)->map(fn (array $row): string => $row['candidate']->name)->implode(', ') }}{{ $group->count() > 3 ? ', dan '.($group->count() - 3).' lainnya' : '' }}
                                     </p>
                                 @endif
-                                <p class="muted">{{ $first['votes'] }} suara{{ $group->count() > 1 ? ' masing-masing' : '' }} · {{ $first['percent'] }}%</p>
+                                <p class="muted">{{ $first['votes'] }} suara{{ $group->count() > 1 ? ' masing-masing' : '' }} · {{ \Illuminate\Support\Number::percentage($first['percent'], maxPrecision: 1) }}</p>
                                 <div class="podium__block">#{{ $first['rank'] }}</div>
                             </div>
                         @endforeach
@@ -85,7 +83,8 @@
                     @foreach ($rows as $index => $row)
                         @php($candidate = $row['candidate'])
                         <li class="results__row hidden {{ $top > 0 && $row['votes'] === $top ? 'results__row--top' : '' }}" data-row data-index="{{ $index }}" data-votes="{{ $row['votes'] }}" data-width="{{ $top > 0 ? round($row['votes'] / $top * 100, 1) : 0 }}">
-                            <span class="results__rank">#{{ $row['rank'] }}</span>
+                            {{-- Calon tanpa suara tidak diberi peringkat (bukan "#3" bersama). --}}
+                            <span class="results__rank">{{ $row['votes'] > 0 ? '#'.$row['rank'] : '–' }}</span>
                             @if ($candidate->photoUrl('thumb'))
                                 <img class="results__photo" src="{{ $candidate->photoUrl('thumb') }}" alt="Foto {{ $candidate->name }}">
                             @else
@@ -96,7 +95,7 @@
                                 <div class="results__bar" role="presentation"><div class="results__bar-fill" data-bar></div></div>
                             </div>
                             <div class="results__score">
-                                <p class="results__percent">{{ $row['percent'] }}%</p>
+                                <p class="results__percent">{{ \Illuminate\Support\Number::percentage($row['percent'], maxPrecision: 1) }}</p>
                                 <p class="muted"><span data-count>0</span> suara</p>
                             </div>
                         </li>

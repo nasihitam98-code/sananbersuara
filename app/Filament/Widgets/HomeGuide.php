@@ -17,6 +17,7 @@ use App\Filament\Resources\Elections\ElectionResource;
 use App\Filament\Resources\Units\UnitResource;
 use App\Filament\Resources\Users\UserResource;
 use App\Filament\Resources\Voters\VoterResource;
+use App\Filament\Support\ElectionChecklist;
 use App\Filament\Support\QuickStart;
 use App\Filament\Support\Workspace;
 use App\Models\Election;
@@ -357,13 +358,25 @@ class HomeGuide extends Widget implements HasActions, HasSchemas
         $manager = ElectionResource::canAccess();
         $startedBy = $manager ? 'buka halaman pemilihan lalu klik Mulai Pemilihan.' : 'pemilihan dimulai oleh Super Admin.';
 
+        // Draf: petunjuk mengikuti daftar Persiapan (langkah pertama yang belum beres), bukan kalimat tetap.
+        $pending = $election->status === ElectionStatus::Draft
+            ? collect(ElectionChecklist::steps($election))->first(fn (array $step): bool => ! $step['done'] && $step['url'] !== null)
+            : null;
+
         [$hint, $options] = match ($election->status) {
-            ElectionStatus::Draft => [$manager
-                ? 'Isi surat suara dan calon. Setelah lengkap, tekan Mulai Pemilihan di atas: otomatis diperiksa, dimulai, dan voting dibuka.'
-                : 'Super Admin sedang menyiapkan surat suara dan calon. Menu Anda aktif setelah pemilihan ditandai Siap.', [
+            ElectionStatus::Draft => match (true) {
+                ! $manager => ['Super Admin sedang menyiapkan surat suara dan calon. Menu Anda aktif setelah pemilihan ditandai Siap.', []],
+                $pending !== null => ["Berikutnya: {$pending['title']}. {$pending['detail']}", [
+                    fn (): array => [$pending['actionLabel'], $pending['url']],
                     fn () => $edit('Buka halaman pemilihan'),
-                    fn () => CandidateResource::canAccess() ? ['Isi calon', CandidateResource::getUrl()] : null,
                 ]],
+                $dadakan => ['Persiapan lengkap. Tandai Siap di halaman pemilihan supaya Meja Pintu bisa mulai mendata warga yang datang.', [
+                    fn () => $edit('Buka halaman pemilihan (Tandai Siap)'),
+                ]],
+                default => ['Persiapan lengkap. Tandai Siap di halaman pemilihan, lalu pasang laptop meja dan bilik.', [
+                    fn () => $edit('Buka halaman pemilihan (Tandai Siap)'),
+                ]],
+            },
             ElectionStatus::Ready => $dadakan
                 ? ['Sudah siap. Petugas pintu sudah bisa mendata yang datang. Saat acara dimulai: '
                     .($manager ? 'tekan Mulai Pemilihan di atas (voting langsung dibuka).' : 'pemilihan dimulai oleh Super Admin.'), [

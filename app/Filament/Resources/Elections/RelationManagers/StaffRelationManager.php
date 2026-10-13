@@ -26,6 +26,9 @@ class StaffRelationManager extends RelationManager
 {
     protected static string $relationship = 'staff';
 
+    /** Dimuat langsung (bukan saat digulir) agar tombol "Tugaskan" tidak berakhir di kotak kosong. */
+    protected static bool $isLazy = false;
+
     protected static ?string $title = 'Panitia & Petugas Pintu';
 
     protected static ?string $modelLabel = 'penugasan';

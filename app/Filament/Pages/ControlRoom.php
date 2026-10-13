@@ -12,6 +12,7 @@ use App\Filament\Pages\Concerns\InteractsWithElection;
 use App\Filament\Support\InElectionMenu;
 use App\Filament\Support\QuickStart;
 use App\Filament\Support\Reauthenticate;
+use App\Filament\Support\ReloadPage;
 use App\Filament\Support\Workspace;
 use App\Models\Election;
 use App\Models\User;
@@ -277,6 +278,8 @@ class ControlRoom extends Page implements HasTable
 
     private function guard(callable $callback, string $success): void
     {
+        $statusBefore = $this->election()?->status;
+
         try {
             $callback();
         } catch (VotingException $exception) {
@@ -286,6 +289,10 @@ class ControlRoom extends Page implements HasTable
         }
 
         Notification::make()->title($success)->success()->send();
+
+        if ($this->election()?->fresh()?->status !== $statusBefore) {
+            ReloadPage::now($this);
+        }
     }
 
     public function waveStatusLabel(?WaveStatus $status): string

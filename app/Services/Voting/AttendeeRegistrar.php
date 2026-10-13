@@ -33,6 +33,7 @@ class AttendeeRegistrar
         }
 
         $pin = $this->pins->generate();
+        $name = self::tidyName($name);
 
         $attendee = DB::transaction(function () use ($election, $name, $unitId, $actor, $pin): Attendee {
             Election::query()->whereKey($election->id)->lockForUpdate()->first();
@@ -56,6 +57,22 @@ class AttendeeRegistrar
         ], actor: $actor);
 
         return ['attendee' => $attendee, 'pin' => $pin];
+    }
+
+    /**
+     * Rapikan nama yang diketik petugas: spasi berlebih dibuang; bila diketik huruf kecil semua atau huruf besar semua
+     * ("budi santoso", "BUDI SANTOSO") jadi "Budi Santoso". Nama dengan huruf campuran (mis. "H. Abdul McLean")
+     * dibiarkan karena dianggap sengaja.
+     */
+    public static function tidyName(string $name): string
+    {
+        $name = trim((string) preg_replace('/\s+/u', ' ', $name));
+
+        if ($name === mb_strtolower($name) || $name === mb_strtoupper($name)) {
+            return mb_convert_case(mb_strtolower($name), MB_CASE_TITLE, 'UTF-8');
+        }
+
+        return $name;
     }
 
     /**

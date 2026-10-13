@@ -11,20 +11,20 @@
         @if ($issued)
             <x-filament::section>
                 <div class="text-center space-y-3" role="status">
-                    <p class="text-base text-gray-600 dark:text-gray-300">Cetak kartu atau tuliskan di kertas, lalu berikan kepada:</p>
+                    <p class="text-base text-gray-600 dark:text-gray-300">Kartu PIN dicetak otomatis. Berikan kertasnya kepada (atau tuliskan bila printer bermasalah):</p>
                     <p class="text-2xl font-bold">{{ $issued['name'] }}</p>
                     <p class="text-gray-600 dark:text-gray-300">No. hadir {{ $issued['number'] }}</p>
                     <p class="text-sm font-semibold uppercase tracking-wide text-gray-500">PIN</p>
                     <p class="font-mono font-black tracking-[0.4em] text-7xl text-primary-700 dark:text-primary-300">{{ $issued['pin'] }}</p>
-                    <p class="text-sm text-danger-600 font-semibold">PIN hanya tampil sekali. Setelah ditekan "Sudah dicatat", PIN tidak bisa dilihat lagi.</p>
+                    <p class="text-sm text-danger-600 font-semibold">PIN hanya tampil sekali. Setelah ditekan "Sudah diberikan", PIN tidak bisa dilihat lagi.</p>
                     @include('filament.pages.partials.pin-card-print', ['card' => [
                         'name' => $issued['name'],
                         'number' => $issued['number'],
                         'pin' => $issued['pin'],
                         'election' => $election->name,
-                    ]])
-                    <x-filament::button size="xl" color="success" wire:click="acknowledge" class="w-full">
-                        Sudah dicatat, lanjut orang berikutnya
+                    ], 'auto' => true])
+                    <x-filament::button size="xl" color="primary" icon="heroicon-m-arrow-right" icon-position="after" wire:click="acknowledge" class="w-full">
+                        Sudah diberikan, lanjut orang berikutnya
                     </x-filament::button>
                 </div>
             </x-filament::section>
@@ -67,6 +67,16 @@
                     <li class="py-2 text-gray-500">Belum ada yang didata.</li>
                 @endforelse
             </ul>
+        </x-filament::section>
+
+        {{-- Agar kartu langsung keluar dari printer thermal tanpa jendela "Print" di setiap pendaftaran. --}}
+        <x-filament::section heading="Printer thermal: cetak langsung tanpa jendela print" collapsible collapsed>
+            <ol class="list-decimal space-y-2 ps-5 text-sm text-gray-700 dark:text-gray-300">
+                <li>Pasang driver printer thermal (58 mm atau 80 mm) di laptop Meja Pintu, lalu jadikan <strong>printer default</strong> di Windows (Pengaturan → Printer).</li>
+                <li>Buat shortcut Google Chrome khusus Meja Pintu: klik kanan shortcut Chrome → <em>Properties</em> → di kolom <em>Target</em>, tambahkan di paling belakang: <code class="rounded bg-gray-100 px-1 dark:bg-white/10">--kiosk-printing</code></li>
+                <li>Tutup semua jendela Chrome, lalu buka panel lewat shortcut tadi. Setiap selesai mendaftarkan, kartu PIN langsung tercetak tanpa ditanya.</li>
+                <li>Tanpa langkah di atas, jendela print tetap muncul otomatis: cukup tekan <strong>Enter</strong> / <strong>Print</strong>.</li>
+            </ol>
         </x-filament::section>
     @endif
 </x-filament-panels::page>

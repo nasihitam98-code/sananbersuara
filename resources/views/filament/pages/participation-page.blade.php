@@ -14,7 +14,7 @@
                 <x-filament::section :heading="$block['title']">
                     @if ($block['total'])
                         <div class="mb-4">
-                            <p class="text-4xl font-black tabular-nums">{{ $block['total']['voted'] }} <span class="text-lg font-normal text-gray-500">dari {{ $block['total']['eligible'] }} = {{ $block['total']['percent'] }}%</span></p>
+                            <p class="text-4xl font-black tabular-nums">{{ $block['total']['voted'] }} <span class="text-lg font-normal text-gray-500">dari {{ $block['total']['eligible'] }} = {{ \Illuminate\Support\Number::percentage($block['total']['percent'], maxPrecision: 1) }}</span></p>
                             <div class="mt-2 h-4 w-full rounded-full bg-gray-100 dark:bg-white/10"><div class="h-4 rounded-full bg-primary-500" style="width: {{ $block['total']['percent'] }}%"></div></div>
                         </div>
                     @endif
@@ -25,7 +25,7 @@
                                 <p class="text-sm font-semibold">{{ $row['unit'] }}</p>
                                 <p class="text-2xl font-black tabular-nums">{{ $row['voted'] }}<span class="text-sm font-normal text-gray-500"> / {{ $row['eligible'] }}</span></p>
                                 <div class="mt-1 h-2 w-full rounded-full bg-gray-100 dark:bg-white/10"><div class="h-2 rounded-full bg-primary-500" style="width: {{ $row['percent'] }}%"></div></div>
-                                <p class="mt-1 text-xs text-gray-500">{{ $row['percent'] }}% · belum {{ $row['not_voted'] }}@if ($row['added_during_live']) · +{{ $row['added_during_live'] }} darurat @endif</p>
+                                <p class="mt-1 text-xs text-gray-500">{{ \Illuminate\Support\Number::percentage($row['percent'], maxPrecision: 1) }} · belum {{ $row['not_voted'] }}@if ($row['added_during_live']) · +{{ $row['added_during_live'] }} darurat @endif</p>
                             </div>
                         @endforeach
                     </div>

@@ -4,25 +4,58 @@
 @source '../../../../resources/views/filament/**/*';
 
 /*
- * Tampilan modern panel admin: latar lembut, bilah atas transparan, menu aktif berbentuk pil,
- * kartu membulat dengan bayangan halus. Hanya gaya; tidak mengubah perilaku.
+ * Panel admin senada dengan portal publik: font Noto Sans KR, header gradasi indigo → ungu → indigo dengan logo
+ * kotak merah, latar abu slate, kartu putih bersudut 12px bergaris tipis, banner beranda gradasi seperti portal.
+ * Hanya gaya; tidak mengubah perilaku.
  */
+
+/* Noto Sans KR, potongan huruf Latin (disimpan sendiri; CSP font-src 'self'). Lisensi SIL Open Font License 1.1. */
+@font-face {
+    font-family: 'Noto Sans KR';
+    font-style: normal;
+    font-weight: 300 900;
+    font-display: swap;
+    src: url('../../../fonts/noto-sans-kr-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 .fi-body {
-    @apply bg-gray-50 dark:bg-gray-950;
-    background-image: radial-gradient(60rem 28rem at 100% -10%, color-mix(in oklab, var(--primary-500) 9%, transparent), transparent);
-    background-attachment: fixed;
+    @apply dark:bg-gray-950;
+    background-color: #f1f5f9;
 }
 
+.dark .fi-body {
+    background-color: var(--gray-950);
+}
+
+/* ---------- Header atas: pita gradasi seperti portal ---------- */
 .fi-topbar {
-    @apply bg-white/80 shadow-none backdrop-blur-md dark:bg-gray-900/80;
+    background: linear-gradient(90deg, #1e1b4b, #581c87 50%, #312e81);
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18);
+    border-bottom: 0;
 }
 
+.fi-topbar .fi-brand-text {
+    color: #fff;
+}
+
+/* Ikon di header (buka/tutup menu, lonceng) jadi terang di atas pita gelap. */
+.fi-topbar .fi-icon-btn {
+    color: #c7d2fe;
+}
+
+.fi-topbar .fi-icon-btn:hover {
+    color: #fff;
+    background-color: rgb(255 255 255 / 0.1);
+}
+
+/* ---------- Menu kiri ---------- */
 .fi-sidebar-group-label {
     @apply text-xs font-semibold tracking-wider text-gray-400 uppercase dark:text-gray-500;
 }
 
 .fi-sidebar-item-btn {
-    @apply rounded-xl;
+    @apply rounded-lg;
 }
 
 .fi-sidebar-item.fi-active > .fi-sidebar-item-btn {
@@ -30,17 +63,21 @@
 }
 
 .fi-sidebar-item.fi-active .fi-sidebar-item-label {
-    @apply font-semibold;
+    @apply font-bold text-primary-700 dark:text-primary-300;
 }
 
-.fi-section:not(.fi-section-not-contained) {
-    @apply rounded-2xl shadow-sm;
-}
-
+/* ---------- Kartu & tabel: putih, sudut 12px, garis tipis, bayangan lembut (seperti kartu portal) ---------- */
+.fi-section:not(.fi-section-not-contained),
 .fi-ta-ctn {
-    @apply rounded-2xl shadow-sm;
+    @apply rounded-xl ring-gray-200 dark:ring-white/10;
+    box-shadow: 0 4px 20px -2px rgb(0 0 0 / 0.05);
 }
 
 .fi-header-heading {
-    @apply tracking-tight;
+    @apply font-black tracking-tight;
+}
+
+/* ---------- Banner beranda: gradasi indigo → ungu seperti banner portal ---------- */
+.fi-hero {
+    background: linear-gradient(135deg, #312e81, #581c87);
 }

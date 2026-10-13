@@ -142,18 +142,29 @@ class AdminAccessTest extends TestCase
         $door = $this->makeUser(User::ROLE_STAFF, StaffRole::PetugasPintu);
         $this->actingAs($door);
 
+        // Nama diketik huruf kecil semua → dirapikan; kartu PIN langsung dicetak (x-init), tombolnya untuk cetak ulang.
         $component = Livewire::test(DoorDesk::class)
-            ->fillForm(['name' => 'Budi Santoso'])
+            ->fillForm(['name' => '  budi   santoso '])
             ->call('register')
             ->assertSet('issued.name', 'Budi Santoso')
-            ->assertSee('Cetak kartu PIN');
+            ->assertSee('Cetak ulang kartu PIN')
+            ->assertSeeHtml('autoMode: true')
+            ->assertSeeHtml('x-init="if (autoMode && auto) { $nextTick(() => print()); }"');
 
         $pin = $component->get('issued.pin');
         $this->assertMatchesRegularExpression('/^\d{4}$/', $pin);
         $this->assertSame(1, Attendee::query()->count());
+        $this->assertSame('Budi Santoso', Attendee::query()->value('name'));
         $component->assertSeeHtml('<div class="pin">'.$pin.'</div>')->assertSee($this->election->name);
 
-        $component->call('acknowledge')->assertSet('issued', null)->assertDontSee('Cetak kartu PIN');
+        $component->call('acknowledge')->assertSet('issued', null)->assertDontSee('Cetak ulang kartu PIN');
+    }
+
+    public function test_door_desk_keeps_mixed_case_names_as_typed(): void
+    {
+        $this->assertSame('H. Abdul McLean', AttendeeRegistrar::tidyName('H. Abdul McLean'));
+        $this->assertSame('Siti Aminah', AttendeeRegistrar::tidyName('SITI AMINAH'));
+        $this->assertSame('Ni Luh Ayu', AttendeeRegistrar::tidyName("ni  luh\tayu"));
     }
 
     public function test_duplicate_name_requires_confirmation(): void
@@ -410,10 +421,14 @@ class AdminAccessTest extends TestCase
             ->assertActionExists('closeElection', fn (Action $action): bool => str_contains((string) $action->getModalDescription(), 'Masih ada 1 orang yang belum memilih.'))
             ->callAction('closeElection', ['current_password' => 'password'])
             ->assertHasNoFormErrors()
-            ->assertActionHidden('closeElection')
-            ->assertSee('Buka Layar Hasil');
+            // Status berubah → halaman dimuat ulang agar lencana status dan menu ikut segar.
+            ->assertRedirect();
 
         $this->assertSame(ElectionStatus::Ditutup, $this->election->fresh()->status);
+
+        Livewire::test(ControlRoom::class)
+            ->assertActionHidden('closeElection')
+            ->assertSee('Buka Layar Hasil');
     }
 
     public function test_staff_tab_only_shows_for_dadakan_elections(): void

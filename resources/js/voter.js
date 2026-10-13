@@ -322,8 +322,20 @@ function initBallotSteps(onChoose) {
     const nextBar = document.querySelector('[data-bar="choose"]');
     const reviewBar = document.querySelector('[data-bar="review"]');
 
+    const hint = nextBar.querySelector('.actionbar__hint');
+    const emptyHint = hint?.textContent ?? '';
+
     form.addEventListener('change', () => {
-        next.disabled = !form.querySelector('input[name="candidate"]:checked');
+        const checked = form.querySelector('input[name="candidate"]:checked');
+        next.disabled = !checked;
+
+        // Petunjuk di atas tombol ikut berubah: sebutkan calon yang dipilih, bukan "pilih dulu".
+        if (hint) {
+            const card = checked?.closest('.candidate');
+            hint.textContent = card ? `Dipilih: Nomor ${card.dataset.number} · ${card.dataset.name}` : emptyHint;
+            hint.classList.toggle('actionbar__hint--chosen', Boolean(card));
+        }
+
         onChoose();
     });
 

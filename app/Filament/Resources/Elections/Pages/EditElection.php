@@ -7,6 +7,7 @@ use App\Filament\Pages\ControlRoom;
 use App\Filament\Resources\Elections\ElectionResource;
 use App\Filament\Support\ElectionChecklist;
 use App\Filament\Support\Reauthenticate;
+use App\Filament\Support\ReloadPage;
 use App\Models\Election;
 use App\Services\AuditLogger;
 use App\Services\Voting\ElectionLifecycle;
@@ -97,8 +98,8 @@ class EditElection extends EditRecord
             ->requiresConfirmation()
             ->modalHeading(fn (): string => $this->record->isPublic() ? 'Sembunyikan dari halaman publik?' : 'Tampilkan di halaman publik?')
             ->modalDescription(fn (): string => $this->record->isPublic()
-                ? 'Pemilihan ini, daftar calon, dan hasilnya tidak lagi muncul di halaman publik. Data tidak berubah.'
-                : 'Pemilihan ini dan daftar calonnya muncul di halaman publik. Hasil (nama yang ditetapkan dan partisipasi, tanpa angka suara calon) muncul setelah diumumkan.')
+                ? 'Pemilihan ini dan hasilnya tidak lagi muncul di halaman publik. Data tidak berubah.'
+                : 'Pemilihan ini muncul di halaman publik. Hasilnya (yang ditetapkan, perolehan suara tiap calon, dan partisipasi) muncul setelah diumumkan.')
             ->modalSubmitActionLabel(fn (): string => $this->record->isPublic() ? 'Sembunyikan' : 'Tampilkan')
             ->action(function (): void {
                 $show = ! $this->record->isPublic();
@@ -217,8 +218,13 @@ class EditElection extends EditRecord
                     ->action(fn (array $data) => $this->runLifecycle(fn (ElectionLifecycle $lifecycle) => $lifecycle->cancel($this->record, auth()->user(), $data['note']), 'Pemilihan dibatalkan.')),
             ])->label('Status')->icon('heroicon-o-adjustments-horizontal')->button()->color('gray'),
 
+            // Tidak menonjol (abu-abu, garis tepi) agar tidak tertukar dengan tombol utama; konfirmasinya tetap merah.
             DeleteAction::make()
                 ->label('Hapus')
+                ->color('gray')
+                ->outlined()
+                ->modalIconColor('danger')
+                ->modalSubmitAction(fn (Action $action): Action => $action->color('danger'))
                 ->modalDescription('Surat suara, calon, foto calon, dan penugasan panitia pemilihan ini ikut terhapus. Tidak bisa dibatalkan.')
                 ->using(function (Election $record): bool {
                     ElectionResource::deleteWithCandidatePhotos($record);
@@ -274,7 +280,6 @@ class EditElection extends EditRecord
         }
 
         Notification::make()->title($successMessage)->success()->send();
-        $this->record->refresh();
-        $this->refreshFormData(['name', 'mode', 'settings']);
+        ReloadPage::now($this);
     }
 }

@@ -1,31 +1,48 @@
 /*
- * Tampilan pemilih (HP) Mode Dadakan.
- * Token gaya diadaptasi dari referensi visual (docs/referensi/gaya-visual-01.jpg):
- * header indigo, latar abu-lavender, kartu putih membulat, biru utama, aksen merah dan hijau-toska.
- * Ukuran teks dan tombol sengaja lebih besar dari referensi untuk pemilih lansia.
+ * Tampilan pemilih: HP Mode Dadakan, bilik Mode Resmi, dan layar proyektor (QR, hasil).
+ * Font, warna, dan bentuk sama dengan portal publik (Noto Sans KR, palet indigo/ungu/biru/slate, foto bulat).
+ * Ukuran teks dan tombol sengaja lebih besar dari portal untuk pemilih lansia.
  */
 
+/* Noto Sans KR, potongan huruf Latin (26 KB, sekali unduh lalu tersimpan). Lisensi SIL Open Font License 1.1. */
+@font-face {
+    font-family: "Noto Sans KR";
+    font-style: normal;
+    font-weight: 300 900;
+    font-display: swap;
+    src: url("../fonts/noto-sans-kr-latin.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
-    --c-indigo-900: #1f1d5c;
-    --c-indigo-700: #2e2a86;
-    --c-indigo-500: #4b44c4;
-    --c-blue-600: #2453d6;
-    --c-blue-50: #eaf0ff;
-    --c-red-600: #d6303a;
-    --c-teal-600: #0f8f86;
-    --c-teal-50: #e3f6f4;
-    --c-amber-50: #fff6e0;
-    --c-amber-700: #8a5a00;
-    --c-bg: #f2f1f8;
+    --c-indigo-950: #1e1b4b;
+    --c-indigo-900: #312e81;
+    --c-indigo-700: #4338ca;
+    --c-indigo-500: #6366f1;
+    --c-purple-900: #581c87;
+    --c-blue-700: #1d4ed8;
+    --c-blue-600: #2563eb;
+    --c-blue-200: #bfdbfe;
+    --c-blue-50: #eff6ff;
+    --c-red-600: #dc2626;
+    --c-teal-600: #059669;
+    --c-teal-50: #ecfdf5;
+    --c-amber-50: #fffbeb;
+    --c-amber-700: #b45309;
+    --c-yellow: #facc15;
+    --c-bg: #f1f5f9;
     --c-card: #ffffff;
-    --c-text: #17172a;
-    --c-muted: #55556b;
-    --c-border: #d9d8e6;
-    --radius-lg: 18px;
-    --radius-md: 12px;
-    --shadow: 0 1px 2px rgba(23, 23, 42, 0.06), 0 6px 20px rgba(23, 23, 42, 0.06);
+    --c-soft: #f8fafc;
+    --c-text: #1e293b;
+    --c-text-strong: #0f172a;
+    --c-muted: #64748b;
+    --c-border: #cbd5e1;
+    --c-line: #e2e8f0;
+    --radius-lg: 14px;
+    --radius-md: 10px;
+    --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.06);
     --tap: 56px;
-    --font: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    --font: "Noto Sans KR", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 *,
@@ -41,28 +58,31 @@ html {
 body {
     margin: 0;
     min-height: 100vh;
-    background: linear-gradient(180deg, #ecebf6 0%, var(--c-bg) 240px);
+    background: var(--c-bg);
     color: var(--c-text);
     font-family: var(--font);
     font-size: 19px;
     line-height: 1.45;
 }
 
+/* Header pita seperti portal: gradasi indigo → ungu → indigo. */
 .topbar {
-    background: linear-gradient(120deg, var(--c-indigo-900), var(--c-indigo-700) 60%, var(--c-indigo-500));
+    background: linear-gradient(90deg, var(--c-indigo-950), var(--c-purple-900) 50%, var(--c-indigo-900));
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18);
     color: #fff;
     padding: 14px 16px 16px;
 }
 
 .topbar__label {
     font-size: 14px;
-    opacity: 0.85;
+    color: #c7d2fe;
     margin: 0;
 }
 
 .topbar__title {
     font-size: 21px;
-    font-weight: 700;
+    font-weight: 900;
+    letter-spacing: -0.01em;
     margin: 2px 0 0;
 }
 
@@ -72,8 +92,14 @@ body {
     padding: 16px 16px 132px;
 }
 
+/* Bilik di laptop: lebih lebar agar 3 calon berjajar. */
+.wrap--wide {
+    max-width: 1100px;
+}
+
 .card {
     background: var(--c-card);
+    border: 1px solid var(--c-line);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow);
     padding: 20px;
@@ -91,7 +117,10 @@ h2 {
 }
 
 h1 {
+    color: var(--c-text-strong);
     font-size: 26px;
+    font-weight: 900;
+    letter-spacing: -0.01em;
 }
 
 h2 {
@@ -107,10 +136,10 @@ h2 {
     display: inline-block;
     font-size: 15px;
     font-weight: 700;
-    color: var(--c-indigo-700);
+    color: var(--c-blue-700);
     background: var(--c-blue-50);
-    border-radius: 999px;
-    padding: 4px 12px;
+    border-radius: 6px;
+    padding: 3px 10px;
     margin-bottom: 10px;
 }
 
@@ -148,6 +177,7 @@ label {
 .input {
     width: 100%;
     min-height: var(--tap);
+    font-family: inherit;
     font-size: 22px;
     padding: 10px 16px;
     border: 2px solid var(--c-border);
@@ -170,8 +200,8 @@ label {
 }
 
 .error {
-    background: #fdecee;
-    color: #8f1520;
+    background: #fef2f2;
+    color: #991b1b;
     border-left: 6px solid var(--c-red-600);
     border-radius: var(--radius-md);
     padding: 12px 14px;
@@ -182,7 +212,7 @@ label {
 .notice {
     background: var(--c-amber-50);
     color: var(--c-amber-700);
-    border-left: 6px solid #e0a100;
+    border-left: 6px solid #f59e0b;
     border-radius: var(--radius-md);
     padding: 12px 14px;
     margin-bottom: 16px;
@@ -232,7 +262,7 @@ label {
 }
 
 .btn[disabled] {
-    background: #b9b8c9;
+    background: #94a3b8;
     color: #fff;
     cursor: not-allowed;
 }
@@ -310,6 +340,7 @@ label {
 .candidate input:checked + .candidate__body {
     border-color: var(--c-blue-600);
     background: var(--c-blue-50);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
 }
 
 .candidate__check {
@@ -329,7 +360,10 @@ label {
     color: #fff;
 }
 
-/* Mode Dadakan di HP: 2 calon per baris, foto kotak besar agar wajah mudah dikenali */
+/*
+ * Kartu calon berjajar seperti kartu hasil di portal: kotak lembut, foto bulat berbingkai di tengah, nomor berwarna,
+ * nama tebal. HP: 2 per baris. Yang dipilih: kotak biru + bingkai foto biru + tanda centang.
+ */
 .candidates--grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
@@ -344,61 +378,97 @@ label {
     position: relative;
     display: flex;
     flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    padding: 8px;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 10px 14px;
+    background: var(--c-soft);
+    border: 2px solid var(--c-line);
+    box-shadow: none;
+    text-align: center;
 }
 
 .candidates--grid .photo {
-    width: 100%;
+    width: min(132px, 78%);
     height: auto;
     aspect-ratio: 1;
+    padding: 3px;
+    border-radius: 50%;
+    background: var(--c-indigo-500);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
 }
 
 .candidates--grid .photo img,
 .candidates--grid .photo__initials {
-    border-radius: var(--radius-md);
+    border: 2px solid #fff;
+    border-radius: 50%;
+}
+
+.candidates--grid .photo img {
+    display: block;
+}
+
+.candidates--grid input:checked + .candidate__body .photo {
+    background: var(--c-blue-600);
 }
 
 .candidates--grid .photo__initials {
-    font-size: 44px;
+    font-size: 40px;
 }
 
+/* Nomor sudah tertulis di bawah foto (seperti di portal). */
 .candidates--grid .badge {
-    right: 6px;
-    bottom: 6px;
-    min-width: 40px;
-    height: 40px;
-    font-size: 18px;
+    display: none;
 }
 
 .candidates--grid .candidate__check {
     position: absolute;
-    top: 14px;
-    right: 14px;
+    top: 10px;
+    right: 10px;
     z-index: 1;
-    background: rgba(255, 255, 255, 0.9);
+    background: #fff;
 }
 
 .candidates--grid .candidate__text {
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 2px;
-    padding: 0 4px 4px;
 }
 
 .candidates--grid .candidate__number {
-    font-size: 14px;
+    color: var(--c-blue-600);
+    font-size: 15px;
 }
 
 .candidates--grid .candidate__name {
-    font-size: 18px;
+    font-size: 19px;
     overflow-wrap: anywhere;
 }
 
 .candidates--grid .tag {
     margin-top: 2px;
     font-size: 13px;
+}
+
+/* Bilik (laptop): 3 calon sebaris, foto lebih besar, seperti kartu Ketua RW di portal. */
+@media (min-width: 720px) {
+    .candidates--booth {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 300px));
+        justify-content: center;
+        gap: 18px;
+    }
+
+    .candidates--booth .candidate__body {
+        padding: 22px 14px 18px;
+    }
+
+    .candidates--booth .photo {
+        width: min(170px, 80%);
+    }
+
+    .candidates--booth .candidate__name {
+        font-size: 22px;
+    }
 }
 
 .photo {
@@ -414,7 +484,7 @@ label {
     height: 100%;
     border-radius: 50%;
     object-fit: cover;
-    background: #dcdbe9;
+    background: var(--c-line);
 }
 
 .photo__initials {
@@ -449,15 +519,16 @@ label {
 }
 
 .candidate__name {
+    color: var(--c-text-strong);
     font-size: 21px;
-    font-weight: 800;
-    line-height: 1.2;
+    font-weight: 900;
+    line-height: 1.25;
 }
 
 .candidate__origin {
     font-size: 15px;
-    font-weight: 700;
-    color: var(--c-indigo-700);
+    font-weight: 500;
+    color: var(--c-muted);
 }
 
 .candidate__origin:empty {
@@ -499,6 +570,11 @@ label {
     margin: 0 0 8px;
 }
 
+.actionbar__hint--chosen {
+    color: var(--c-blue-700);
+    font-weight: 700;
+}
+
 /* Review */
 .review {
     text-align: center;
@@ -508,6 +584,14 @@ label {
     width: 168px;
     height: 168px;
     margin: 8px auto 16px;
+    padding: 4px;
+    border-radius: 50%;
+    background: var(--c-blue-600);
+}
+
+.review .photo img,
+.review .photo .photo__initials {
+    border: 3px solid #fff;
 }
 
 .review .photo__initials {
@@ -577,7 +661,7 @@ label {
 
 .done {
     min-height: 100vh;
-    background: var(--c-teal-600);
+    background: linear-gradient(160deg, var(--c-teal-600), #047857);
     color: #fff;
     display: grid;
     place-items: center;
@@ -599,6 +683,7 @@ label {
 }
 
 .done h1 {
+    color: #fff;
     font-size: 32px;
 }
 
@@ -865,7 +950,7 @@ body[data-phase="finished"] .screen__grid {
 .podium__photo--initials {
     display: grid;
     place-items: center;
-    background: #dcdbe9;
+    background: var(--c-line);
     color: var(--c-indigo-700);
     font-weight: 800;
 }
@@ -924,6 +1009,17 @@ body[data-phase="finished"] .screen__grid {
     animation: results-in 0.7s ease-out;
 }
 
+/* Podium selalu di tengah, selebar jumlah tempat yang terisi. */
+.podium--1 {
+    grid-template-columns: minmax(0, 360px);
+    justify-content: center;
+}
+
+.podium--2 {
+    grid-template-columns: repeat(2, minmax(0, 360px));
+    justify-content: center;
+}
+
 .podium__place {
     display: flex;
     flex-direction: column;
@@ -958,7 +1054,7 @@ body[data-phase="finished"] .screen__grid {
     height: 7rem;
     border-radius: 50%;
     object-fit: cover;
-    border: 4px solid #d9d8e6;
+    border: 4px solid var(--c-line);
 }
 
 .podium__place--1 .podium__photo {

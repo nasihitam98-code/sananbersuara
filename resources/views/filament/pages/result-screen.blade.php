@@ -36,7 +36,7 @@
 
         @if ($p)
         <div class="grid gap-4 grid-cols-3">
-            @foreach ([['Hadir terdata', $p['attendees']], ['Memilih', $p['voted']], ['Partisipasi', $p['percent'].'%']] as [$label, $value])
+            @foreach ([['Hadir terdata', $p['attendees']], ['Memilih', $p['voted']], ['Partisipasi', \Illuminate\Support\Number::percentage($p['percent'], maxPrecision: 1)]] as [$label, $value])
                 <x-filament::section>
                     <p class="text-sm text-gray-500">{{ $label }}</p>
                     <p class="text-3xl font-black tabular-nums">{{ $value }}</p>
@@ -112,9 +112,15 @@
 
                 {{-- Podium tiga teratas, muncul setelah semua peringkat dibuka. --}}
                 @if ($top > 0)
-                    <div x-show="shown === total" x-transition.duration.700ms class="mb-8 grid grid-cols-3 items-end gap-4 text-center">
-                        {{-- Per peringkat (bukan per baris): calon seri berbagi satu tempat, tidak ada yang "dipilih" sistem. --}}
-                        @php($podiumGroups = collect($rows)->filter(fn (array $row): bool => $row['votes'] > 0 && $row['rank'] <= 3)->groupBy('rank')->values()->take(3))
+                    {{-- Per peringkat (bukan per baris): calon seri berbagi satu tempat, tidak ada yang "dipilih" sistem. --}}
+                    @php($podiumGroups = collect($rows)->filter(fn (array $row): bool => $row['votes'] > 0 && $row['rank'] <= 3)->groupBy('rank')->values()->take(3))
+                    {{-- Selebar jumlah tempat yang terisi, tetap di tengah (tidak ada kolom kosong). --}}
+                    <div x-show="shown === total" x-transition.duration.700ms @class([
+                        'mx-auto mb-8 grid items-end gap-4 text-center',
+                        'max-w-xs grid-cols-1' => $podiumGroups->count() === 1,
+                        'max-w-2xl grid-cols-2' => $podiumGroups->count() === 2,
+                        'grid-cols-3' => $podiumGroups->count() >= 3,
+                    ])>
                         @foreach ([1 => 'h-28', 0 => 'h-40', 2 => 'h-20'] as $podiumIndex => $height)
                             @php($group = $podiumGroups->get($podiumIndex))
                             @if ($group !== null)
@@ -138,7 +144,7 @@
                                         @endif
                                         <p class="{{ $podiumIndex === 0 ? 'text-2xl' : 'text-lg' }} font-bold">{{ $podium['candidate']->name }}</p>
                                     @endif
-                                    <p class="text-gray-500">{{ $podium['votes'] }} suara{{ $group->count() > 1 ? ' masing-masing' : '' }} · {{ $podium['percent'] }}%</p>
+                                    <p class="text-gray-500">{{ $podium['votes'] }} suara{{ $group->count() > 1 ? ' masing-masing' : '' }} · {{ \Illuminate\Support\Number::percentage($podium['percent'], maxPrecision: 1) }}</p>
                                     <div class="{{ $height }} grid w-full place-items-center rounded-t-xl text-3xl font-black text-white {{ $podiumIndex === 0 ? 'bg-warning-400' : 'bg-primary-400' }}">#{{ $podium['rank'] }}</div>
                                 </div>
                             @else
@@ -174,7 +180,7 @@
                             "
                             class="grid grid-cols-[3rem_3.5rem_1fr_auto] items-center gap-3"
                         >
-                            <span class="text-2xl font-black text-gray-400 tabular-nums">#{{ $row['rank'] }}</span>
+                            <span class="text-2xl font-black text-gray-400 tabular-nums">{{ $row['votes'] > 0 ? '#'.$row['rank'] : '–' }}</span>
                             @if ($candidate->photoUrl('thumb'))
                                 <img src="{{ $candidate->photoUrl('thumb') }}" alt="Foto {{ $candidate->name }}" class="h-14 w-14 rounded-full object-cover">
                             @else
@@ -192,7 +198,7 @@
                                 </div>
                             </div>
                             <div class="text-right tabular-nums">
-                                <p class="text-2xl font-black">{{ $row['percent'] }}%</p>
+                                <p class="text-2xl font-black">{{ \Illuminate\Support\Number::percentage($row['percent'], maxPrecision: 1) }}</p>
                                 <p class="text-sm text-gray-500"><span x-text="count">{{ $row['votes'] }}</span> suara</p>
                             </div>
                         </li>

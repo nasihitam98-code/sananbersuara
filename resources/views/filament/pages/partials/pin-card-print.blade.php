@@ -2,9 +2,17 @@
     Tombol "Cetak kartu PIN" untuk printer thermal (58/80 mm) atau printer biasa.
     Kartu dicetak dari iframe sementara di browser; PIN tidak disimpan di server dan tidak masuk riwayat.
     Parameter: $card = ['name' => ..., 'number' => ..., 'pin' => ..., 'election' => ..., 'note' => ?string]
+               $auto = true → langsung dicetak begitu kartu muncul (Meja Pintu), bisa dimatikan per laptop.
 --}}
+@php($auto = $auto ?? false)
 <div
+    {{-- Jangan pakai @if di dalam tag ini: Livewire menyisipkan penanda komentar di setiap @if dan tag jadi rusak. --}}
     x-data="{
+        autoMode: {{ $auto ? 'true' : 'false' }},
+        auto: (() => { try { return localStorage.getItem('rtrw.autoPrint') !== '0'; } catch (e) { return true; } })(),
+        remember() {
+            try { localStorage.setItem('rtrw.autoPrint', this.auto ? '1' : '0'); } catch (e) {}
+        },
         print() {
             const frame = document.createElement('iframe');
             frame.setAttribute('aria-hidden', 'true');
@@ -21,6 +29,7 @@
             }, 150);
         },
     }"
+    x-init="if (autoMode && auto) { $nextTick(() => print()); }"
 >
     <template x-ref="card">
         <style>
@@ -64,6 +73,13 @@
     </template>
 
     <x-filament::button type="button" size="xl" color="gray" icon="heroicon-o-printer" x-on:click="print()" class="w-full">
-        Cetak kartu PIN
+        {{ $auto ? 'Cetak ulang kartu PIN' : 'Cetak kartu PIN' }}
     </x-filament::button>
+
+    @if ($auto)
+        <label class="mt-2 inline-flex cursor-pointer items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+            <input type="checkbox" x-model="auto" x-on:change="remember()" class="rounded border-gray-300 text-primary-600">
+            Cetak otomatis setiap selesai mendaftarkan (diingat di laptop ini)
+        </label>
+    @endif
 </div>

@@ -54,7 +54,7 @@ function render(status) {
     el('wave').textContent = status.wave_name ?? '';
     el('voted').textContent = status.voted;
     el('attendees').textContent = status.attendees;
-    el('percent').textContent = status.percent;
+    el('percent').textContent = Number(status.percent).toLocaleString('id-ID', { maximumFractionDigits: 1 });
     el('bar-fill').style.width = `${Math.min(100, status.percent)}%`;
     el('bar').setAttribute('aria-valuenow', String(status.percent));
     el('hint').textContent = hintFor(status);
