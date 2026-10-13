@@ -22,22 +22,22 @@
                 </thead>
                 <tbody>
                     @forelse ($this->backups() as $backup)
-                        <tr class="border-t border-gray-100 align-top dark:border-white/5">
+                        <tr class="border-t border-gray-100 align-middle dark:border-white/5">
                             <td class="py-2 pe-3">{{ $backup->created_at->format('d/m/Y H:i') }}</td>
-                            <td class="pe-3">{{ $backup->trigger }}</td>
-                            <td class="pe-3">
-                                <x-filament::badge :color="match ($backup->status) { 'BERHASIL' => 'success', 'GAGAL' => 'danger', default => 'warning' }">{{ $backup->status }}</x-filament::badge>
+                            <td class="py-2 pe-3">{{ $backup->triggerLabel() }}</td>
+                            <td class="py-2 pe-3">
+                                <x-filament::badge :color="$backup->statusColor()">{{ $backup->statusLabel() }}</x-filament::badge>
                                 @if ($backup->error)<br><span class="text-xs text-danger-600">{{ \Illuminate\Support\Str::limit($backup->error, 120) }}</span>@endif
                             </td>
-                            <td class="pe-3">{{ $backup->size_bytes ? $backup->humanSize() : '-' }}</td>
-                            <td class="pe-3">{{ $backup->offsite_copied ? '✓' : '—' }}</td>
-                            <td class="pe-3">{{ $backup->creator?->name ?? 'Sistem' }}</td>
-                            <td class="flex gap-2 py-2">
+                            <td class="py-2 pe-3">{{ $backup->size_bytes ? $backup->humanSize() : '-' }}</td>
+                            <td class="py-2 pe-3">{{ $backup->offsite_copied ? '✓' : '—' }}</td>
+                            <td class="py-2 pe-3">{{ $backup->creator?->name ?? 'Sistem' }}</td>
+                            <td class="py-2"><div class="flex justify-end gap-2">
                                 @if ($backup->status === 'BERHASIL')
                                     @if (($this->downloadAction)(['backup' => $backup->public_id])->isVisible()) {{ ($this->downloadAction)(['backup' => $backup->public_id]) }} @endif
                                     @if (($this->restoreAction)(['backup' => $backup->public_id])->isVisible()) {{ ($this->restoreAction)(['backup' => $backup->public_id]) }} @endif
                                 @endif
-                            </td>
+                            </div></td>
                         </tr>
                     @empty
                         <tr><td colspan="7" class="py-2 text-gray-500">Belum ada backup.</td></tr>

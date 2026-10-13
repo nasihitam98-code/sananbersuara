@@ -207,10 +207,13 @@ class HomeGuideTest extends TestCase
         // Tanpa logo: kotak merah bawaan dan ikon tab bawaan.
         $this->get(route('public.index'))->assertOk()->assertSee(asset(AppSetting::DEFAULT_FAVICON), false);
 
+        // Belum ada logo: tombol "Unggah logo", tombol Hapus belum ada.
         Livewire::test(SiteSettings::class)
-            ->fillForm(['logo_upload' => UploadedFile::fake()->image('logo-rw.png', 800, 400)])
-            ->call('save')
-            ->assertHasNoFormErrors();
+            ->assertActionVisible('uploadLogo')
+            ->assertActionHidden('removeLogo')
+            ->callAction('uploadLogo', ['logo' => UploadedFile::fake()->image('logo-rw.png', 800, 400)])
+            ->assertHasNoFormErrors()
+            ->assertRedirect(SiteSettings::getUrl());
 
         $first = AppSetting::get(AppSetting::LOGO_PATH);
         $this->assertNotNull($first);
@@ -224,20 +227,23 @@ class HomeGuideTest extends TestCase
             ->assertSee('masthead__logo--image', false)
             ->assertSee('<link rel="icon" href="'.$logoUrl.'">', false);
 
-        // Logo baru menggantikan yang lama (file lama dihapus).
+        // Logo baru menggantikan yang lama (file lama dihapus). Simpan teks tidak menyentuh logo.
         Livewire::test(SiteSettings::class)
-            ->fillForm(['logo_upload' => UploadedFile::fake()->image('logo-baru.jpg', 300, 300)])
-            ->call('save');
+            ->assertSee('Ganti logo')
+            ->callAction('uploadLogo', ['logo' => UploadedFile::fake()->image('logo-baru.jpg', 300, 300)]);
 
         $second = AppSetting::get(AppSetting::LOGO_PATH);
         $this->assertNotSame($first, $second);
         Storage::disk('public')->assertMissing($first);
         Storage::disk('public')->assertExists($second);
 
+        Livewire::test(SiteSettings::class)->call('save');
+        $this->assertSame($second, AppSetting::get(AppSetting::LOGO_PATH));
+
         // Hapus logo → kembali ke bawaan.
         Livewire::test(SiteSettings::class)
-            ->fillForm(['remove_logo' => true])
-            ->call('save');
+            ->assertActionVisible('removeLogo')
+            ->callAction('removeLogo');
 
         $this->assertNull(AppSetting::get(AppSetting::LOGO_PATH));
         Storage::disk('public')->assertMissing($second);
@@ -251,9 +257,8 @@ class HomeGuideTest extends TestCase
         $this->actingAs($this->superAdmin);
 
         Livewire::test(SiteSettings::class)
-            ->fillForm(['logo_upload' => UploadedFile::fake()->create('logo.png.php', 10, 'application/x-php')])
-            ->call('save')
-            ->assertHasFormErrors(['logo_upload']);
+            ->callAction('uploadLogo', ['logo' => UploadedFile::fake()->create('logo.png.php', 10, 'application/x-php')])
+            ->assertHasFormErrors(['logo']);
 
         $this->assertNull(AppSetting::get(AppSetting::LOGO_PATH));
     }

@@ -193,7 +193,9 @@ class GalleryPage extends Page
     public function assignAction(): Action
     {
         return Action::make('assign')
-            ->label('Pasang ke calon…')
+            ->label('Pasang')
+            ->icon(Heroicon::OutlinedUserPlus)
+            ->tooltip('Pasang foto ini ke calon')
             ->size('sm')
             ->modalHeading('Pasang foto ini ke calon')
             ->modalDescription('Foto lama calon (bila ada) digantikan. Foto dipotong persegi otomatis.')
@@ -225,9 +227,11 @@ class GalleryPage extends Page
     public function deleteAction(): Action
     {
         return Action::make('delete')
-            ->label('Hapus')
-            ->size('sm')
-            ->color('danger')
+            ->label('Hapus foto')
+            ->iconButton()
+            ->icon(Heroicon::OutlinedTrash)
+            ->tooltip('Hapus foto')
+            ->color('gray')
             ->requiresConfirmation()
             ->modalHeading('Hapus foto ini dari galeri?')
             ->modalDescription('Calon yang sudah memakai foto ini tetap memakai fotonya. Tindakan ini tidak bisa dibatalkan.')

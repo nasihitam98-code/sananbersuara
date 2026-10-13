@@ -125,6 +125,40 @@ class BackupTest extends TestCase
         $service->restore($backup, $adminRt, 'PULIHKAN');
     }
 
+    public function test_restore_fixes_history_rows_that_were_recorded_while_running(): void
+    {
+        $service = app(BackupService::class);
+        $restored = $service->create('MANUAL', $this->superAdmin);
+        $this->assertSame(Backup::STATUS_SUCCESS, $restored->status, (string) $restored->error);
+
+        // Keadaan riwayat sesudah database lama dipulihkan: baris itu sendiri dan baris lain masih "berjalan".
+        Backup::query()->whereKey($restored->id)->update(['status' => Backup::STATUS_RUNNING, 'filename' => null, 'size_bytes' => null]);
+        $other = (new Backup)->forceFill(['public_id' => 'lain', 'status' => Backup::STATUS_RUNNING, 'trigger' => 'TERJADWAL']);
+        $other->save();
+
+        $service->reconcileHistoryAfterRestore($restored);
+
+        $this->assertSame(Backup::STATUS_SUCCESS, $restored->fresh()->status);
+        $this->assertSame($restored->filename, $restored->fresh()->filename);
+        $this->assertSame(Backup::STATUS_FAILED, $other->fresh()->status);
+    }
+
+    public function test_backup_list_shows_plain_labels_and_marks_old_running_rows_as_stalled(): void
+    {
+        $stalled = (new Backup)->forceFill(['public_id' => 'macet', 'status' => Backup::STATUS_RUNNING, 'trigger' => 'MANUAL']);
+        $stalled->save();
+        Backup::query()->whereKey($stalled->id)->update(['created_at' => now()->subHours(2)]);
+
+        $this->assertSame('Terhenti', $stalled->fresh()->statusLabel());
+        $this->assertSame('Manual (dari panel)', $stalled->fresh()->triggerLabel());
+
+        $this->actingAs($this->superAdmin)->get(BackupPage::getUrl())
+            ->assertOk()
+            ->assertSee('Terhenti')
+            ->assertSee('Manual (dari panel)')
+            ->assertDontSee('>BERJALAN<', false);
+    }
+
     public function test_download_requires_signed_link_for_the_same_super_admin(): void
     {
         $backup = app(BackupService::class)->create('MANUAL', $this->superAdmin);

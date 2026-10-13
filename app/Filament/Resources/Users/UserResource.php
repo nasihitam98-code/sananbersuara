@@ -54,6 +54,20 @@ class UserResource extends Resource
     }
 
     /**
+     * Label peran ringkas untuk tabel (penjelasan lengkap di roleOptions()).
+     *
+     * @return array<string, string>
+     */
+    public static function roleShortLabels(): array
+    {
+        return [
+            User::ROLE_SUPER_ADMIN => 'Super Admin',
+            User::ROLE_STAFF => 'Staf pemilihan',
+            User::ROLE_ADMIN_RT => 'Admin RT',
+        ];
+    }
+
+    /**
      * @return array<string, string>
      */
     public static function permissionOptions(): array
@@ -107,15 +121,19 @@ class UserResource extends Resource
             ->columns([
                 TextColumn::make('name')->label('Nama')->searchable()->weight('bold'),
                 TextColumn::make('email')->label('Email')->searchable(),
+                // Label pendek di tabel agar kolom lain tidak terdorong keluar layar; penjelasan lengkap di tooltip.
                 TextColumn::make('roles.name')->label('Peran')->badge()
-                    ->formatStateUsing(fn (string $state): string => static::roleOptions()[$state] ?? $state),
+                    ->formatStateUsing(fn (string $state): string => static::roleShortLabels()[$state] ?? $state)
+                    ->tooltip(fn (User $record): ?string => static::roleOptions()[$record->roles->first()?->name] ?? null),
                 TextColumn::make('unit.name')->label('RT')->placeholder('-'),
-                IconColumn::make('is_active')->label('Aktif')->boolean(),
-                IconColumn::make('has_email_authentication')->label('2FA email')->boolean(),
+                TextColumn::make('is_active')->label('Status')->badge()
+                    ->formatStateUsing(fn (bool $state): string => $state ? 'Aktif' : 'Nonaktif')
+                    ->color(fn (bool $state): string => $state ? 'success' : 'gray'),
+                IconColumn::make('has_email_authentication')->label('2FA email')->boolean()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('last_login_at')->label('Login terakhir')->dateTime('d M Y H:i')->placeholder('-'),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()->iconButton()->tooltip('Ubah akun'),
             ]);
     }
 

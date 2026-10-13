@@ -2,7 +2,7 @@
     <x-filament::section>
         <div class="flex flex-wrap items-center justify-between gap-4">
             <div class="space-y-1 text-sm">
-                <p>Unggah semua foto calon ke galeri, lalu pasang ke calon: lewat <strong>Pasang ke calon…</strong> di bawah foto, tombol <strong>Foto</strong> di daftar Calon, atau <strong>Pasang otomatis</strong> bila nama file berisi nomor/nama calon.</p>
+                <p>Unggah semua foto calon ke galeri, lalu pasang ke calon: lewat tombol <strong>Pasang</strong> di bawah foto, tombol <strong>Foto</strong> di daftar Calon, atau <strong>Pasang otomatis</strong> bila nama file berisi nomor/nama calon.</p>
                 <p class="text-gray-500 dark:text-gray-400">Foto galeri hanya bisa dilihat Super Admin. Hapus foto yang tidak dipakai setelah selesai.</p>
             </div>
             <div class="flex flex-wrap gap-2">
@@ -42,7 +42,7 @@
                         @else
                             <x-filament::badge color="gray" size="sm">Belum dipakai</x-filament::badge>
                         @endif
-                        <div class="mt-auto flex flex-wrap gap-2 pt-1">
+                        <div class="mt-auto flex items-center justify-between gap-2 pt-1">
                             @if (($this->assignAction)(['photo' => $photo->public_id])->isVisible()) {{ ($this->assignAction)(['photo' => $photo->public_id]) }} @endif
                             @if (($this->deleteAction)(['photo' => $photo->public_id])->isVisible()) {{ ($this->deleteAction)(['photo' => $photo->public_id]) }} @endif
                         </div>

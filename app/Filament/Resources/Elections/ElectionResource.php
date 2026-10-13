@@ -18,6 +18,7 @@ use App\Services\AuditLogger;
 use App\Services\CandidatePhotoProcessor;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -173,7 +174,8 @@ class ElectionResource extends Resource
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->when(Workspace::current(), fn (Builder $query, ElectionMode $mode): Builder => $query->where('mode', $mode)))
             ->columns([
                 TextColumn::make('name')->label('Nama')->searchable()->weight('bold'),
-                TextColumn::make('mode')->label('Mode')->badge(),
+                // Daftar sudah disaring per mode kerja; kolom Mode hanya perlu bila belum memilih mode.
+                TextColumn::make('mode')->label('Mode')->badge()->visible(fn (): bool => Workspace::current() === null),
                 TextColumn::make('status')->label('Status')->badge(),
                 TextColumn::make('ballots_count')->label('Surat suara')->counts('ballots'),
                 TextColumn::make('attendees_count')->label('Peserta hadir')->counts('attendees'),
@@ -207,17 +209,20 @@ class ElectionResource extends Resource
                     ->modalDescription(fn (Election $record): string => 'Pemilihan "'.Workspace::otherLiveElection($record)?->name.'" sedang berlangsung. Tetap masuk ke "'.$record->name.'"? Voting di sana tetap berjalan.')
                     ->modalSubmitActionLabel('Tetap masuk')
                     ->action(fn (Election $record) => redirect()->route('workspace.election', $record->public_id)),
-                QuickStart::cancelAction('cancel', fn (array $arguments, ?Model $record): ?Election => $record instanceof Election ? $record : null),
-                DeleteAction::make()
-                    ->label('Hapus')
-                    ->modalHeading(fn (Election $record): string => "Hapus \"{$record->name}\"?")
-                    ->modalDescription('Surat suara, calon, foto calon, dan penugasan panitia pemilihan ini ikut terhapus. Tidak bisa dibatalkan.')
-                    ->using(function (Election $record): bool {
-                        static::deleteWithCandidatePhotos($record);
+                // Tindakan yang jarang dan berisiko di menu "⋯" agar baris tidak melebar keluar layar dan tidak salah tekan.
+                ActionGroup::make([
+                    QuickStart::cancelAction('cancel', fn (array $arguments, ?Model $record): ?Election => $record instanceof Election ? $record : null),
+                    DeleteAction::make()
+                        ->label('Hapus')
+                        ->modalHeading(fn (Election $record): string => "Hapus \"{$record->name}\"?")
+                        ->modalDescription('Surat suara, calon, foto calon, dan penugasan panitia pemilihan ini ikut terhapus. Tidak bisa dibatalkan.')
+                        ->using(function (Election $record): bool {
+                            static::deleteWithCandidatePhotos($record);
 
-                        return true;
-                    })
-                    ->successNotificationTitle('Pemilihan dihapus.'),
+                            return true;
+                        })
+                        ->successNotificationTitle('Pemilihan dihapus.'),
+                ])->tooltip('Lainnya'),
             ]);
     }
 

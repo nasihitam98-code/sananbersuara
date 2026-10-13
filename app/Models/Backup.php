@@ -54,4 +54,42 @@ class Backup extends Model
 
         return $bytes >= 1048576 ? round($bytes / 1048576, 1).' MB' : round($bytes / 1024, 1).' KB';
     }
+
+    public function triggerLabel(): string
+    {
+        return match ($this->trigger) {
+            'MANUAL' => 'Manual (dari panel)',
+            'MANUAL_KONSOL' => 'Manual (dari server)',
+            'SEBELUM_RESTORE' => 'Pengaman sebelum restore',
+            'TERJADWAL' => 'Otomatis (terjadwal)',
+            default => (string) $this->trigger,
+        };
+    }
+
+    /**
+     * "Berjalan" yang sudah lama = terhenti (mis. proses mati, atau baris ikut terekam saat database di-backup).
+     */
+    public function isStalled(): bool
+    {
+        return $this->status === self::STATUS_RUNNING && $this->created_at?->lt(now()->subMinutes(30));
+    }
+
+    public function statusLabel(): string
+    {
+        return match (true) {
+            $this->status === self::STATUS_SUCCESS => 'Berhasil',
+            $this->status === self::STATUS_FAILED => 'Gagal',
+            $this->isStalled() => 'Terhenti',
+            default => 'Sedang berjalan',
+        };
+    }
+
+    public function statusColor(): string
+    {
+        return match (true) {
+            $this->status === self::STATUS_SUCCESS => 'success',
+            $this->status === self::STATUS_FAILED, $this->isStalled() => 'danger',
+            default => 'warning',
+        };
+    }
 }

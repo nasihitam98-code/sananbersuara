@@ -38,9 +38,12 @@ class AuditLogResource extends Resource
         return $schema
             ->components([
                 TextEntry::make('occurred_at')->label('Waktu')->dateTime('d M Y H:i:s'),
-                TextEntry::make('actor_label')->label('Pelaku')->placeholder(fn (AuditLog $record): string => $record->actor_type),
-                TextEntry::make('action')->label('Aksi'),
-                TextEntry::make('subject_type')->label('Objek')->placeholder('-'),
+                TextEntry::make('actor_label')->label('Pelaku')->placeholder(fn (AuditLog $record): string => $record->actor_type === 'system' ? 'Sistem' : (string) $record->actor_type),
+                TextEntry::make('action')->label('Aksi')
+                    ->formatStateUsing(fn (string $state): string => AuditLog::actionLabel($state))
+                    ->helperText(fn (AuditLog $record): string => 'Kode: '.$record->action),
+                TextEntry::make('subject_type')->label('Objek')->placeholder('-')
+                    ->formatStateUsing(fn (?string $state): ?string => AuditLog::subjectLabel($state)),
                 TextEntry::make('subject_id')->label('ID objek')->placeholder('-'),
                 TextEntry::make('reason_code')->label('Alasan')->placeholder('-'),
                 TextEntry::make('note')->label('Catatan')->placeholder('-')->columnSpanFull(),
@@ -57,9 +60,13 @@ class AuditLogResource extends Resource
             ->defaultSort('id', 'desc')
             ->columns([
                 TextColumn::make('occurred_at')->label('Waktu')->dateTime('d M H:i:s')->sortable(),
-                TextColumn::make('actor_label')->label('Pelaku')->placeholder(fn (AuditLog $record): string => $record->actor_type)->searchable(),
-                TextColumn::make('action')->label('Aksi')->badge()->searchable(),
-                TextColumn::make('subject_type')->label('Objek')->placeholder('-'),
+                TextColumn::make('actor_label')->label('Pelaku')->placeholder(fn (AuditLog $record): string => $record->actor_type === 'system' ? 'Sistem' : (string) $record->actor_type)->searchable(),
+                // Label bahasa Indonesia; kode asli di tooltip (dan tetap bisa dicari).
+                TextColumn::make('action')->label('Aksi')->badge()->searchable()
+                    ->formatStateUsing(fn (string $state): string => AuditLog::actionLabel($state))
+                    ->tooltip(fn (AuditLog $record): string => $record->action),
+                TextColumn::make('subject_type')->label('Objek')->placeholder('-')
+                    ->formatStateUsing(fn (?string $state): ?string => AuditLog::subjectLabel($state)),
                 TextColumn::make('reason_code')->label('Alasan')->placeholder('-'),
                 TextColumn::make('note')->label('Catatan')->limit(40)->placeholder('-'),
             ])
@@ -67,6 +74,13 @@ class AuditLogResource extends Resource
                 SelectFilter::make('election_id')
                     ->label('Pemilihan')
                     ->options(fn (): array => Election::query()->pluck('name', 'id')->all()),
+                SelectFilter::make('action')
+                    ->label('Aksi')
+                    ->searchable()
+                    ->options(fn (): array => AuditLog::query()->distinct()->orderBy('action')->pluck('action')
+                        ->mapWithKeys(fn (string $action): array => [$action => AuditLog::actionLabel($action)])
+                        ->sort()
+                        ->all()),
             ])
             ->recordActions([
                 ViewAction::make(),

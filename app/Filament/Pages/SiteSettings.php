@@ -7,16 +7,15 @@ use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\SiteLogoProcessor;
 use BackedEnum;
-use Filament\Forms\Components\Checkbox;
+use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Schemas\Components\Image;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Text;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use RuntimeException;
 use UnitEnum;
@@ -89,27 +88,6 @@ class SiteSettings extends Page
                             ->rows(3)
                             ->maxLength(500),
                     ]),
-                Section::make('Logo')
-                    ->description('Tampil di header halaman publik, panel admin, halaman login, HP pemilih, laptop bilik, layar proyektor, dan ikon tab browser.')
-                    ->schema([
-                        Image::make(fn (): string => AppSetting::faviconUrl(), 'Logo yang dipakai sekarang')
-                            ->imageHeight('4rem'),
-                        Text::make(fn (): string => AppSetting::logoUrl() === null
-                            ? 'Sekarang memakai logo bawaan (kotak merah bercentang).'
-                            : 'Sekarang memakai logo yang diunggah.'),
-                        FileUpload::make('logo_upload')
-                            ->label('Unggah logo baru (opsional)')
-                            ->helperText('PNG, JPG, atau WebP, maks. 2 MB. Paling bagus logo persegi berlatar transparan (PNG). Logo diperkecil otomatis tanpa dipotong.')
-                            ->image()
-                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
-                            ->maxSize(2048)
-                            ->disk('local')
-                            ->directory('unggahan-sementara')
-                            ->visibility('private'),
-                        Checkbox::make('remove_logo')
-                            ->label('Hapus logo, kembali ke logo bawaan')
-                            ->visible(fn (): bool => AppSetting::logoUrl() !== null),
-                    ]),
             ]);
     }
 
@@ -124,24 +102,74 @@ class SiteSettings extends Page
             AppSetting::PUBLIC_NOTICE => $data[AppSetting::PUBLIC_NOTICE] ?? null,
         ]);
 
-        $logos = app(SiteLogoProcessor::class);
-
-        try {
-            if (filled($data['logo_upload'] ?? null)) {
-                $logos->replace($data['logo_upload']);
-            } elseif ($data['remove_logo'] ?? false) {
-                $logos->remove();
-            }
-        } catch (RuntimeException $exception) {
-            Notification::make()->title('Logo tidak bisa dipakai')->body($exception->getMessage())->danger()->send();
-
-            return;
-        }
-
         app(AuditLogger::class)->log('settings.display_updated', meta: ['before' => $before, 'after' => AppSetting::allValues()]);
 
-        Notification::make()->title('Pengaturan tampilan disimpan.')->success()->send();
+        Notification::make()->title('Teks tampilan disimpan.')->success()->send();
 
         $this->redirect(static::getUrl());
+    }
+
+    /**
+     * "Ganti logo": jendela unggah dengan pratinjau kecil; tersimpan langsung (terpisah dari Simpan teks).
+     */
+    public function uploadLogoAction(): Action
+    {
+        return Action::make('uploadLogo')
+            ->label(fn (): string => AppSetting::logoUrl() === null ? 'Unggah logo' : 'Ganti logo')
+            ->icon(Heroicon::OutlinedArrowUpTray)
+            ->modalHeading('Unggah logo')
+            ->modalDescription('Logo tampil di halaman publik untuk semua orang. Pastikan yang diunggah memang logo, bukan foto atau tangkapan layar.')
+            ->modalSubmitActionLabel('Pakai logo ini')
+            ->modalWidth(Width::Large)
+            ->schema([
+                FileUpload::make('logo')
+                    ->label('Berkas logo')
+                    ->helperText('PNG, JPG, atau WebP, maks. 2 MB. Paling bagus logo persegi berlatar transparan (PNG). Diperkecil otomatis tanpa dipotong.')
+                    ->image()
+                    ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                    ->maxSize(2048)
+                    ->imagePreviewHeight('160')
+                    ->disk('local')
+                    ->directory('unggahan-sementara')
+                    ->visibility('private')
+                    ->required(),
+            ])
+            ->action(function (array $data): void {
+                try {
+                    app(SiteLogoProcessor::class)->replace($data['logo']);
+                } catch (RuntimeException $exception) {
+                    Notification::make()->title('Logo tidak bisa dipakai')->body($exception->getMessage())->danger()->send();
+
+                    return;
+                }
+
+                Notification::make()->title('Logo dipasang.')->body('Sudah tampil di semua halaman.')->success()->send();
+                // Muat ulang agar logo di header panel ikut berganti.
+                $this->redirect(static::getUrl());
+            });
+    }
+
+    /**
+     * "Hapus logo": kembali ke kotak merah bercentang bawaan. Hanya tampil bila ada logo unggahan.
+     */
+    public function removeLogoAction(): Action
+    {
+        return Action::make('removeLogo')
+            ->label('Hapus logo')
+            ->icon(Heroicon::OutlinedTrash)
+            ->color('gray')
+            ->visible(fn (): bool => AppSetting::logoUrl() !== null)
+            ->requiresConfirmation()
+            ->modalIconColor('danger')
+            ->modalHeading('Hapus logo?')
+            ->modalDescription('Semua halaman kembali memakai logo bawaan (kotak merah bercentang). Berkas logo dihapus.')
+            ->modalSubmitActionLabel('Ya, hapus logo')
+            ->modalSubmitAction(fn (Action $action): Action => $action->color('danger'))
+            ->action(function (): void {
+                app(SiteLogoProcessor::class)->remove();
+
+                Notification::make()->title('Logo dihapus, kembali ke logo bawaan.')->success()->send();
+                $this->redirect(static::getUrl());
+            });
     }
 }

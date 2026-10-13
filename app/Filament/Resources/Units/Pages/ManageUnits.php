@@ -25,7 +25,7 @@ class ManageUnits extends ManageRecords
     {
         return [
             Action::make('addUpTo')
-                ->label('Tambah RT sampai nomor …')
+                ->label('Tambah banyak RT')
                 ->icon(Heroicon::OutlinedPlusCircle)
                 ->color('gray')
                 ->visible(fn (): bool => UnitResource::canCreate())

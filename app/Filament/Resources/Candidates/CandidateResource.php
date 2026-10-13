@@ -356,7 +356,7 @@ class CandidateResource extends Resource
                     ->label('Foto')
                     ->circular()
                     ->state(fn (Candidate $record): ?string => $record->photoUrl('thumb'))
-                    ->defaultImageUrl(fn (Candidate $record): string => 'data:image/svg+xml;utf8,'.rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="#dcdbe9"/><text x="40" y="50" font-size="28" text-anchor="middle" fill="#2e2a86" font-family="sans-serif" font-weight="700">'.e($record->initials()).'</text></svg>')),
+                    ->defaultImageUrl(fn (Candidate $record): string => 'data:image/svg+xml;utf8,'.rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="#e2e8f0"/><text x="40" y="50" font-size="28" text-anchor="middle" fill="#4338ca" font-family="sans-serif" font-weight="700">'.e($record->initials()).'</text></svg>')),
                 // Edit cepat langsung di tabel; dikunci (dan ditolak di server) setelah pemilihan dimulai.
                 TextInputColumn::make('number')
                     ->label('No.')
@@ -389,7 +389,9 @@ class CandidateResource extends Resource
                     ])
                     ->disabled(fn (Candidate $record): bool => ! static::canEdit($record))
                     ->afterStateUpdated(fn (Candidate $record, mixed $state) => static::auditInlineEdit($record, 'name', $state)),
-                TextColumn::make('ballot.title')->label('Surat suara'),
+                // Bila pemilihan hanya punya satu surat suara, kolom ini isinya sama di semua baris: sembunyikan agar tabel muat.
+                TextColumn::make('ballot.title')->label('Surat suara')
+                    ->visible(fn (): bool => ($election = Workspace::election()) === null || $election->ballots()->count() > 1),
                 // RT calon hanya bermakna untuk surat suara per RT (Mode Resmi).
                 TextColumn::make('unit.name')->label('RT')->placeholder('-')
                     ->visible(fn (): bool => Workspace::current() !== ElectionMode::Dadakan),

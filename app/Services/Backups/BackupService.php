@@ -152,9 +152,25 @@ class BackupService
             (new Backup)->forceFill($safety->only(['public_id', 'filename', 'size_bytes', 'checksum', 'status', 'trigger', 'offsite_copied']))->save();
         }
 
+        $this->reconcileHistoryAfterRestore($backup);
+
         $this->restoreLog("SELESAI restore {$backup->filename}");
         $this->audit->log('backup.restored', meta: ['file' => $backup->filename, 'by' => $actor->email, 'safety_backup' => $safety->filename], actor: null, actorType: 'system');
         $this->notifier->notifySuperAdmins('Restore dilakukan', "{$actor->name} memulihkan database dari {$backup->filename}.");
+    }
+
+    /**
+     * Setelah restore, riwayat backup kembali ke titik lama, termasuk baris backup yang dipulihkan, yang terekam masih
+     * "berjalan" (database di-dump sebelum backup itu selesai). Kembalikan baris itu ke keadaan sebenarnya; baris lain
+     * yang terekam "berjalan" tidak pernah selesai.
+     */
+    public function reconcileHistoryAfterRestore(Backup $restored): void
+    {
+        Backup::query()->where('public_id', $restored->public_id)
+            ->update($restored->only(['filename', 'size_bytes', 'checksum', 'status', 'offsite_copied', 'error']));
+
+        Backup::query()->where('status', Backup::STATUS_RUNNING)
+            ->update(['status' => Backup::STATUS_FAILED, 'error' => 'Terhenti: tercatat sedang berjalan saat database di-backup.']);
     }
 
     /**
