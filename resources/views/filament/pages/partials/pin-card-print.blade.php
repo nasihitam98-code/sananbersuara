@@ -32,27 +32,26 @@
     x-init="if (autoMode && auto) { $nextTick(() => print()); }"
 >
     <template x-ref="card">
-        {{-- Struk ringkas (keputusan panitia): nama + PIN. No. hadir kecil tetap dicetak karena HP menampilkannya
-             di samping nama untuk membedakan nama kembar. --}}
+        {{-- Struk ringkas (keputusan panitia), urutan: No. hadir, nama, PIN. Nama aplikasi kecil di bawah.
+             No. hadir juga tampil di HP di samping nama, untuk membedakan nama kembar. --}}
         <style>
             @page { margin: 3mm; }
             * { box-sizing: border-box; }
             body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #000; background: #fff; }
             .card { width: 100%; max-width: 72mm; margin: 0 auto; text-align: center; }
-            .site { font-size: 11pt; font-weight: bold; }
+            .site { font-size: 9pt; margin-top: 1mm; }
             .rule { border-top: 1px dashed #000; margin: 3mm 0; }
             .name { font-size: 18pt; font-weight: bold; line-height: 1.15; word-wrap: break-word; }
-            .number { font-size: 9pt; margin-top: 1mm; }
+            .number { font-size: 14pt; font-weight: bold; }
             .label { font-size: 10pt; font-weight: bold; letter-spacing: 1mm; margin-top: 4mm; }
             .pin { font-family: 'Courier New', monospace; font-size: 46pt; font-weight: 900; letter-spacing: 3mm; line-height: 1.1; padding-left: 3mm; }
             .note { font-size: 10pt; font-weight: bold; margin-top: 2mm; }
             .secret { font-size: 10pt; font-weight: bold; }
         </style>
         <div class="card">
-            <div class="site">{{ config('app.name') }}</div>
+            <div class="number">No. hadir {{ $card['number'] }}</div>
             <div class="rule"></div>
             <div class="name">{{ $card['name'] }}</div>
-            <div class="number">No. hadir {{ $card['number'] }}</div>
             <div class="label">PIN</div>
             <div class="pin">{{ $card['pin'] }}</div>
             @if (filled($card['note'] ?? null))
@@ -60,6 +59,7 @@
             @endif
             <div class="rule"></div>
             <div class="secret">PIN ini rahasia.</div>
+            <div class="site">{{ config('app.name') }}</div>
         </div>
     </template>
 
