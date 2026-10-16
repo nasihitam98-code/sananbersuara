@@ -61,7 +61,7 @@ class Candidate extends Model
     }
 
     /**
-     * Foto galeri yang sedang dipakai calon ini (null bila foto diunggah langsung).
+     * Gambar Media sumber foto calon ini (null untuk foto lama yang diunggah sebelum ada Media).
      *
      * @return BelongsTo<GalleryPhoto, $this>
      */

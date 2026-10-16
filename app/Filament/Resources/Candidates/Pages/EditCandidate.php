@@ -58,7 +58,7 @@ class EditCandidate extends EditRecord
             'after' => $record->only(['number', 'name', 'status', 'origin_unit_id']),
         ]);
 
-        // Pilihan galeri hanya dipakai bila berbeda dari foto galeri yang sudah terpasang.
+        // Pilihan dari Media hanya dipakai bila berbeda dari gambar yang sudah terpasang.
         CreateCandidate::attachPhoto($record, $upload, (int) $galleryPick === (int) $record->gallery_photo_id ? null : $galleryPick);
 
         return $record;

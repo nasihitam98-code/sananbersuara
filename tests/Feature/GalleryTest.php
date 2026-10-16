@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Filament\Pages\GalleryPage;
+use App\Filament\Pages\SiteSettings;
 use App\Filament\Resources\Candidates\Pages\CreateCandidate;
 use App\Filament\Resources\Candidates\Pages\ListCandidates;
+use App\Models\AppSetting;
 use App\Models\Ballot;
 use App\Models\Candidate;
 use App\Models\Election;
@@ -64,7 +66,7 @@ class GalleryTest extends TestCase
                 UploadedFile::fake()->image('Ibu Sumiati.png', 800, 800),
             ]])
             ->assertHasNoFormErrors()
-            ->assertNotified('2 foto masuk galeri.');
+            ->assertNotified('2 gambar masuk Media.');
 
         $photos = GalleryPhoto::query()->orderBy('original_name')->get();
         $this->assertSame(['01.jpg', 'Ibu Sumiati.png'], $photos->pluck('original_name')->all());
@@ -126,6 +128,85 @@ class GalleryTest extends TestCase
         $this->assertSame($photoA->id, $third->gallery_photo_id, 'Satu foto galeri boleh dipakai beberapa calon');
     }
 
+    public function test_photo_button_on_candidate_table_uploads_directly_into_media(): void
+    {
+        $this->actingAs($this->superAdmin);
+        $candidate = Candidate::factory()->for($this->ballot)->create(['number' => 1, 'name' => 'Budi Santoso']);
+
+        Livewire::test(ListCandidates::class)
+            ->callAction(TestAction::make('galleryPhoto')->table($candidate), [])
+            ->assertHasFormErrors(['photo_upload' => 'required_without']);
+
+        Livewire::test(ListCandidates::class)
+            ->callAction(TestAction::make('galleryPhoto')->table($candidate), ['photo_upload' => UploadedFile::fake()->image('wajah.jpg', 600, 600)])
+            ->assertHasNoFormErrors()
+            ->assertNotified('Foto dipasang ke 01 Budi Santoso.');
+
+        $media = GalleryPhoto::query()->sole();
+        $this->assertSame('01 Budi Santoso', $media->original_name, 'Unggahan langsung ikut masuk Media, bisa dipakai ulang');
+        $this->assertSame($media->id, $candidate->fresh()->gallery_photo_id);
+        $this->assertNotNull($candidate->fresh()->photo_key);
+        $this->assertSame([], Storage::disk('local')->files('unggahan-sementara'), 'File sementara dibersihkan');
+    }
+
+    public function test_logo_is_picked_from_media_and_counts_as_used(): void
+    {
+        Storage::fake('public');
+        $this->actingAs($this->superAdmin);
+        $logo = $this->addToGallery('logo-rw.png');
+        $other = $this->addToGallery('lain.jpg');
+
+        Livewire::test(GalleryPage::class)
+            ->callAction('useAsLogo', [], ['photo' => $logo->public_id])
+            ->assertNotified('Logo dipasang.');
+
+        $this->assertNotNull(AppSetting::logoUrl());
+        $this->assertTrue($logo->fresh()->isLogo());
+        $this->assertSame(['Logo'], $logo->fresh()->usageLabels());
+        $this->assertSame([$other->id], GalleryPhoto::query()->unused()->pluck('id')->all(), 'Sumber logo bukan "tidak dipakai"');
+
+        // "Hapus yang tidak dipakai" tidak menyentuh sumber logo.
+        Livewire::test(GalleryPage::class)->callAction('deleteUnused');
+        $this->assertModelExists($logo);
+        $this->assertModelMissing($other);
+
+        $this->get(GalleryPage::getUrl())->assertOk()->assertSee('Dipakai: Logo');
+    }
+
+    public function test_logo_upload_goes_into_media_and_logo_can_be_chosen_from_media(): void
+    {
+        Storage::fake('public');
+        $this->actingAs($this->superAdmin);
+
+        Livewire::test(SiteSettings::class)
+            ->callAction('uploadLogo', [])
+            ->assertHasFormErrors(['logo' => 'required_without']);
+
+        Livewire::test(SiteSettings::class)
+            ->callAction('uploadLogo', ['logo' => UploadedFile::fake()->image('logo.png', 300, 300)])
+            ->assertHasNoFormErrors();
+
+        $uploaded = GalleryPhoto::query()->sole();
+        $this->assertSame('Logo', $uploaded->original_name);
+        $this->assertTrue($uploaded->isLogo());
+
+        $chosen = $this->addToGallery('logo-baru.png');
+
+        Livewire::test(SiteSettings::class)
+            ->callAction('uploadLogo', ['media_id' => $chosen->id])
+            ->assertHasNoFormErrors();
+
+        $this->assertTrue($chosen->fresh()->isLogo());
+        $this->assertFalse($uploaded->fresh()->isLogo());
+        $this->assertCount(1, Storage::disk('public')->allFiles('tampilan'), 'Logo lama dihapus');
+
+        // Hapus logo: kembali ke bawaan, gambar di Media tetap ada.
+        Livewire::test(SiteSettings::class)->callAction('removeLogo');
+        $this->assertNull(AppSetting::logoUrl());
+        $this->assertNull(AppSetting::logoMediaId());
+        $this->assertModelExists($chosen);
+    }
+
     public function test_auto_assign_by_file_name_and_cleanup(): void
     {
         $this->actingAs($this->superAdmin);
@@ -145,7 +226,7 @@ class GalleryTest extends TestCase
 
         Livewire::test(GalleryPage::class)
             ->callAction('deleteUnused')
-            ->assertNotified('1 foto dihapus dari galeri.');
+            ->assertNotified('1 gambar dihapus dari Media.');
 
         $this->assertModelMissing($leftover);
         Storage::disk('local')->assertMissing($leftover->path());
@@ -174,7 +255,7 @@ class GalleryTest extends TestCase
 
     public function test_gallery_page_is_super_admin_only(): void
     {
-        $this->actingAs($this->superAdmin)->get(GalleryPage::getUrl())->assertOk()->assertSee('Galeri masih kosong');
+        $this->actingAs($this->superAdmin)->get(GalleryPage::getUrl())->assertOk()->assertSee('Media masih kosong');
 
         $committee = User::factory()->create();
         $committee->forceFill(['must_change_password' => false, 'has_email_authentication' => true])->save();

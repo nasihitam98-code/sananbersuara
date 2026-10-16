@@ -10,6 +10,7 @@ use App\Models\AuditLog;
 use App\Models\Ballot;
 use App\Models\Candidate;
 use App\Models\Election;
+use App\Models\GalleryPhoto;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\Candidates\CandidateBulkImporter;
@@ -329,8 +330,8 @@ class CandidateBulkImportTest extends TestCase
         $this->assertNotNull($sumiati->fresh()->photo_key);
         $this->assertNotNull($sutrisno->fresh()->photo_key);
         $this->assertSame([
-            'Joko.jpg (cocok dengan lebih dari satu calon; beri nomor di nama file)',
-            'Orang Lain.jpg (tidak ada calon dengan nama ini)',
+            'Joko.jpg (cocok dengan lebih dari satu calon; beri nomor di nama file; tersimpan di Media)',
+            'Orang Lain.jpg (tidak ada calon dengan nama ini; tersimpan di Media)',
         ], $result['skipped']);
     }
 
@@ -387,8 +388,9 @@ class CandidateBulkImportTest extends TestCase
         $result = $this->importer()->attachPhotos($this->ballot, null, $files, $this->superAdmin);
 
         $this->assertCount(2, $result['matched']);
-        $this->assertSame(['99.jpg (tidak ada calon nomor 99)'], $result['skipped']);
+        $this->assertSame(['99.jpg (tidak ada calon nomor 99; tersimpan di Media)'], $result['skipped']);
         $this->assertNotNull($first->fresh()->photo_key);
+        $this->assertSame(3, GalleryPhoto::query()->count(), 'Semua foto masuk Media, termasuk yang tidak cocok');
         $this->assertNotNull($second->fresh()->photo_key);
         $this->assertSame([], Storage::disk('local')->files('unggahan-sementara'), 'File sementara dibersihkan');
     }

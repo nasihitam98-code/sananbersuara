@@ -10,7 +10,6 @@ use App\Models\Candidate;
 use App\Models\GalleryPhoto;
 use App\Models\User;
 use App\Services\AuditLogger;
-use App\Services\CandidatePhotoProcessor;
 use App\Services\Candidates\CandidateGallery;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
@@ -98,16 +97,17 @@ class CreateCandidate extends CreateRecord
     }
 
     /**
-     * Foto calon dari unggahan baru, atau (bila tidak ada) dari Galeri Foto. Dipakai juga saat Ubah.
+     * Foto calon dari unggahan baru (ikut tersimpan di Media), atau (bila tidak ada) dari Media. Dipakai juga saat Ubah.
      */
     public static function attachPhoto(Candidate $candidate, mixed $upload, mixed $galleryPick): void
     {
+        /** @var User $user */
+        $user = auth()->user();
+
         try {
             if (filled($upload)) {
-                app(CandidatePhotoProcessor::class)->replace($candidate, $upload);
+                app(CandidateGallery::class)->storeForCandidate($candidate, $upload, $user);
             } elseif (filled($galleryPick)) {
-                /** @var User $user */
-                $user = auth()->user();
                 app(CandidateGallery::class)->assign($candidate, GalleryPhoto::query()->findOrFail($galleryPick), $user);
             }
         } catch (RuntimeException $exception) {

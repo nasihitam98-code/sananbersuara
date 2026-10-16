@@ -9,11 +9,9 @@ use App\Models\Candidate;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\AuditLogger;
-use App\Services\CandidatePhotoProcessor;
 use App\Services\Voting\VotingException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -26,7 +24,6 @@ class CandidateBulkImporter
 {
     public function __construct(
         private AuditLogger $audit,
-        private CandidatePhotoProcessor $photos,
     ) {}
 
     /**
@@ -186,7 +183,8 @@ class CandidateBulkImporter
 
     /**
      * Pasangkan foto ke calon berdasarkan nomor di awal nama file (mis. "01.jpg", "2 - Siti.png")
-     * atau nama calon di nama file (mis. "Ibu Sumiati.jpg").
+     * atau nama calon di nama file (mis. "Ibu Sumiati.jpg"). Semua foto masuk Media; yang tidak cocok tetap
+     * tersimpan di sana untuk dipasang manual.
      *
      * @param  array<string, string>  $files  path sementara (disk local) => nama file asli
      * @return array{matched: array<int, string>, skipped: array<int, string>}
@@ -205,18 +203,22 @@ class CandidateBulkImporter
         $matched = [];
         $skipped = [];
 
+        // Diambil saat dipakai: CandidateGallery sendiri bergantung pada importer ini (pencocokan nama file).
+        $gallery = app(CandidateGallery::class);
+
         foreach ($files as $path => $originalName) {
             [$candidate, $reason] = $this->matchPhoto((string) $originalName, $candidates);
 
-            if ($candidate === null) {
-                Storage::disk('local')->delete($path);
-                $skipped[] = "{$originalName} ({$reason})";
-
-                continue;
-            }
-
             try {
-                $this->photos->replace($candidate, $path);
+                $photo = $gallery->store($path, (string) $originalName, $actor);
+
+                if ($candidate === null) {
+                    $skipped[] = "{$originalName} ({$reason}; tersimpan di Media)";
+
+                    continue;
+                }
+
+                $gallery->assign($candidate, $photo, $actor);
                 $matched[] = "{$candidate->displayNumber()} {$candidate->name}";
             } catch (RuntimeException $exception) {
                 $skipped[] = "{$originalName} ({$exception->getMessage()})";

@@ -3,7 +3,7 @@
 <x-dynamic-component :component="$getFieldWrapperView()" :field="$field">
     <div x-data="{ q: '', state: $wire.$entangle(@js($getStatePath())) }" class="space-y-3">
         @if ($photos->isEmpty())
-            <p class="text-sm text-gray-500 dark:text-gray-400">Galeri masih kosong. Unggah dulu lewat menu <strong>Galeri Foto</strong>.</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400">Media masih kosong. Unggah di atas, atau kumpulkan semua gambar dulu lewat menu <strong>Media</strong>.</p>
         @else
             <x-filament::input.wrapper>
                 <x-filament::input type="search" x-model="q" placeholder="Cari nama file…" />
@@ -24,8 +24,9 @@
                             <span x-show="state == {{ $photo->id }}" class="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-primary-600 text-sm font-bold text-white">✓</span>
                         </span>
                         <span class="mt-1 block truncate text-xs font-medium" title="{{ $photo->original_name }}">{{ $photo->original_name }}</span>
-                        @if ($photo->candidates->isNotEmpty())
-                            <span class="block truncate text-[11px] text-gray-500 dark:text-gray-400">dipakai {{ $photo->candidates->map(fn ($candidate) => $candidate->displayNumber())->implode(', ') }}</span>
+                        @php($usedBy = collect($photo->isLogo() ? ['Logo'] : [])->merge($photo->candidates->map(fn ($candidate) => $candidate->displayNumber())))
+                        @if ($usedBy->isNotEmpty())
+                            <span class="block truncate text-[11px] text-gray-500 dark:text-gray-400">dipakai {{ $usedBy->implode(', ') }}</span>
                         @else
                             <span class="block text-[11px] text-success-600 dark:text-success-400">belum dipakai</span>
                         @endif

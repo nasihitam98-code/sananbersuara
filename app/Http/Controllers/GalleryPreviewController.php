@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
- * Tampilkan foto Galeri Foto calon. Foto galeri bersifat privat: hanya Super Admin yang login.
+ * Tampilkan gambar dari Media. Gambar di Media bersifat privat: hanya Super Admin yang login.
  */
 class GalleryPreviewController extends Controller
 {

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AppSetting;
+use App\Models\GalleryPhoto;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Intervention\Image\Drivers\Gd\Driver as GdDriver;
@@ -50,7 +51,7 @@ class SiteLogoProcessor
             Storage::disk('public')->put($path, (string) $image->encode(new WebpEncoder(quality: 90, strip: true)));
 
             $old = AppSetting::get(AppSetting::LOGO_PATH);
-            AppSetting::put([AppSetting::LOGO_PATH => $path]);
+            AppSetting::put([AppSetting::LOGO_PATH => $path, AppSetting::LOGO_MEDIA_ID => null]);
             $this->deleteFile($old);
 
             $this->audit->log('settings.logo_replaced', meta: ['had_previous' => $old !== null]);
@@ -59,10 +60,22 @@ class SiteLogoProcessor
         }
     }
 
+    /**
+     * Pakai gambar dari Media sebagai logo. Logo yang tampil adalah salinan publiknya; gambar di Media tetap privat.
+     */
+    public function useMedia(GalleryPhoto $photo): void
+    {
+        $temporary = 'unggahan-sementara/logo-'.Str::lower(Str::random(20)).'.webp';
+        Storage::disk('local')->copy($photo->path(), $temporary);
+
+        $this->replace($temporary);
+        AppSetting::put([AppSetting::LOGO_MEDIA_ID => (string) $photo->id]);
+    }
+
     public function remove(): void
     {
         $this->deleteFile(AppSetting::get(AppSetting::LOGO_PATH));
-        AppSetting::put([AppSetting::LOGO_PATH => null]);
+        AppSetting::put([AppSetting::LOGO_PATH => null, AppSetting::LOGO_MEDIA_ID => null]);
 
         $this->audit->log('settings.logo_removed');
     }

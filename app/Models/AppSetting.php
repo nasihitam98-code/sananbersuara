@@ -24,6 +24,9 @@ class AppSetting extends Model
     /** Path logo (WebP hasil olahan SiteLogoProcessor) di disk "public"; kosong = logo bawaan. */
     public const LOGO_PATH = 'logo_path';
 
+    /** ID gambar di Media yang menjadi sumber logo (untuk keterangan "Dipakai: Logo"). */
+    public const LOGO_MEDIA_ID = 'logo_media_id';
+
     /** Ikon tab browser bawaan (kotak merah bercentang) bila belum ada logo. */
     public const DEFAULT_FAVICON = 'favicon.svg';
 
@@ -56,6 +59,13 @@ class AppSetting extends Model
         $path = static::get(self::LOGO_PATH);
 
         return $path === null ? null : Storage::disk('public')->url($path);
+    }
+
+    public static function logoMediaId(): ?int
+    {
+        $id = static::get(self::LOGO_MEDIA_ID);
+
+        return $id === null ? null : (int) $id;
     }
 
     /**

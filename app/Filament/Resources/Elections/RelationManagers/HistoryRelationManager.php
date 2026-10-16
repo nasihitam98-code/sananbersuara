@@ -38,7 +38,7 @@ class HistoryRelationManager extends RelationManager
         'candidate.deleted' => 'Calon dihapus',
         'candidate.photo_replaced' => 'Foto calon diganti',
         'candidate.photo_removed' => 'Foto calon dihapus',
-        'gallery.photo_assigned' => 'Foto galeri dipasang',
+        'gallery.photo_assigned' => 'Foto dari Media dipasang',
         'attendee.registered' => 'Peserta didata di pintu',
         'attendee.duplicate_name_confirmed' => 'Nama kembar dikonfirmasi',
         'attendee.pin_failed' => 'PIN salah',

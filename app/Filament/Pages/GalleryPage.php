@@ -3,13 +3,13 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Resources\Candidates\CandidateResource;
-use App\Filament\Support\Workspace;
 use App\Models\Ballot;
 use App\Models\Candidate;
 use App\Models\GalleryPhoto;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\Candidates\CandidateGallery;
+use App\Services\SiteLogoProcessor;
 use App\Services\Voting\VotingException;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -26,8 +26,8 @@ use RuntimeException;
 use UnitEnum;
 
 /**
- * Galeri Foto calon (Super Admin): unggah banyak foto dulu, lalu pilih untuk tiap calon,
- * atau pasang otomatis berdasarkan nama file. Foto galeri privat dan bisa dibersihkan.
+ * Media (Super Admin): satu tempat untuk semua gambar (foto calon dan logo). Unggah banyak gambar dulu, lalu pasang ke calon
+ * (manual atau otomatis lewat nama file) atau jadikan logo. Gambar di Media privat dan bisa dibersihkan.
  */
 class GalleryPage extends Page
 {
@@ -39,11 +39,11 @@ class GalleryPage extends Page
 
     protected static ?int $navigationSort = 1;
 
-    protected static ?string $navigationLabel = 'Galeri Foto';
+    protected static ?string $navigationLabel = 'Media';
 
-    protected static ?string $title = 'Galeri Foto Calon';
+    protected static ?string $title = 'Media';
 
-    protected static ?string $slug = 'galeri-foto';
+    protected static ?string $slug = 'media';
 
     public bool $onlyUnused = false;
 
@@ -54,11 +54,6 @@ class GalleryPage extends Page
         return $user instanceof User && $user->isSuperAdmin();
     }
 
-    public static function shouldRegisterNavigation(): bool
-    {
-        return Workspace::shows();
-    }
-
     /**
      * @return Collection<int, GalleryPhoto>
      */
@@ -66,7 +61,7 @@ class GalleryPage extends Page
     {
         return GalleryPhoto::query()
             ->with('candidates.ballot')
-            ->when($this->onlyUnused, fn ($query) => $query->whereDoesntHave('candidates'))
+            ->when($this->onlyUnused, fn ($query) => $query->unused())
             ->latest()
             ->limit(300)
             ->get();
@@ -74,7 +69,7 @@ class GalleryPage extends Page
 
     public function unusedCount(): int
     {
-        return GalleryPhoto::query()->whereDoesntHave('candidates')->count();
+        return GalleryPhoto::query()->unused()->count();
     }
 
     public function user(): User
@@ -88,11 +83,11 @@ class GalleryPage extends Page
     public function uploadAction(): Action
     {
         return Action::make('upload')
-            ->label('Unggah ke galeri')
+            ->label('Unggah ke Media')
             ->icon(Heroicon::OutlinedArrowUpTray)
-            ->modalHeading('Unggah foto ke galeri')
-            ->modalDescription('Pilih atau seret banyak foto sekaligus (maks. '.intdiv((int) config('voting.photo.max_kilobytes'), 1024).' MB per foto). Setelah masuk galeri, pilih foto untuk tiap calon.')
-            ->modalSubmitActionLabel('Simpan ke galeri')
+            ->modalHeading('Unggah gambar ke Media')
+            ->modalDescription('Pilih atau seret banyak gambar sekaligus (maks. '.intdiv((int) config('voting.photo.max_kilobytes'), 1024).' MB per gambar). Setelah masuk Media, pasang ke calon atau jadikan logo.')
+            ->modalSubmitActionLabel('Simpan ke Media')
             ->schema([
                 FileUpload::make('photos')
                     ->label('Foto')
@@ -125,7 +120,7 @@ class GalleryPage extends Page
                 }
 
                 Notification::make()
-                    ->title("{$saved} foto masuk galeri.")
+                    ->title("{$saved} gambar masuk Media.")
                     ->body($failed === [] ? null : 'Gagal: '.Str::limit(implode(', ', $failed), 400))
                     ->color($failed === [] ? 'success' : 'warning')
                     ->send();
@@ -139,7 +134,7 @@ class GalleryPage extends Page
             ->icon(Heroicon::OutlinedSparkles)
             ->color('gray')
             ->modalHeading('Pasang otomatis berdasarkan nama file')
-            ->modalDescription('Foto galeri yang belum dipakai dipasang ke calon bila nama filenya diawali nomor urut (01.jpg) atau berisi nama calon (sutrisno.jpg). Yang tidak cocok tetap di galeri untuk dipilih manual.')
+            ->modalDescription('Gambar di Media yang belum dipakai dipasang ke calon bila nama filenya diawali nomor urut (01.jpg) atau berisi nama calon (sutrisno.jpg). Yang tidak cocok tetap di Media untuk dipilih manual.')
             ->modalSubmitActionLabel('Pasang')
             ->schema([
                 Select::make('ballot_id')
@@ -180,13 +175,13 @@ class GalleryPage extends Page
             ->icon(Heroicon::OutlinedTrash)
             ->color('danger')
             ->requiresConfirmation()
-            ->modalHeading(fn (): string => 'Hapus '.$this->unusedCount().' foto yang tidak dipakai?')
-            ->modalDescription('Foto yang sudah dipasang ke calon tidak ikut terhapus. Tindakan ini tidak bisa dibatalkan.')
+            ->modalHeading(fn (): string => 'Hapus '.$this->unusedCount().' gambar yang tidak dipakai?')
+            ->modalDescription('Gambar yang dipakai calon atau logo tidak ikut terhapus. Tindakan ini tidak bisa dibatalkan.')
             ->modalSubmitActionLabel('Ya, hapus')
             ->visible(fn (): bool => $this->unusedCount() > 0)
             ->action(function (): void {
                 $count = app(CandidateGallery::class)->deleteUnused($this->user());
-                Notification::make()->title("{$count} foto dihapus dari galeri.")->success()->send();
+                Notification::make()->title("{$count} gambar dihapus dari Media.")->success()->send();
             });
     }
 
@@ -195,9 +190,9 @@ class GalleryPage extends Page
         return Action::make('assign')
             ->label('Pasang')
             ->icon(Heroicon::OutlinedUserPlus)
-            ->tooltip('Pasang foto ini ke calon')
+            ->tooltip('Pasang gambar ini ke calon')
             ->size('sm')
-            ->modalHeading('Pasang foto ini ke calon')
+            ->modalHeading('Pasang gambar ini ke calon')
             ->modalDescription('Foto lama calon (bila ada) digantikan. Foto dipotong persegi otomatis.')
             ->modalSubmitActionLabel('Pasang')
             ->schema([
@@ -224,22 +219,52 @@ class GalleryPage extends Page
             });
     }
 
+    public function useAsLogoAction(): Action
+    {
+        return Action::make('useAsLogo')
+            ->label('Jadikan logo')
+            ->iconButton()
+            ->icon(Heroicon::OutlinedSparkles)
+            ->tooltip('Jadikan logo')
+            ->color('gray')
+            ->requiresConfirmation()
+            ->modalIcon(Heroicon::OutlinedSparkles)
+            ->modalHeading('Jadikan gambar ini logo?')
+            ->modalDescription('Logo tampil di halaman publik untuk semua orang, panel admin, HP pemilih, bilik, dan layar proyektor. Pastikan ini memang logo, bukan foto atau tangkapan layar.')
+            ->modalSubmitActionLabel('Ya, jadikan logo')
+            ->action(function (array $arguments): void {
+                $photo = GalleryPhoto::query()->where('public_id', $arguments['photo'] ?? '')->firstOrFail();
+
+                try {
+                    app(SiteLogoProcessor::class)->useMedia($photo);
+                } catch (RuntimeException $exception) {
+                    Notification::make()->title('Logo tidak bisa dipakai')->body($exception->getMessage())->danger()->send();
+
+                    return;
+                }
+
+                Notification::make()->title('Logo dipasang.')->body('Sudah tampil di semua halaman.')->success()->send();
+                // Muat ulang agar logo di header panel ikut berganti.
+                $this->redirect(static::getUrl());
+            });
+    }
+
     public function deleteAction(): Action
     {
         return Action::make('delete')
-            ->label('Hapus foto')
+            ->label('Hapus gambar')
             ->iconButton()
             ->icon(Heroicon::OutlinedTrash)
-            ->tooltip('Hapus foto')
+            ->tooltip('Hapus gambar')
             ->color('gray')
             ->requiresConfirmation()
-            ->modalHeading('Hapus foto ini dari galeri?')
-            ->modalDescription('Calon yang sudah memakai foto ini tetap memakai fotonya. Tindakan ini tidak bisa dibatalkan.')
+            ->modalHeading('Hapus gambar ini dari Media?')
+            ->modalDescription('Calon atau logo yang sudah memakai gambar ini tetap memakainya. Tindakan ini tidak bisa dibatalkan.')
             ->modalSubmitActionLabel('Ya, hapus')
             ->action(function (array $arguments): void {
                 $photo = GalleryPhoto::query()->where('public_id', $arguments['photo'] ?? '')->firstOrFail();
                 app(CandidateGallery::class)->delete($photo, $this->user());
-                Notification::make()->title('Foto dihapus dari galeri.')->success()->send();
+                Notification::make()->title('Gambar dihapus dari Media.')->success()->send();
             });
     }
 }

@@ -78,7 +78,7 @@ class HomeGuide extends Widget implements HasActions, HasSchemas
     public function modeChoices(): array
     {
         $descriptions = [
-            ElectionMode::Dadakan->value => ['Rapat / penjaringan', 'Yang hadir didata di pintu, lalu memilih lewat HP dengan nama + PIN.', 'Contoh: penjaringan calon Ketua RW 10 Oktober.'],
+            ElectionMode::Dadakan->value => ['Rapat / penjaringan', 'Yang hadir didata di pintu, lalu memilih lewat HP dengan nama + PIN.', 'Contoh: penjaringan calon Ketua RW.'],
             ElectionMode::Resmi->value => ['Pemilihan RT + RW di TPS', 'Pemilih terdaftar per RT, diizinkan di meja, memilih di laptop bilik.', 'Contoh: hari H pemilihan Ketua RT dan Ketua RW.'],
         ];
 
@@ -439,7 +439,7 @@ class HomeGuide extends Widget implements HasActions, HasSchemas
             ElectionMode::Dadakan => [
                 [ElectionResource::class, 'Buat pemilihan', 'Tambah surat suara, mis. "Calon Ketua RW", berhak: semua yang hadir.'],
                 [CandidateResource::class, 'Masukkan calon', 'Satu per satu atau Tambah banyak calon (tempel daftar nama).'],
-                [GalleryPage::class, 'Galeri Foto: unggah foto calon', 'Lalu Pasang otomatis (nama file) atau pilih per calon.'],
+                [GalleryPage::class, 'Media: unggah foto calon', 'Lalu Pasang otomatis (nama file) atau pilih per calon. Bisa juga langsung dari tombol Foto di daftar Calon.'],
                 [ElectionResource::class, 'Tugaskan Panitia dan Petugas Pintu', 'Di pemilihan, tab Panitia & Petugas Pintu. Lalu klik Tandai Siap, dan saat acara dimulai klik Mulai Pemilihan.'],
                 [DoorDesk::class, 'Meja Pintu: daftarkan yang hadir', 'Ketik nama, tekan Daftarkan & buat PIN, tulis PIN di kertas.'],
                 [ControlRoom::class, 'Ruang Kendali: buka voting', 'Tampilkan Layar QR, tekan BUKA VOTING. Tabel peserta di bawahnya menunjukkan siapa yang belum memilih; mereka ikut sesi berikutnya.'],
@@ -450,7 +450,7 @@ class HomeGuide extends Widget implements HasActions, HasSchemas
                 [UnitResource::class, 'Cek Daftar RT', 'Tambah RT bila jumlahnya lebih dari yang ada (bawaan 9).'],
                 [ElectionResource::class, 'Buat pemilihan', 'Surat suara Ketua RT (per RT, maks. 5 calon) dan Ketua RW (semua RT).'],
                 [CandidateResource::class, 'Masukkan calon RT tiap RT dan calon RW', ''],
-                [GalleryPage::class, 'Galeri Foto: unggah dan pasang foto calon', ''],
+                [GalleryPage::class, 'Media: unggah dan pasang foto calon', ''],
                 [UserResource::class, 'Buat akun Admin RT untuk tiap RT', 'Centang izin Kelola data pemilih dan/atau Petugas Meja.'],
                 [VoterResource::class, 'Isi data pemilih per RT', 'Satu per satu atau import Excel (template tersedia).'],
                 [DevicesPage::class, 'Tandai Siap, lalu pasang laptop dengan token', 'Laptop meja dan bilik tiap RT. Setelah itu Mulai Pemilihan.'],

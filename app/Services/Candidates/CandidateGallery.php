@@ -3,6 +3,7 @@
 namespace App\Services\Candidates;
 
 use App\Enums\BallotScope;
+use App\Models\AppSetting;
 use App\Models\Ballot;
 use App\Models\Candidate;
 use App\Models\GalleryPhoto;
@@ -18,9 +19,9 @@ use Intervention\Image\ImageManager;
 use RuntimeException;
 
 /**
- * Galeri Foto calon: simpan foto dulu (privat, EXIF dibuang, diperkecil), lalu pilih untuk calon.
- * Memasang foto galeri ke calon memakai CandidatePhotoProcessor yang sama (potong persegi, 3 ukuran);
- * file galeri tetap ada sampai dihapus dari galeri.
+ * Media (gambar untuk foto calon dan logo): simpan gambar dulu (privat, EXIF dibuang, diperkecil), lalu pilih untuk calon.
+ * Memasang gambar Media ke calon memakai CandidatePhotoProcessor yang sama (potong persegi, 3 ukuran);
+ * file di Media tetap ada sampai dihapus dari Media.
  */
 class CandidateGallery
 {
@@ -36,7 +37,7 @@ class CandidateGallery
     ) {}
 
     /**
-     * Simpan satu unggahan sementara (disk local) ke galeri. File sementara selalu dihapus.
+     * Simpan satu unggahan sementara (disk local) ke Media. File sementara selalu dihapus.
      */
     public function store(string $temporaryPath, string $originalName, User $actor): GalleryPhoto
     {
@@ -72,7 +73,7 @@ class CandidateGallery
     }
 
     /**
-     * Pasang foto galeri ke calon (menggantikan foto lama calon).
+     * Pasang gambar Media ke calon (menggantikan foto lama calon).
      */
     public function assign(Candidate $candidate, GalleryPhoto $photo, User $actor): void
     {
@@ -96,8 +97,19 @@ class CandidateGallery
     }
 
     /**
-     * Pasang otomatis foto galeri yang belum dipakai ke calon surat suara ini, berdasarkan nama file
-     * (nomor di depan atau nama calon). Calon yang sudah punya foto dari galeri dilewati.
+     * Unggahan langsung untuk satu calon: masuk Media dulu (bisa dipakai ulang), lalu dipasang ke calon itu.
+     */
+    public function storeForCandidate(Candidate $candidate, string $temporaryPath, User $actor): GalleryPhoto
+    {
+        $photo = $this->store($temporaryPath, "{$candidate->displayNumber()} {$candidate->name}", $actor);
+        $this->assign($candidate, $photo, $actor);
+
+        return $photo;
+    }
+
+    /**
+     * Pasang otomatis gambar Media yang belum dipakai ke calon surat suara ini, berdasarkan nama file
+     * (nomor di depan atau nama calon). Calon yang sudah punya foto dari Media dilewati.
      *
      * @return array{matched: array<int, string>, skipped: array<int, string>}
      */
@@ -112,7 +124,7 @@ class CandidateGallery
         $matched = [];
         $skipped = [];
 
-        foreach (GalleryPhoto::query()->whereDoesntHave('candidates')->oldest()->get() as $photo) {
+        foreach (GalleryPhoto::query()->unused()->oldest()->get() as $photo) {
             [$candidate, $reason] = $this->importer->matchPhoto($photo->original_name, $candidates);
 
             if ($candidate === null) {
@@ -122,7 +134,7 @@ class CandidateGallery
             }
 
             if ($candidate->gallery_photo_id !== null) {
-                $skipped[] = "{$photo->original_name} (calon {$candidate->displayNumber()} sudah memakai foto galeri lain)";
+                $skipped[] = "{$photo->original_name} (calon {$candidate->displayNumber()} sudah memakai gambar lain dari Media)";
 
                 continue;
             }
@@ -141,17 +153,23 @@ class CandidateGallery
 
         Storage::disk('local')->delete([$photo->path(), $photo->path('thumb')]);
         $name = $photo->original_name;
+
+        // Logo yang sedang tampil adalah salinan terpisah, jadi tetap dipakai; hanya penandanya yang dilepas.
+        if ($photo->isLogo()) {
+            AppSetting::put([AppSetting::LOGO_MEDIA_ID => null]);
+        }
+
         $photo->delete();
 
         $this->audit->log('gallery.photo_deleted', meta: ['name' => $name], actor: $actor);
     }
 
     /**
-     * Hapus semua foto galeri yang tidak dipakai calon mana pun.
+     * Hapus semua gambar Media yang tidak dipakai calon mana pun dan bukan sumber logo.
      */
     public function deleteUnused(User $actor): int
     {
-        $unused = GalleryPhoto::query()->whereDoesntHave('candidates')->get();
+        $unused = GalleryPhoto::query()->unused()->get();
 
         foreach ($unused as $photo) {
             $this->delete($photo, $actor);

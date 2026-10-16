@@ -37,10 +37,10 @@ class ListCandidates extends ListRecords
                 ->schema([
                     ...$this->ballotFields(),
                     Select::make('default_origin_unit_id')
-                        ->label('Asal RT untuk semua baris (opsional)')
-                        ->helperText('Dipakai untuk baris yang tidak menulis RT sendiri.')
+                        ->label('Semua calon dari RT yang sama? (opsional)')
+                        ->helperText('Pilih RT hanya bila semua calon di daftar berasal dari RT yang sama. Bila RT-nya beda-beda, biarkan kosong dan tulis RT di tiap baris, mis. Budi Santoso | RT 03.')
                         ->options(fn (): array => Unit::query()->orderBy('sort')->pluck('name', 'id')->all())
-                        ->placeholder('Tidak diisi')
+                        ->placeholder('Kosong (RT ditulis per baris)')
                         ->visible(fn (Get $get): bool => filled($get('ballot_id')) && ! CandidateResource::ballotIsPerUnit($get('ballot_id'))),
                     Textarea::make('names')
                         ->label('Daftar calon')
@@ -74,7 +74,7 @@ class ListCandidates extends ListRecords
                 ->color('gray')
                 ->visible(fn (): bool => CandidateResource::canCreate())
                 ->modalHeading('Unggah banyak foto sekaligus')
-                ->modalDescription('Foto dicocokkan otomatis lewat nama file: nomor urut di depan (01.jpg, "3 - Bapak Ahmad.jpg") atau nama calon ("Ibu Sumiati.jpg", "sutrisno.png"). Foto dipotong persegi dan menggantikan foto lama. Yang tidak cocok dilewati dan disebutkan.')
+                ->modalDescription('Foto dicocokkan otomatis lewat nama file: nomor urut di depan (01.jpg, "3 - Bapak Ahmad.jpg") atau nama calon ("Ibu Sumiati.jpg", "sutrisno.png"). Foto dipotong persegi dan menggantikan foto lama. Semua foto ikut tersimpan di Media; yang tidak cocok disebutkan dan bisa dipasang manual dari sana.')
                 ->modalSubmitActionLabel('Pasang foto')
                 ->schema([
                     ...$this->ballotFields(),

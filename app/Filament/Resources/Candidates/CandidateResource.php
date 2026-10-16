@@ -10,6 +10,7 @@ use App\Filament\Resources\Candidates\Pages\CreateCandidate;
 use App\Filament\Resources\Candidates\Pages\EditCandidate;
 use App\Filament\Resources\Candidates\Pages\ListCandidates;
 use App\Filament\Support\InElectionMenu;
+use App\Filament\Support\MediaPicker;
 use App\Filament\Support\Workspace;
 use App\Models\Ballot;
 use App\Models\Candidate;
@@ -20,7 +21,6 @@ use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\CandidatePhotoProcessor;
 use App\Services\Candidates\CandidateGallery;
-use App\Services\Voting\VotingException;
 use BackedEnum;
 use Closure;
 use Filament\Actions\Action;
@@ -30,7 +30,6 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\ViewField;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
@@ -51,6 +50,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Unique;
+use RuntimeException;
 use UnitEnum;
 
 class CandidateResource extends Resource
@@ -186,15 +186,22 @@ class CandidateResource extends Resource
     }
 
     /**
-     * Pemilih foto galeri berbentuk grid gambar (klik untuk memilih), dengan pencarian nama file.
+     * Unggah foto calon dari laptop/HP: dipotong persegi agar semua calon tampil seragam.
      */
-    public static function galleryPickerField(string $name, string $label): ViewField
+    public static function photoUploadField(string $name, string $label): FileUpload
     {
-        return ViewField::make($name)
+        return FileUpload::make($name)
             ->label($label)
-            ->view('filament.forms.gallery-picker')
-            ->viewData(fn (): array => ['photos' => GalleryPhoto::query()->with('candidates')->latest()->limit(300)->get()])
-            ->rule('exists:gallery_photos,id');
+            ->image()
+            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+            ->maxSize((int) config('voting.photo.max_kilobytes'))
+            ->imageEditor()
+            ->imageEditorAspectRatioOptions(['1:1'])
+            ->imageCropAspectRatio('1:1')
+            ->automaticallyCropImagesToAspectRatio()
+            ->disk('local')
+            ->directory('unggahan-sementara')
+            ->visibility('private');
     }
 
     public static function ballotIsPerUnit(mixed $ballotId): bool
@@ -290,27 +297,16 @@ class CandidateResource extends Resource
                 Section::make('Foto')
                     ->description('JPG/PNG/WebP, maksimal '.intdiv((int) config('voting.photo.max_kilobytes'), 1024).' MB (foto langsung dari HP boleh). Foto dipotong persegi (1:1) agar semua calon tampil seragam. Wajah di tengah.')
                     ->schema([
-                        FileUpload::make('photo_upload')
-                            ->label('Unggah foto baru')
-                            ->image()
-                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
-                            ->maxSize((int) config('voting.photo.max_kilobytes'))
-                            ->imageEditor()
-                            ->imageEditorAspectRatioOptions(['1:1'])
-                            ->imageCropAspectRatio('1:1')
-                            ->automaticallyCropImagesToAspectRatio()
-                            ->disk('local')
-                            ->directory('unggahan-sementara')
-                            ->visibility('private')
+                        static::photoUploadField('photo_upload', 'Unggah foto baru')
                             ->helperText('Kosongkan jika tidak ingin mengganti foto.'),
-                        static::galleryPickerField('gallery_photo_pick', 'Atau pilih dari Galeri Foto')
+                        MediaPicker::field('gallery_photo_pick')
                             ->helperText('Klik salah satu foto. Dipakai bila tidak mengunggah foto baru di atas.'),
                     ]),
             ]);
     }
 
     /**
-     * Pilih foto dari Galeri Foto langsung dari baris daftar calon.
+     * Pasang foto langsung dari baris daftar calon: unggah dari laptop/HP, atau pilih dari Media.
      */
     public static function galleryPhotoAction(): Action
     {
@@ -319,20 +315,28 @@ class CandidateResource extends Resource
             ->icon(Heroicon::OutlinedPhoto)
             ->color('gray')
             ->visible(fn (Candidate $record): bool => static::canEdit($record))
-            ->modalHeading(fn (Candidate $record): string => "Pilih foto untuk {$record->displayNumber()} {$record->name}")
+            ->modalHeading(fn (Candidate $record): string => "Foto untuk {$record->displayNumber()} {$record->name}")
+            ->modalDescription('Unggah foto dari laptop/HP, atau pilih yang sudah ada di Media. Foto yang diunggah ikut tersimpan di Media. Foto lama calon (bila ada) digantikan.')
             ->modalSubmitActionLabel('Pasang')
             ->modalWidth(Width::SevenExtraLarge)
             ->schema([
-                static::galleryPickerField('gallery_photo_id', 'Klik foto yang akan dipasang')->required(),
+                static::photoUploadField('photo_upload', 'Unggah dari laptop/HP')
+                    ->requiredWithout('gallery_photo_id')
+                    ->validationMessages(['required_without' => 'Unggah foto atau pilih satu foto dari Media.']),
+                MediaPicker::field('gallery_photo_id'),
             ])
             ->action(function (Candidate $record, array $data): void {
                 /** @var User $user */
                 $user = auth()->user();
 
                 try {
-                    app(CandidateGallery::class)->assign($record, GalleryPhoto::query()->findOrFail($data['gallery_photo_id']), $user);
-                } catch (VotingException $exception) {
-                    Notification::make()->title($exception->getMessage())->danger()->send();
+                    if (filled($data['photo_upload'] ?? null)) {
+                        app(CandidateGallery::class)->storeForCandidate($record, $data['photo_upload'], $user);
+                    } else {
+                        app(CandidateGallery::class)->assign($record, GalleryPhoto::query()->findOrFail($data['gallery_photo_id']), $user);
+                    }
+                } catch (RuntimeException $exception) {
+                    Notification::make()->title('Foto ditolak: '.$exception->getMessage())->danger()->send();
 
                     return;
                 }
@@ -434,7 +438,7 @@ class CandidateResource extends Resource
             ])
             // Tombol ikon agar tabel tidak perlu digeser; keterangan muncul saat kursor diarahkan.
             ->recordActions([
-                static::galleryPhotoAction()->iconButton()->tooltip('Pilih foto dari galeri'),
+                static::galleryPhotoAction()->iconButton()->tooltip('Foto: unggah atau pilih dari Media'),
                 EditAction::make()->iconButton()->tooltip('Ubah (ganti/hapus foto, dll.)'),
                 static::deleteAction()->iconButton()->tooltip('Hapus calon'),
             ]);

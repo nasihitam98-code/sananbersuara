@@ -2,9 +2,12 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Support\MediaPicker;
 use App\Models\AppSetting;
+use App\Models\GalleryPhoto;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\Candidates\CandidateGallery;
 use App\Services\SiteLogoProcessor;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -110,21 +113,22 @@ class SiteSettings extends Page
     }
 
     /**
-     * "Ganti logo": jendela unggah dengan pratinjau kecil; tersimpan langsung (terpisah dari Simpan teks).
+     * "Pasang/Ganti logo": unggah dari laptop/HP (ikut tersimpan di Media) atau pilih dari Media;
+     * tersimpan langsung (terpisah dari Simpan teks).
      */
     public function uploadLogoAction(): Action
     {
         return Action::make('uploadLogo')
-            ->label(fn (): string => AppSetting::logoUrl() === null ? 'Unggah logo' : 'Ganti logo')
-            ->icon(Heroicon::OutlinedArrowUpTray)
-            ->modalHeading('Unggah logo')
-            ->modalDescription('Logo tampil di halaman publik untuk semua orang. Pastikan yang diunggah memang logo, bukan foto atau tangkapan layar.')
+            ->label(fn (): string => AppSetting::logoUrl() === null ? 'Pasang logo' : 'Ganti logo')
+            ->icon(Heroicon::OutlinedPhoto)
+            ->modalHeading('Pilih logo')
+            ->modalDescription('Logo tampil di halaman publik untuk semua orang. Pastikan yang dipilih memang logo, bukan foto atau tangkapan layar.')
             ->modalSubmitActionLabel('Pakai logo ini')
-            ->modalWidth(Width::Large)
+            ->modalWidth(Width::FiveExtraLarge)
             ->schema([
                 FileUpload::make('logo')
-                    ->label('Berkas logo')
-                    ->helperText('PNG, JPG, atau WebP, maks. 2 MB. Paling bagus logo persegi berlatar transparan (PNG). Diperkecil otomatis tanpa dipotong.')
+                    ->label('Unggah dari laptop/HP')
+                    ->helperText('PNG, JPG, atau WebP, maks. 2 MB. Paling bagus logo persegi berlatar transparan (PNG). Diperkecil otomatis tanpa dipotong. Ikut tersimpan di Media.')
                     ->image()
                     ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                     ->maxSize(2048)
@@ -132,11 +136,20 @@ class SiteSettings extends Page
                     ->disk('local')
                     ->directory('unggahan-sementara')
                     ->visibility('private')
-                    ->required(),
+                    ->requiredWithout('media_id')
+                    ->validationMessages(['required_without' => 'Unggah logo atau pilih satu gambar dari Media.']),
+                MediaPicker::field('media_id'),
             ])
             ->action(function (array $data): void {
+                /** @var User $user */
+                $user = auth()->user();
+
                 try {
-                    app(SiteLogoProcessor::class)->replace($data['logo']);
+                    $photo = filled($data['logo'] ?? null)
+                        ? app(CandidateGallery::class)->store($data['logo'], 'Logo', $user)
+                        : GalleryPhoto::query()->findOrFail($data['media_id']);
+
+                    app(SiteLogoProcessor::class)->useMedia($photo);
                 } catch (RuntimeException $exception) {
                     Notification::make()->title('Logo tidak bisa dipakai')->body($exception->getMessage())->danger()->send();
 
@@ -162,7 +175,7 @@ class SiteSettings extends Page
             ->requiresConfirmation()
             ->modalIconColor('danger')
             ->modalHeading('Hapus logo?')
-            ->modalDescription('Semua halaman kembali memakai logo bawaan (kotak merah bercentang). Berkas logo dihapus.')
+            ->modalDescription('Semua halaman kembali memakai logo bawaan (kotak merah bercentang). Gambar asalnya di Media tidak ikut dihapus.')
             ->modalSubmitActionLabel('Ya, hapus logo')
             ->modalSubmitAction(fn (Action $action): Action => $action->color('danger'))
             ->action(function (): void {

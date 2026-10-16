@@ -207,7 +207,7 @@ class HomeGuideTest extends TestCase
         // Tanpa logo: kotak merah bawaan dan ikon tab bawaan.
         $this->get(route('public.index'))->assertOk()->assertSee(asset(AppSetting::DEFAULT_FAVICON), false);
 
-        // Belum ada logo: tombol "Unggah logo", tombol Hapus belum ada.
+        // Belum ada logo: tombol "Pasang logo", tombol Hapus belum ada.
         Livewire::test(SiteSettings::class)
             ->assertActionVisible('uploadLogo')
             ->assertActionHidden('removeLogo')
