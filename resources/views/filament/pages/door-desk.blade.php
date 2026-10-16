@@ -19,7 +19,7 @@
                     <p class="text-gray-600 dark:text-gray-300">No. hadir {{ $issued['number'] }}</p>
                     <p class="text-sm font-semibold uppercase tracking-wide text-gray-500">PIN</p>
                     <p class="font-mono font-black tracking-[0.4em] text-7xl text-primary-700 dark:text-primary-300">{{ $issued['pin'] }}</p>
-                    <p class="text-sm text-danger-600 font-semibold">PIN hanya tampil sekali. Setelah ditekan "Sudah diberikan", PIN tidak bisa dilihat lagi.</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">PIN juga tersimpan di tabel peserta di bawah sampai pemilihan ditutup. Struk hilang atau kertas habis: tombol Cetak ulang di baris orangnya.</p>
                     @include('filament.pages.partials.pin-card-print', ['card' => [
                         'name' => $issued['name'],
                         'number' => $issued['number'],
@@ -60,24 +60,8 @@
             </x-filament::section>
         @endif
 
-        <x-filament::section heading="10 pendaftaran terakhir" description="Kertas habis atau struk hilang? Klik Cetak ulang di baris orangnya. Struk baru berisi PIN baru; PIN lama tidak berlaku." collapsible>
-            <ul class="divide-y divide-gray-200 dark:divide-white/10">
-                @forelse ($this->recentAttendees() as $attendee)
-                    <li class="flex items-center justify-between gap-3 py-2">
-                        <span><span class="font-mono text-gray-500">{{ $attendee->displayNumber() }}</span> · {{ $attendee->name }}</span>
-                        <span class="flex items-center gap-3">
-                            <span class="text-sm text-gray-500">{{ $attendee->unit?->name }} {{ $attendee->is_late ? '· datang terlambat' : '' }}</span>
-                            {{-- Disembunyikan saat kartu PIN sedang tampil, agar PIN yang belum diberikan tidak tertimpa. --}}
-                            @if (! $issued && $this->canReprint($attendee))
-                                {{ ($this->reprintAction)(['attendee' => $attendee->public_id]) }}
-                            @endif
-                        </span>
-                    </li>
-                @empty
-                    <li class="py-2 text-gray-500">Belum ada yang didata.</li>
-                @endforelse
-            </ul>
-        </x-filament::section>
+        {{-- Tabel peserta sama dengan Ruang Kendali: cari nama, PIN, status, Cetak ulang. --}}
+        @include('filament.pages.partials.attendance-table', ['election' => $election])
 
         {{-- Agar kartu langsung keluar dari printer thermal tanpa jendela "Print" di setiap pendaftaran. --}}
         <x-filament::section heading="Printer thermal: cetak langsung tanpa jendela print" collapsible collapsed>

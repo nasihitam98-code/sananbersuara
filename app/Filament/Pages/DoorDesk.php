@@ -5,39 +5,42 @@ namespace App\Filament\Pages;
 use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
 use App\Enums\StaffRole;
+use App\Filament\Pages\Concerns\InteractsWithAttendanceTable;
 use App\Filament\Pages\Concerns\InteractsWithElection;
 use App\Filament\Support\InElectionMenu;
 use App\Filament\Support\Workspace;
 use App\Models\Attendee;
-use App\Models\Election;
 use App\Models\Unit;
-use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\Voting\AttendeeRegistrar;
 use App\Services\Voting\VotingException;
 use BackedEnum;
-use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Collection;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Table;
 use UnitEnum;
 
 /**
- * Meja Pintu (Mode Dadakan): petugas mendata yang hadir; sistem membuat PIN yang tampil sekali.
+ * Meja Pintu (Mode Dadakan): petugas mendata yang hadir; sistem membuat PIN, dicetak di struk, dan tampil di tabel
+ * peserta (sama dengan Ruang Kendali) sampai pemilihan ditutup.
  *
  * @property-read Schema $form
  */
-class DoorDesk extends Page
+class DoorDesk extends Page implements HasTable
 {
     use InElectionMenu;
 
     public const ELECTION_MENU_SORT = 3;
 
+    use InteractsWithAttendanceTable;
     use InteractsWithElection;
+    use InteractsWithTable;
 
     protected string $view = 'filament.pages.door-desk';
 
@@ -90,6 +93,8 @@ class DoorDesk extends Page
     public function mount(): void
     {
         $this->form->fill();
+        // Petugas pintu mencari siapa saja yang sudah didata, jadi tabelnya mulai dari "Semua".
+        $this->participantTab = 'semua';
     }
 
     public function form(Schema $schema): Schema
@@ -162,101 +167,12 @@ class DoorDesk extends Page
     }
 
     /**
-     * "Cetak ulang" per orang (kertas habis, struk rusak/hilang). PIN lama tidak disimpan, jadi yang dicetak PIN baru.
+     * Tabel peserta yang sama dengan Ruang Kendali (PIN, status, Cetak ulang). PIN baru dan Pulihkan hanya untuk Panitia.
      */
-    public function reprintAction(): Action
+    public function table(Table $table): Table
     {
-        return Action::make('reprint')
-            ->label('Cetak ulang')
-            ->icon(Heroicon::OutlinedPrinter)
-            ->link()
-            ->size('sm')
-            ->color('gray')
-            ->requiresConfirmation()
-            ->modalIcon(Heroicon::OutlinedPrinter)
-            ->modalHeading(fn (array $arguments): string => 'Cetak ulang struk '.($this->reprintTarget($arguments)?->name ?? '').'?')
-            ->modalDescription('PIN lama tidak disimpan sistem, jadi struk baru berisi PIN BARU dan PIN lama tidak berlaku lagi. Pastikan orangnya ada di depan Anda.')
-            ->modalSubmitActionLabel('Ya, cetak dengan PIN baru')
-            ->action(function (array $arguments): void {
-                $attendee = $this->reprintTarget($arguments);
-
-                if ($attendee === null || ! $this->canReprint($attendee)) {
-                    Notification::make()->title('Struk orang ini tidak bisa dicetak ulang di sini. Arahkan ke Panitia.')->danger()->send();
-
-                    return;
-                }
-
-                try {
-                    $pin = app(AttendeeRegistrar::class)->reprintWithNewPin($this->authorizedElection(), $attendee, $this->currentUser());
-                } catch (VotingException $exception) {
-                    Notification::make()->title($exception->getMessage())->danger()->send();
-
-                    return;
-                }
-
-                $this->issued = [
-                    'name' => $attendee->name,
-                    'number' => $attendee->displayNumber(),
-                    'pin' => $pin,
-                    'note' => 'PIN BARU. PIN lama tidak berlaku.',
-                ];
-            });
-    }
-
-    /**
-     * Belum memilih, dan yang menekan Super Admin, Panitia, atau petugas yang mendaftarkan orang itu sendiri
-     * (Petugas Pintu tidak bisa mengganti PIN orang yang didaftarkan petugas lain).
-     */
-    public function canReprint(Attendee $attendee): bool
-    {
-        $election = $this->election();
-        $user = $this->currentUser();
-
-        if ($election === null || $attendee->election_id !== $election->id || $this->hasVoted($attendee, $election)) {
-            return false;
-        }
-
-        return $user->isSuperAdmin()
-            || $user->hasElectionRole($election, StaffRole::Panitia)
-            || $attendee->created_by === $user->id;
-    }
-
-    private function hasVoted(Attendee $attendee, Election $election): bool
-    {
-        $round = $election->currentRound();
-
-        return $round !== null && $attendee->participations()->where('round_id', $round->id)->where('active_key', 1)->exists();
-    }
-
-    /**
-     * @param  array<string, mixed>  $arguments
-     */
-    private function reprintTarget(array $arguments): ?Attendee
-    {
-        $election = $this->election();
-
-        return $election === null ? null : $election->attendees()->where('public_id', $arguments['attendee'] ?? '')->first();
-    }
-
-    private function currentUser(): User
-    {
-        /** @var User $user */
-        $user = auth()->user();
-
-        return $user;
-    }
-
-    /**
-     * @return Collection<int, Attendee>
-     */
-    public function recentAttendees(): Collection
-    {
-        $election = $this->election();
-
-        if ($election === null) {
-            return collect();
-        }
-
-        return $election->attendees()->with('unit')->latest('id')->limit(10)->get();
+        return $this->attendanceTable($table)
+            ->heading('Peserta terdata')
+            ->defaultPaginationPageOption(25);
     }
 }

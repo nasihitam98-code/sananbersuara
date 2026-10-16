@@ -74,7 +74,7 @@ class DadakanVotingTest extends TestCase
         app(WaveManager::class)->open($this->election, $kind, $minutes, $this->admin);
     }
 
-    public function test_pin_is_stored_only_as_hash(): void
+    public function test_pin_is_verified_by_hash_and_kept_only_encrypted(): void
     {
         ['attendee' => $attendee, 'pin' => $pin] = $this->register();
 
@@ -82,6 +82,11 @@ class DadakanVotingTest extends TestCase
         $this->assertNotSame($pin, $attendee->pin_hash);
         $this->assertSame(64, strlen($attendee->pin_hash));
         $this->assertStringNotContainsString($pin, (string) json_encode($attendee->fresh()->toArray()));
+
+        // Salinan untuk tabel panitia: terenkripsi di database, terbaca lewat model.
+        $raw = (string) DB::table('attendees')->where('id', $attendee->id)->value('pin_encrypted');
+        $this->assertStringNotContainsString($pin, $raw);
+        $this->assertSame($pin, $attendee->fresh()->storedPin());
     }
 
     public function test_search_and_pin_are_rejected_before_wave_opens(): void

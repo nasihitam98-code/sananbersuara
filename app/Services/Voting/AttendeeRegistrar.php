@@ -12,7 +12,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Pendataan peserta di pintu (Mode Dadakan). PIN dikembalikan sekali untuk ditulis di kertas.
+ * Pendataan peserta di pintu (Mode Dadakan). PIN dicetak di struk dan disimpan terenkripsi agar bisa ditampilkan
+ * dan dicetak ulang panitia sampai pemilihan ditutup.
  */
 class AttendeeRegistrar
 {
@@ -45,6 +46,7 @@ class AttendeeRegistrar
             $attendee->seq_no = (int) Attendee::query()->where('election_id', $election->id)->max('seq_no') + 1;
             $attendee->public_id = $attendee->newUniqueId();
             $attendee->pin_hash = $this->pins->hash($attendee->public_id, $pin);
+            $attendee->pin_encrypted = $pin;
             $attendee->pin_issued_at = Carbon::now();
             $attendee->is_late = $election->openWave() !== null || $election->rounds()->whereHas('waves')->exists();
             $attendee->created_by = $actor->id;
@@ -78,8 +80,30 @@ class AttendeeRegistrar
     }
 
     /**
-     * Cetak ulang dari Meja Pintu (mis. kertas habis, struk rusak): PIN lama tidak disimpan sehingga tidak bisa
-     * dicetak ulang, jadi dibuat PIN baru dan PIN lama hangus. Hanya untuk yang belum memilih.
+     * Cetak ulang struk (kertas habis, struk rusak/hilang): PIN yang sama bila masih tersimpan. Bila tidak tersimpan
+     * (didata sebelum PIN disimpan), dibuat PIN baru dan PIN lama hangus, hanya untuk yang belum memilih.
+     *
+     * @return array{pin: string, is_new: bool}
+     */
+    public function reprint(Election $election, Attendee $attendee, User $actor): array
+    {
+        if ($attendee->election_id !== $election->id) {
+            throw VotingException::invalidChoice();
+        }
+
+        $stored = $attendee->storedPin();
+
+        if ($stored !== null) {
+            $this->audit->log('attendee.pin_reprinted', $attendee, $election, meta: ['seq_no' => $attendee->seq_no, 'same_pin' => true], actor: $actor);
+
+            return ['pin' => $stored, 'is_new' => false];
+        }
+
+        return ['pin' => $this->reprintWithNewPin($election, $attendee, $actor), 'is_new' => true];
+    }
+
+    /**
+     * Cetak ulang dengan PIN baru (PIN lama hangus). Hanya untuk yang belum memilih.
      */
     public function reprintWithNewPin(Election $election, Attendee $attendee, User $actor): string
     {
@@ -98,7 +122,7 @@ class AttendeeRegistrar
 
         // Status Siap: voting belum pernah dibuka, jadi belum ada yang memilih.
         $pin = $this->reissuePin($attendee);
-        $this->audit->log('attendee.pin_reprinted', $attendee, $election, meta: ['seq_no' => $attendee->seq_no], actor: $actor);
+        $this->audit->log('attendee.pin_reprinted', $attendee, $election, meta: ['seq_no' => $attendee->seq_no, 'same_pin' => false], actor: $actor);
 
         return $pin;
     }
@@ -112,6 +136,7 @@ class AttendeeRegistrar
 
         $attendee->forceFill([
             'pin_hash' => $this->pins->hash($attendee->public_id, $pin),
+            'pin_encrypted' => $pin,
             'pin_failed_attempts' => 0,
             'pin_locked_at' => null,
             'pin_issued_at' => Carbon::now(),

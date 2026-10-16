@@ -1,14 +1,17 @@
 {{--
     Tombol "Cetak kartu PIN" untuk printer thermal 80 mm (muat juga di 58 mm) atau printer biasa.
-    Kartu dicetak dari iframe sementara di browser; PIN tidak disimpan di server dan tidak masuk riwayat.
+    Kartu dicetak dari iframe sementara di browser (tidak masuk riwayat cetak di server).
     Parameter: $card = ['name' => ..., 'number' => ..., 'pin' => ..., 'election' => ..., 'note' => ?string]
                $auto = true → langsung dicetak begitu kartu muncul (Meja Pintu), bisa dimatikan per laptop.
+               $force = true → langsung dicetak walau cetak otomatis dimatikan (tombol Cetak ulang di tabel).
 --}}
 @php($auto = $auto ?? false)
+@php($force = $force ?? false)
 <div
     {{-- Jangan pakai @if di dalam tag ini: Livewire menyisipkan penanda komentar di setiap @if dan tag jadi rusak. --}}
     x-data="{
         autoMode: {{ $auto ? 'true' : 'false' }},
+        forcePrint: {{ $force ? 'true' : 'false' }},
         auto: (() => { try { return localStorage.getItem('rtrw.autoPrint') !== '0'; } catch (e) { return true; } })(),
         remember() {
             try { localStorage.setItem('rtrw.autoPrint', this.auto ? '1' : '0'); } catch (e) {}
@@ -29,7 +32,7 @@
             }, 150);
         },
     }"
-    x-init="if (autoMode && auto) { $nextTick(() => print()); }"
+    x-init="if (forcePrint || (autoMode && auto)) { $nextTick(() => print()); }"
 >
     <template x-ref="card">
         {{-- Struk ringkas (keputusan panitia), urutan: No. hadir, nama, PIN. Nama aplikasi kecil di bawah.

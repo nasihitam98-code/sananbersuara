@@ -13,10 +13,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 /**
- * Peserta hadir Mode Dadakan. PIN hanya disimpan sebagai hash berpepper (lihat PinService).
+ * Peserta hadir Mode Dadakan. PIN diverifikasi lewat hash berpepper (lihat PinService); salinan terenkripsi
+ * (pin_encrypted) hanya untuk ditampilkan dan dicetak ulang panitia, dan dihapus saat pemilihan ditutup.
  */
 #[Fillable(['name', 'unit_id'])]
-#[Hidden(['pin_hash'])]
+#[Hidden(['pin_hash', 'pin_encrypted'])]
 #[RouteKey('public_id')]
 class Attendee extends Model
 {
@@ -47,6 +48,7 @@ class Attendee extends Model
             'pin_locked_at' => 'datetime',
             'pin_issued_at' => 'datetime',
             'is_late' => 'boolean',
+            'pin_encrypted' => 'encrypted',
         ];
     }
 
@@ -87,6 +89,14 @@ class Attendee extends Model
     public function isPinLocked(): bool
     {
         return $this->pin_locked_at !== null;
+    }
+
+    /**
+     * PIN yang berlaku, atau null bila tidak tersimpan (didata sebelum fitur ini, atau pemilihan sudah ditutup).
+     */
+    public function storedPin(): ?string
+    {
+        return $this->pin_encrypted;
     }
 
     public function displayNumber(): string

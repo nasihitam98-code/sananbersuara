@@ -198,6 +198,9 @@ class ElectionLifecycle
 
             $election->closed_at = $now;
 
+            // Salinan PIN untuk tabel panitia tidak diperlukan lagi setelah pemungutan selesai.
+            $election->attendees()->whereNotNull('pin_encrypted')->update(['pin_encrypted' => null]);
+
             // Mode Dadakan: tautan peserta–suara (voter_link) disimpan untuk Detail Suara saat sengketa,
             // lalu dihapus oleh DataRetention setelah masa sengketa (keputusan panitia, menggantikan K25 Opsi A).
             if (! $election->isDadakan()) {
@@ -275,6 +278,7 @@ class ElectionLifecycle
             if ($election->isDadakan()) {
                 DB::table('votes')->where('election_id', $election->id)->update(['voter_link' => null]);
                 $election->vote_links_destroyed_at = Carbon::now();
+                $election->attendees()->whereNotNull('pin_encrypted')->update(['pin_encrypted' => null]);
             }
         }, note: $note);
     }

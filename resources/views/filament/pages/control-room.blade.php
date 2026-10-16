@@ -20,7 +20,7 @@
                             <p class="text-danger-600">{{ $reissued['cancelled'] }} suara lama dibatalkan.</p>
                         @endif
                         <p class="font-mono font-black tracking-[0.4em] text-7xl text-primary-700 dark:text-primary-300">{{ $reissued['pin'] }}</p>
-                        <p class="text-sm text-danger-600 font-semibold">Cetak kartu baru atau tulis di kertas baru. PIN hanya tampil sekali. PIN lama sudah tidak berlaku.</p>
+                        <p class="text-sm text-danger-600 font-semibold">Cetak kartu baru atau tulis di kertas baru. PIN lama sudah tidak berlaku.</p>
                         <div class="mx-auto max-w-sm space-y-2">
                             @include('filament.pages.partials.pin-card-print', ['card' => [
                                 'name' => $reissued['name'],
@@ -152,24 +152,8 @@
             </div>
         </div>
 
-        {{-- Peserta: tab belum/sudah/semua, cari nama, PIN baru (belum), Pulihkan (sudah), unduh Excel. --}}
-        @php($tabCounts = $this->participantTabCounts())
-        <div class="space-y-3">
-            <x-filament::tabs label="Peserta">
-                @foreach (['belum' => 'Belum memilih', 'sudah' => 'Sudah memilih', 'semua' => 'Semua'] as $tabKey => $tabLabel)
-                    <x-filament::tabs.item
-                        :active="$participantTab === $tabKey"
-                        :badge="$tabCounts[$tabKey]"
-                        :badge-color="$tabKey === 'sudah' ? 'success' : ($tabKey === 'belum' ? 'warning' : 'gray')"
-                        wire:click="setParticipantTab('{{ $tabKey }}')"
-                    >
-                        {{ $tabLabel }}
-                    </x-filament::tabs.item>
-                @endforeach
-            </x-filament::tabs>
-
-            {{ $this->table }}
-        </div>
+        {{-- Peserta: sama dengan Meja Pintu (tab, cari nama, PIN, Cetak ulang, PIN baru, Pulihkan, unduh Excel). --}}
+        @include('filament.pages.partials.attendance-table', ['election' => $election])
 
     @endif
 </x-filament-panels::page>

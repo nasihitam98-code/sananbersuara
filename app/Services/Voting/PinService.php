@@ -8,7 +8,7 @@ use RuntimeException;
 use SensitiveParameter;
 
 /**
- * PIN Mode Dadakan: dibuat acak, disimpan sebagai HMAC berpepper, tampil sekali ke petugas pintu.
+ * PIN Mode Dadakan: dibuat acak, diverifikasi lewat HMAC berpepper. Salinan terenkripsi untuk tabel panitia ada di Attendee.
  */
 class PinService
 {

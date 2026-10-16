@@ -2,11 +2,15 @@
 
 namespace App\Filament\Pages\Concerns;
 
+use App\Enums\ElectionStatus;
 use App\Enums\RestoreReason;
+use App\Enums\StaffRole;
 use App\Models\Attendee;
 use App\Models\Unit;
+use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\Exports\SpreadsheetSanitizer;
+use App\Services\Voting\AttendeeRegistrar;
 use App\Services\Voting\ResultsCalculator;
 use App\Services\Voting\VoterRightRestorer;
 use App\Services\Voting\VotingException;
@@ -23,13 +27,15 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Writer\XLSX\Writer;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Tabel peserta Mode Dadakan di Ruang Kendali (dulu halaman Daftar Hadir terpisah): status sudah/belum, unduh Excel.
- * Tidak pernah memuat pilihan maupun angka PIN; kolom PIN hanya status, dengan tombol "PIN baru" dan "Pulihkan".
+ * Tabel peserta Mode Dadakan, sama di Ruang Kendali dan Meja Pintu: status sudah/belum, PIN (keputusan panitia
+ * 16 Okt 2026; tersimpan terenkripsi sampai pemilihan ditutup), Cetak ulang, PIN baru dan Pulihkan (khusus Panitia),
+ * unduh Excel (tanpa PIN). Tidak pernah memuat pilihan.
  * Kelas pemakai harus memakai InteractsWithElection dan InteractsWithTable.
  */
 trait InteractsWithAttendanceTable
@@ -37,7 +43,7 @@ trait InteractsWithAttendanceTable
     protected const PARTICIPATION_COUNT_SQL = '(select count(*) from attendee_participations p where p.attendee_id = attendees.id and p.round_id = ? and p.active_key = 1)';
 
     /**
-     * PIN baru yang baru dibuat; tampil sekali sampai ditekan "Sudah diberikan".
+     * PIN baru yang baru dibuat; kartunya tampil sampai ditekan "Sudah diberikan".
      *
      * @var array{name: string, number: string, pin: string, cancelled: int}|null
      */
@@ -47,6 +53,13 @@ trait InteractsWithAttendanceTable
      * Tab tabel peserta: "belum" (tombol PIN baru), "sudah" (tombol Pulihkan), atau "semua".
      */
     public string $participantTab = 'belum';
+
+    /**
+     * Struk yang sedang dicetak ulang dari tabel; token baru tiap cetak agar elemen cetak dibuat ulang dan langsung mencetak.
+     *
+     * @var array{name: string, number: string, pin: string, note: ?string, token: string}|null
+     */
+    public ?array $printCard = null;
 
     /**
      * Tabel peserta: nomor, nama, RT, jam datang, status sudah/belum, status PIN, dan tombol PIN baru / Pulihkan.
@@ -77,40 +90,36 @@ trait InteractsWithAttendanceTable
                         'name_search',
                         'like',
                         '%'.addcslashes(Attendee::normalizeForSearch($search), '%_\\').'%',
-                    )),
+                    ))
+                    // Jam datang dan keterangan di bawah nama (bukan kolom sendiri) agar tombol Cetak ulang tidak terpotong.
+                    ->description(fn (Attendee $record): string => implode(' · ', array_filter([
+                        'Datang '.$record->created_at?->format('H:i'),
+                        $record->is_late ? 'Datang terlambat' : null,
+                        $record->getAttribute('is_assisted') ? 'Dibantu' : null,
+                    ]))),
                 TextColumn::make('unit.name')
                     ->label('RT')
                     ->placeholder('-'),
-                TextColumn::make('created_at')
-                    ->label('Jam datang')
-                    ->dateTime('H:i')
-                    ->sortable(),
                 TextColumn::make('voted_ballots')
                     ->label('Status')
                     ->badge()
                     ->formatStateUsing(fn (mixed $state): string => $this->statusLabel((int) $state))
                     ->color(fn (mixed $state): string => (int) $state >= $this->ballotCount() ? 'success' : ((int) $state > 0 ? 'warning' : 'gray'))
                     ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('voted_ballots', $direction)),
-                TextColumn::make('notes')
-                    ->label('Keterangan')
-                    ->state(fn (Attendee $record): array => array_values(array_filter([
-                        $record->is_late ? 'Datang terlambat' : null,
-                        $record->getAttribute('is_assisted') ? 'Dibantu' : null,
-                    ])))
-                    ->badge()
-                    ->color('info')
-                    ->placeholder('-'),
-                TextColumn::make('pin_status')
+                TextColumn::make('pin')
                     ->label('PIN')
-                    ->state(fn (Attendee $record): string => $this->pinStatus($record))
-                    ->badge()
-                    ->color(fn (Attendee $record): string => match (true) {
-                        $record->isPinLocked() => 'danger',
-                        $this->pinWasReplaced($record) => 'warning',
-                        default => 'gray',
-                    }),
+                    ->state(fn (Attendee $record): ?string => $record->storedPin())
+                    ->fontFamily('mono')
+                    ->weight('bold')
+                    ->size('lg')
+                    ->placeholder('—')
+                    // Status PIN di bawah angkanya (satu kolom), agar tabel tidak melebar keluar layar.
+                    ->description(fn (Attendee $record): string => $this->pinStatus($record))
+                    ->color(fn (Attendee $record): ?string => $record->isPinLocked() ? 'danger' : null)
+                    ->tooltip(fn (Attendee $record): ?string => $record->storedPin() === null ? 'PIN tidak tersimpan (didata sebelum PIN disimpan, atau pemilihan sudah ditutup). Cetak ulang membuat PIN baru.' : null),
             ])
             ->recordActions([
+                $this->reprintTableAction(),
                 $this->newPinTableAction(),
                 $this->restoreTableAction(),
             ])
@@ -138,6 +147,86 @@ trait InteractsWithAttendanceTable
     }
 
     /**
+     * "Cetak ulang": struk dengan PIN yang sama (kertas habis, struk rusak/hilang). Bila PIN tidak tersimpan, PIN baru
+     * dibuat; jalur itu hanya untuk Panitia/Super Admin atau petugas yang mendaftarkan orang itu.
+     */
+    private function reprintTableAction(): Action
+    {
+        return Action::make('reprint')
+            ->label('Cetak ulang')
+            ->icon(Heroicon::OutlinedPrinter)
+            ->button()
+            ->size('sm')
+            ->color('gray')
+            ->outlined()
+            ->visible(fn (Attendee $record): bool => $this->canReprint($record))
+            // Selalu dikonfirmasi (syarat per baris tidak bisa: Filament menyimpan hasil requiresConfirmation pertama).
+            ->requiresConfirmation()
+            ->modalIcon(Heroicon::OutlinedPrinter)
+            ->modalHeading(fn (Attendee $record): string => "Cetak ulang struk {$record->name}?")
+            ->modalDescription(fn (Attendee $record): string => $record->storedPin() !== null
+                ? "PIN tetap sama ({$record->storedPin()})."
+                : 'PIN orang ini tidak tersimpan, jadi struk baru berisi PIN BARU dan PIN lama tidak berlaku lagi.')
+            ->modalSubmitActionLabel(fn (Attendee $record): string => $record->storedPin() !== null ? 'Cetak' : 'Ya, cetak dengan PIN baru')
+            ->action(function (Attendee $record): void {
+                /** @var User $user */
+                $user = auth()->user();
+
+                try {
+                    $result = app(AttendeeRegistrar::class)->reprint($this->authorizedElection(), $record, $user);
+                } catch (VotingException $exception) {
+                    Notification::make()->title($exception->getMessage())->danger()->send();
+
+                    return;
+                }
+
+                $this->printCard = [
+                    'name' => $record->name,
+                    'number' => $record->displayNumber(),
+                    'pin' => $result['pin'],
+                    'note' => $result['is_new'] ? 'PIN BARU. PIN lama tidak berlaku.' : null,
+                    'token' => Str::random(12),
+                ];
+            });
+    }
+
+    public function closePrintCard(): void
+    {
+        $this->printCard = null;
+    }
+
+    /**
+     * Belum memilih. PIN tersimpan: siapa pun yang bisa membuka halaman ini. PIN tidak tersimpan (jadi PIN baru):
+     * Panitia/Super Admin, atau petugas yang mendaftarkan orang itu sendiri.
+     */
+    private function canReprint(Attendee $attendee): bool
+    {
+        $election = $this->election();
+
+        if ($election === null || ! in_array($election->status, [ElectionStatus::Ready, ElectionStatus::Berlangsung, ElectionStatus::Paused], true) || $this->hasVoted($attendee)) {
+            return false;
+        }
+
+        /** @var User $user */
+        $user = auth()->user();
+
+        return $attendee->storedPin() !== null
+            || $this->isCommittee()
+            || $attendee->created_by === $user->id;
+    }
+
+    /**
+     * Super Admin atau Panitia pemilihan ini (Petugas Pintu tidak).
+     */
+    private function isCommittee(): bool
+    {
+        $election = $this->election();
+        $user = auth()->user();
+
+        return $election !== null && $user instanceof User && $user->hasElectionRole($election, StaffRole::Panitia);
+    }
+
+    /**
      * "PIN baru": untuk peserta yang belum memilih dan lupa/kehilangan PIN atau PIN-nya terkunci.
      * Tidak pernah membatalkan suara (ditolak bila ternyata sudah memilih).
      */
@@ -155,7 +244,7 @@ trait InteractsWithAttendanceTable
             ->requiresConfirmation()
             ->modalIcon(Heroicon::OutlinedKey)
             ->modalHeading(fn (Attendee $record): string => "Buat PIN baru untuk {$record->name}?")
-            ->modalDescription('PIN lama tidak berlaku lagi. PIN baru tampil sekali untuk dicetak atau ditulis.')
+            ->modalDescription('PIN lama tidak berlaku lagi. PIN baru langsung bisa dicetak dan tampil di tabel.')
             ->modalSubmitActionLabel('Ya, buat PIN baru')
             ->action(function (Attendee $record): void {
                 $this->runRestore($record, $record->isPinLocked() ? RestoreReason::PinTerkunci : RestoreReason::PinHilang, null, onlyIfNotVoted: true);
@@ -195,6 +284,7 @@ trait InteractsWithAttendanceTable
     private function runRestore(Attendee $attendee, RestoreReason $reason, ?string $note, bool $onlyIfNotVoted = false): void
     {
         $election = $this->authorizedElection();
+        abort_unless($this->canRestore(), 403);
 
         try {
             $result = app(VoterRightRestorer::class)->restore($election, $attendee, $reason, $note, auth()->user(), $onlyIfNotVoted);
@@ -254,11 +344,14 @@ trait InteractsWithAttendanceTable
         };
     }
 
+    /**
+     * PIN baru dan Pulihkan: hanya saat berlangsung, dan hanya Panitia/Super Admin (juga bila tabel tampil di Meja Pintu).
+     */
     private function canRestore(): bool
     {
         $election = $this->election();
 
-        return $election !== null && $election->status->isLive();
+        return $election !== null && $election->status->isLive() && $this->isCommittee();
     }
 
     private function hasVoted(Attendee $attendee): bool
