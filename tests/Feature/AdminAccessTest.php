@@ -159,7 +159,7 @@ class AdminAccessTest extends TestCase
         $this->assertMatchesRegularExpression('/^\d{4}$/', $pin);
         $this->assertSame(1, Attendee::query()->count());
         $this->assertSame('Budi Santoso', Attendee::query()->value('name'));
-        $component->assertSeeHtml('<div class="pin">'.$pin.'</div>')->assertSee($this->election->name);
+        $component->assertSeeHtml('<div class="pin">'.$pin.'</div>')->assertSeeHtml('<div class="name">Budi Santoso</div>');
 
         $component->call('acknowledge')->assertSet('issued', null)->assertDontSee('Cetak ulang kartu PIN');
     }
