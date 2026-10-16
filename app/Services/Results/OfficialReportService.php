@@ -253,7 +253,7 @@ class OfficialReportService
         $count = fn (string $action): int => AuditLog::query()->where('election_id', $election->id)->where('action', $action)->count();
 
         return [
-            'Gelombang dibuka' => $count('wave.opened'),
+            'Sesi voting dibuka' => $count('wave.opened'),
             'Perpanjangan waktu' => $count('wave.extended'),
             'Pulihkan hak pilih' => $count('attendee.voting_right_restored'),
             'PIN terkunci' => $count('attendee.pin_locked'),

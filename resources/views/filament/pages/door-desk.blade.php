@@ -19,7 +19,7 @@
                     <p class="text-gray-600 dark:text-gray-300">No. hadir {{ $issued['number'] }}</p>
                     <p class="text-sm font-semibold uppercase tracking-wide text-gray-500">PIN</p>
                     <p class="font-mono font-black tracking-[0.4em] text-7xl text-primary-700 dark:text-primary-300">{{ $issued['pin'] }}</p>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">PIN juga tersimpan di tabel peserta di bawah sampai pemilihan ditutup. Struk hilang atau kertas habis: tombol Cetak ulang di baris orangnya.</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">PIN juga tersimpan di tabel peserta di bawah sampai hasil diumumkan. Struk hilang atau kertas habis: tombol Cetak ulang di baris orangnya.</p>
                     @include('filament.pages.partials.pin-card-print', ['card' => [
                         'name' => $issued['name'],
                         'number' => $issued['number'],

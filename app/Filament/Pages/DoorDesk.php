@@ -28,7 +28,7 @@ use UnitEnum;
 
 /**
  * Meja Pintu (Mode Dadakan): petugas mendata yang hadir; sistem membuat PIN, dicetak di struk, dan tampil di tabel
- * peserta (sama dengan Ruang Kendali) sampai pemilihan ditutup.
+ * peserta (sama dengan Ruang Kendali) sampai hasil diumumkan.
  *
  * @property-read Schema $form
  */

@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Pendataan peserta di pintu (Mode Dadakan). PIN dicetak di struk dan disimpan terenkripsi agar bisa ditampilkan
- * dan dicetak ulang panitia sampai pemilihan ditutup.
+ * dan dicetak ulang panitia sampai hasil diumumkan.
  */
 class AttendeeRegistrar
 {

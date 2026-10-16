@@ -41,7 +41,7 @@ class Wave extends Model
 
     public function displayName(): string
     {
-        return filled($this->name) ? $this->name : "Gelombang {$this->number}";
+        return filled($this->name) ? $this->name : "Sesi {$this->number}";
     }
 
     public function hasTimer(): bool

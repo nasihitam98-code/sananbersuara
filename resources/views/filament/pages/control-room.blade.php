@@ -121,6 +121,37 @@
                 </x-filament::section>
             @endif
 
+            {{-- Riwayat sesi: jumlah orang per sesi (bukan pilihannya). Hasil suara per calon tetap gabungan, di Layar Hasil setelah ditutup. --}}
+            @if ($d['sessions']->isNotEmpty())
+                <x-filament::section heading="Riwayat sesi" description="Jumlah orang yang memilih di tiap sesi. Hasil suara per calon (gabungan semua sesi) tampil di Layar Hasil setelah pemilihan ditutup." collapsible>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="text-left text-gray-500">
+                                <tr><th class="py-1 pe-4">Sesi</th><th class="pe-4">Buka – Tutup</th><th class="pe-4">Durasi</th><th class="pe-4 text-right">Memilih di sesi ini</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($d['sessions'] as $session)
+                                    <tr class="border-t border-gray-100 dark:border-white/5">
+                                        <td class="py-2 pe-4">
+                                            <span class="font-semibold">{{ $session['label'] }}</span>
+                                            @if ($d['sessions']->max('round') > 1)
+                                                <span class="text-gray-500">· Putaran {{ $session['round'] }}</span>
+                                            @endif
+                                            @if ($session['assisted'])
+                                                <x-filament::badge color="info" size="sm" class="ms-1 inline-flex">Bantuan</x-filament::badge>
+                                            @endif
+                                        </td>
+                                        <td class="py-2 pe-4 tabular-nums">{{ $session['opened'] ?? '-' }} – {{ $session['open'] ? 'masih dibuka' : ($session['closed'] ?? '-') }}</td>
+                                        <td class="py-2 pe-4">{{ $session['duration'] }}</td>
+                                        <td class="py-2 pe-4 text-right text-base font-bold tabular-nums">{{ $session['voters'] }} orang</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </x-filament::section>
+            @endif
+
             @if ($d['headcount'] !== null)
                 @php($mismatch = (int) $d['headcount'] !== $p['attendees'])
                 <div class="rounded-xl p-4 {{ $mismatch ? 'bg-danger-50 text-danger-800 dark:bg-danger-950 dark:text-danger-200' : 'bg-success-50 text-success-800 dark:bg-success-950 dark:text-success-200' }}" role="status">

@@ -14,8 +14,10 @@ use App\Filament\Support\QuickStart;
 use App\Filament\Support\Reauthenticate;
 use App\Filament\Support\ReloadPage;
 use App\Filament\Support\Workspace;
+use App\Models\AttendeeParticipation;
 use App\Models\Election;
 use App\Models\User;
+use App\Models\Wave;
 use App\Services\AuditLogger;
 use App\Services\Voting\ElectionLifecycle;
 use App\Services\Voting\ResultsCalculator;
@@ -34,6 +36,8 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use UnitEnum;
 
 /**
@@ -110,9 +114,44 @@ class ControlRoom extends Page implements HasTable
             'round' => $round,
             'wave' => $election->openWave(),
             'waves' => $round?->waves()->get() ?? collect(),
+            'sessions' => $this->sessionHistory($election),
             'voterUrl' => route('voter.show', $election->access_code),
             'headcount' => $election->setting('headcount'),
         ];
+    }
+
+    /**
+     * Riwayat sesi semua putaran: jam buka–tutup, durasi, dan jumlah orang yang memilih di sesi itu (tanpa pilihannya).
+     *
+     * @return Collection<int, array{round: int, label: string, assisted: bool, opened: ?string, closed: ?string, open: bool, duration: string, voters: int}>
+     */
+    public function sessionHistory(Election $election): Collection
+    {
+        $waves = Wave::query()
+            ->whereHas('round', fn (Builder $round): Builder => $round->where('election_id', $election->id))
+            ->with('round')
+            ->orderBy('opened_at')
+            ->get();
+
+        $voters = AttendeeParticipation::query()
+            ->whereIn('wave_id', $waves->pluck('id'))
+            ->where('active_key', 1)
+            ->groupBy('wave_id')
+            ->selectRaw('wave_id, count(distinct attendee_id) as total')
+            ->pluck('total', 'wave_id');
+
+        return $waves->map(fn (Wave $wave): array => [
+            'round' => $wave->round->number,
+            'label' => $wave->displayName(),
+            'assisted' => $wave->kind === WaveKind::Bantuan,
+            'opened' => $wave->opened_at?->format('H:i'),
+            'closed' => $wave->closed_at?->format('H:i'),
+            'open' => $wave->closed_at === null,
+            'duration' => $wave->opened_at !== null && $wave->ends_at !== null
+                ? (int) round($wave->opened_at->diffInMinutes($wave->ends_at)).' menit'
+                : 'Tanpa timer',
+            'voters' => (int) ($voters[$wave->id] ?? 0),
+        ]);
     }
 
     public function table(Table $table): Table
@@ -200,10 +239,10 @@ class ControlRoom extends Page implements HasTable
                 return [
                     TextInput::make('name')
                         ->label('Nama sesi (opsional)')
-                        ->placeholder("Gelombang {$nextNumber}")
+                        ->placeholder("Sesi {$nextNumber}")
                         ->helperText($nextNumber > 1
                             ? 'Sesi ini untuk warga yang BELUM memilih. Yang sudah memilih tidak bisa memilih lagi. Kosongkan = Gelombang '.$nextNumber.'.'
-                            : 'Mis. "Sesi pertama", "Sesi lansia", "Susulan RT 05". Kosongkan = Gelombang 1.')
+                            : 'Mis. "Sesi pertama", "Sesi lansia", "Susulan RT 05". Kosongkan = Sesi 1.')
                         ->maxLength(60),
                     Toggle::make('timed')
                         ->label('Pakai timer')

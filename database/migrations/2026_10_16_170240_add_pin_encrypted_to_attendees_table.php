@@ -8,7 +8,7 @@ return new class extends Migration
 {
     /**
      * PIN peserta disimpan terenkripsi (APP_KEY) agar tampil di tabel Meja Pintu dan Ruang Kendali (keputusan panitia
-     * 16 Okt 2026). Verifikasi tetap memakai pin_hash; kolom ini dikosongkan saat pemilihan ditutup atau dibatalkan.
+     * 16 Okt 2026). Verifikasi tetap memakai pin_hash; kolom ini dikosongkan saat hasil diumumkan atau pemilihan dibatalkan.
      */
     public function up(): void
     {

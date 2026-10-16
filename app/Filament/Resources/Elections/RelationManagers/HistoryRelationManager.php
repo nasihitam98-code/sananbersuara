@@ -102,7 +102,7 @@ class HistoryRelationManager extends RelationManager
         }
 
         if (str_starts_with($record->action, 'wave.') && isset($record->meta['number'])) {
-            $label .= ': '.(filled($record->meta['name'] ?? null) ? $record->meta['name'] : 'Gelombang '.$record->meta['number']);
+            $label .= ': '.(filled($record->meta['name'] ?? null) ? $record->meta['name'] : 'Sesi '.$record->meta['number']);
         }
 
         return $label;

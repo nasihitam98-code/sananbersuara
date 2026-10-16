@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 
 /**
  * Peserta hadir Mode Dadakan. PIN diverifikasi lewat hash berpepper (lihat PinService); salinan terenkripsi
- * (pin_encrypted) hanya untuk ditampilkan dan dicetak ulang panitia, dan dihapus saat pemilihan ditutup.
+ * (pin_encrypted) hanya untuk ditampilkan dan dicetak ulang panitia, dan dihapus saat hasil diumumkan atau pemilihan dibatalkan.
  */
 #[Fillable(['name', 'unit_id'])]
 #[Hidden(['pin_hash', 'pin_encrypted'])]
@@ -92,7 +92,7 @@ class Attendee extends Model
     }
 
     /**
-     * PIN yang berlaku, atau null bila tidak tersimpan (didata sebelum fitur ini, atau pemilihan sudah ditutup).
+     * PIN yang berlaku, atau null bila tidak tersimpan (didata sebelum fitur ini, atau hasil sudah diumumkan).
      */
     public function storedPin(): ?string
     {

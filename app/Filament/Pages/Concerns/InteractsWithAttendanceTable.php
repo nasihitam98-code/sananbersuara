@@ -34,7 +34,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Tabel peserta Mode Dadakan, sama di Ruang Kendali dan Meja Pintu: status sudah/belum, PIN (keputusan panitia
- * 16 Okt 2026; tersimpan terenkripsi sampai pemilihan ditutup), Cetak ulang, PIN baru dan Pulihkan (khusus Panitia),
+ * 16 Okt 2026; tersimpan terenkripsi sampai hasil diumumkan), Cetak ulang, PIN baru dan Pulihkan (khusus Panitia),
  * unduh Excel (tanpa PIN). Tidak pernah memuat pilihan.
  * Kelas pemakai harus memakai InteractsWithElection dan InteractsWithTable.
  */
@@ -116,7 +116,7 @@ trait InteractsWithAttendanceTable
                     // Status PIN di bawah angkanya (satu kolom), agar tabel tidak melebar keluar layar.
                     ->description(fn (Attendee $record): string => $this->pinStatus($record))
                     ->color(fn (Attendee $record): ?string => $record->isPinLocked() ? 'danger' : null)
-                    ->tooltip(fn (Attendee $record): ?string => $record->storedPin() === null ? 'PIN tidak tersimpan (didata sebelum PIN disimpan, atau pemilihan sudah ditutup). Cetak ulang membuat PIN baru.' : null),
+                    ->tooltip(fn (Attendee $record): ?string => $record->storedPin() === null ? 'PIN tidak tersimpan (didata sebelum PIN disimpan, atau hasil sudah diumumkan). Cetak ulang membuat PIN baru.' : null),
             ])
             ->recordActions([
                 $this->reprintTableAction(),

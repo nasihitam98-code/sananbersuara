@@ -198,9 +198,6 @@ class ElectionLifecycle
 
             $election->closed_at = $now;
 
-            // Salinan PIN untuk tabel panitia tidak diperlukan lagi setelah pemungutan selesai.
-            $election->attendees()->whereNotNull('pin_encrypted')->update(['pin_encrypted' => null]);
-
             // Mode Dadakan: tautan peserta–suara (voter_link) disimpan untuk Detail Suara saat sengketa,
             // lalu dihapus oleh DataRetention setelah masa sengketa (keputusan panitia, menggantikan K25 Opsi A).
             if (! $election->isDadakan()) {
@@ -253,6 +250,10 @@ class ElectionLifecycle
 
             // Awal masa sengketa untuk retensi K26 dihitung dari publikasi pertama.
             $election->published_at ??= Carbon::now();
+
+            // Salinan PIN untuk tabel panitia dihapus saat hasil diumumkan (bukan saat ditutup, karena putaran
+            // berikutnya untuk hasil seri dibuka setelah ditutup dan warga memakai PIN yang sama).
+            $election->attendees()->whereNotNull('pin_encrypted')->update(['pin_encrypted' => null]);
         });
 
         app(InternalNotifier::class)->notifySuperAdmins('Hasil dipublikasikan', "{$actor->name} mempublikasikan hasil \"{$election->name}\".", $actor);

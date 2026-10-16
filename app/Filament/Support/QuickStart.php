@@ -48,13 +48,13 @@ class QuickStart
                 $election($arguments, $record)?->isDadakan() ? Toggle::make('open_now')
                     ->label('Langsung buka voting')
                     ->helperText(fn (): string => $election($arguments, $record)?->attendees()->exists()
-                        ? 'HP warga bisa langsung memilih. Matikan bila ingin membuka voting nanti dari Ruang Kendali.'
-                        : 'Belum ada warga yang didata di Meja Pintu. Sebaiknya data warga dulu, lalu buka voting dari Ruang Kendali.')
+                        ? 'Nyala: HP warga langsung bisa memilih. Mati: voting dibuka nanti lewat tombol BUKA VOTING di Ruang Kendali, durasi diisi di sana.'
+                        : 'Belum ada warga yang didata di Meja Pintu. Sebaiknya data warga dulu, lalu buka voting lewat tombol BUKA VOTING di Ruang Kendali (durasi diisi di sana).')
                     ->default(fn (): bool => (bool) $election($arguments, $record)?->attendees()->exists())
                     ->live() : null,
                 $election($arguments, $record)?->isDadakan() ? TextInput::make('minutes')
                     ->label('Durasi (menit)')
-                    ->helperText('Kosongkan = tanpa timer, tutup manual dari Ruang Kendali.')
+                    ->helperText('Kosongkan untuk tanpa timer (tutup manual dari Ruang Kendali). Bila diisi, minimal 1 menit.')
                     ->numeric()->minValue(1)->maxValue(120)
                     ->default(fn (): int => $election($arguments, $record)?->defaultWaveMinutes() ?? 5)
                     ->visible(fn (Get $get): bool => (bool) $get('open_now')) : null,

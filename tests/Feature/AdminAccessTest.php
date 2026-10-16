@@ -24,6 +24,7 @@ use App\Models\Election;
 use App\Models\ElectionStaff;
 use App\Models\User;
 use App\Services\Voting\AttendeeRegistrar;
+use App\Services\Voting\BallotBox;
 use App\Services\Voting\ElectionLifecycle;
 use App\Services\Voting\WaveManager;
 use Database\Seeders\DatabaseSeeder;
@@ -202,10 +203,39 @@ class AdminAccessTest extends TestCase
         $this->assertNotNull($own->fresh()->storedPin());
         $this->assertNotSame($ownPin, $own->fresh()->storedPin());
 
-        // Pemilihan ditutup: salinan PIN dihapus.
+        // Ditutup: PIN tetap ada (putaran berikutnya untuk hasil seri memakai PIN yang sama). Dibatalkan/diumumkan: dihapus.
         app(ElectionLifecycle::class)->start($this->election->fresh(), $this->superAdmin);
         app(ElectionLifecycle::class)->close($this->election->fresh(), $this->superAdmin);
+        $this->assertNotNull($own->fresh()->storedPin());
+        app(ElectionLifecycle::class)->cancel($this->election->fresh(), $this->superAdmin, 'Gladi selesai');
         $this->assertSame(0, Attendee::query()->whereNotNull('pin_encrypted')->count());
+    }
+
+    public function test_control_room_lists_each_session_with_how_many_voted(): void
+    {
+        ['attendee' => $attendee, 'pin' => $pin] = app(AttendeeRegistrar::class)->register($this->election, 'Santi', null, $this->superAdmin);
+        app(AttendeeRegistrar::class)->register($this->election, 'Ojan', null, $this->superAdmin);
+        app(ElectionLifecycle::class)->start($this->election->fresh(), $this->superAdmin);
+        app(WaveManager::class)->open($this->election->fresh(), WaveKind::Terbuka, 10, $this->superAdmin, 'Sesi utama');
+
+        $election = $this->election->fresh();
+        $ballot = $election->ballots()->firstOrFail();
+        $box = app(BallotBox::class);
+        $box->cast($election, $attendee->fresh(), $box->verifyPin($election, $attendee->fresh(), $pin), $ballot, $ballot->candidates()->firstOrFail());
+        app(WaveManager::class)->close($election, $this->superAdmin);
+        app(WaveManager::class)->open($election->fresh(), WaveKind::Terbuka, null, $this->superAdmin);
+
+        $this->actingAs($this->superAdmin);
+        $sessions = Livewire::test(ControlRoom::class)
+            ->assertSee('Riwayat sesi')
+            ->assertSee('Sesi utama')
+            ->assertSee('masih dibuka')
+            ->instance()
+            ->sessionHistory($election);
+
+        $this->assertSame(['Sesi utama', 'Sesi 2'], $sessions->pluck('label')->all());
+        $this->assertSame([1, 0], $sessions->pluck('voters')->all());
+        $this->assertSame(['10 menit', 'Tanpa timer'], $sessions->pluck('duration')->all());
     }
 
     public function test_panel_pages_refresh_themselves_except_pages_with_their_own_polling(): void
@@ -443,7 +473,7 @@ class AdminAccessTest extends TestCase
         $wave = app(WaveManager::class)->open($this->election, WaveKind::Bantuan, null, $this->superAdmin, '   ');
 
         $this->assertNull($wave->name);
-        $this->assertSame('Gelombang 1', $wave->displayName());
+        $this->assertSame('Sesi 1', $wave->displayName());
     }
 
     public function test_super_admin_starts_election_from_control_room_but_committee_cannot(): void
