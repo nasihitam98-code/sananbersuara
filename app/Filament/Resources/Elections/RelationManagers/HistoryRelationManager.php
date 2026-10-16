@@ -29,6 +29,7 @@ class HistoryRelationManager extends RelationManager
         'election.status_changed' => 'Status berubah',
         'election.staff_assigned' => 'Panitia/petugas ditugaskan',
         'election.staff_removed' => 'Penugasan dicabut',
+        'election.staff_role_changed' => 'Peran panitia/petugas diubah',
         'election.headcount_entered' => 'Hitung kepala diisi',
         'ballot.created' => 'Surat suara ditambah',
         'ballot.updated' => 'Surat suara diubah',

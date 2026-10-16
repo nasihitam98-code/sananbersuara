@@ -440,7 +440,7 @@ class HomeGuide extends Widget implements HasActions, HasSchemas
                 [ElectionResource::class, 'Buat pemilihan', 'Tambah surat suara, mis. "Calon Ketua RW", berhak: semua yang hadir.'],
                 [CandidateResource::class, 'Masukkan calon', 'Satu per satu atau Tambah banyak calon (tempel daftar nama).'],
                 [GalleryPage::class, 'Media: unggah foto calon', 'Lalu Pasang otomatis (nama file) atau pilih per calon. Bisa juga langsung dari tombol Foto di daftar Calon.'],
-                [ElectionResource::class, 'Tugaskan Panitia dan Petugas Pintu', 'Di pemilihan, tab Panitia & Petugas Pintu. Lalu klik Tandai Siap, dan saat acara dimulai klik Mulai Pemilihan.'],
+                [ElectionResource::class, 'Tandai Siap (tugaskan panitia bila perlu)', 'Di halaman pemilihan klik Tandai Siap. Ada panitia lain dengan akun sendiri? Tugaskan dulu di tab Panitia & Petugas Pintu. Saat acara dimulai klik Mulai Pemilihan.'],
                 [DoorDesk::class, 'Meja Pintu: daftarkan yang hadir', 'Ketik nama, tekan Daftarkan & buat PIN, tulis PIN di kertas.'],
                 [ControlRoom::class, 'Ruang Kendali: buka voting', 'Tampilkan Layar QR, tekan BUKA VOTING. Tabel peserta di bawahnya menunjukkan siapa yang belum memilih; mereka ikut sesi berikutnya.'],
                 [ResultScreen::class, 'Tutup, lalu Tampilkan Hasil', 'Ranking calon tampil di layar/proyektor.'],

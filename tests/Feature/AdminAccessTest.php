@@ -231,8 +231,9 @@ class AdminAccessTest extends TestCase
         Livewire::test(EditElection::class, ['record' => $draft->public_id])
             ->assertSee('1 surat suara: Calon Ketua RW')
             ->assertSee('1 calon (1 belum berfoto)')
+            // Panitia opsional: Super Admin bisa menjalankan semuanya sendiri, jadi tidak menghalangi Tandai Siap.
             ->assertSee('0 Panitia, 0 Petugas Pintu')
-            ->assertSee('Lengkapi langkah di atas dulu');
+            ->assertSee('Semua langkah di atas lengkap. Tekan tombol Tandai Siap');
 
         foreach ([StaffRole::Panitia, StaffRole::PetugasPintu] as $role) {
             // Lewat tab Panitia & Petugas Pintu: daftar periksa diberi tahu agar langsung diperbarui.
@@ -243,8 +244,29 @@ class AdminAccessTest extends TestCase
         }
 
         Livewire::test(EditElection::class, ['record' => $draft->public_id])
-            ->assertSee('1 Panitia, 1 Petugas Pintu')
-            ->assertSee('Semua langkah di atas lengkap. Tekan tombol Tandai Siap');
+            ->assertSee('1 Panitia, 1 Petugas Pintu');
+    }
+
+    public function test_staff_role_can_be_changed_without_revoking(): void
+    {
+        $draft = Election::factory()->create();
+        $this->actingAs($this->superAdmin);
+        $staff = $draft->staff()->create(['user_id' => $this->superAdmin->id, 'role' => StaffRole::PetugasPintu]);
+
+        Livewire::test(StaffRelationManager::class, ['ownerRecord' => $draft, 'pageClass' => EditElection::class])
+            ->callAction(TestAction::make('edit')->table($staff), ['role' => StaffRole::Panitia->value])
+            ->assertHasNoFormErrors()
+            ->assertDispatched(EditElection::PREPARATION_UPDATED);
+
+        $this->assertSame(StaffRole::Panitia, $staff->fresh()->role);
+        $this->assertTrue(AuditLog::query()->where('action', 'election.staff_role_changed')->exists());
+
+        // Peran yang sama untuk akun yang sama tidak boleh dobel.
+        $draft->staff()->create(['user_id' => $this->superAdmin->id, 'role' => StaffRole::PetugasPintu]);
+
+        Livewire::test(StaffRelationManager::class, ['ownerRecord' => $draft, 'pageClass' => EditElection::class])
+            ->callAction(TestAction::make('edit')->table($staff), ['role' => StaffRole::PetugasPintu->value])
+            ->assertHasFormErrors(['role' => 'unique']);
     }
 
     public function test_saving_with_empty_advanced_settings_keeps_defaults_and_other_settings(): void

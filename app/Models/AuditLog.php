@@ -63,6 +63,7 @@ class AuditLog extends Model
         'election.public_listing' => 'Tampil di halaman publik diubah',
         'election.staff_assigned' => 'Panitia ditugaskan',
         'election.staff_removed' => 'Penugasan panitia dicabut',
+        'election.staff_role_changed' => 'Peran panitia diubah',
         'election.status_changed' => 'Status pemilihan berubah',
         'election.updated' => 'Pengaturan pemilihan diubah',
         'gallery.photo_added' => 'Gambar masuk Media',

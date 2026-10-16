@@ -73,10 +73,11 @@ class ElectionChecklist
             $committee = $roles->filter(fn ($role): bool => $role === StaffRole::Panitia)->count();
             $door = $roles->filter(fn ($role): bool => $role === StaffRole::PetugasPintu)->count();
 
+            // Opsional: Super Admin bisa menjalankan Meja Pintu dan Ruang Kendali sendiri, jadi tidak menghalangi Tandai Siap.
             $steps[] = [
-                'title' => 'Panitia & Petugas Pintu',
-                'done' => $committee > 0 && $door > 0,
-                'detail' => "{$committee} Panitia, {$door} Petugas Pintu".($committee === 0 || $door === 0 ? '. Minimal 1 Panitia dan 1 Petugas Pintu.' : ''),
+                'title' => 'Panitia & Petugas Pintu (opsional)',
+                'done' => true,
+                'detail' => "{$committee} Panitia, {$door} Petugas Pintu. Tugaskan bila ada panitia lain yang memakai akun sendiri; Super Admin bisa mengerjakan semuanya tanpa ditugaskan.",
                 'actionLabel' => 'Tugaskan',
                 'url' => $editUrl(1),
             ];

@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\AuditLogger;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Utilities\Get;
@@ -54,14 +55,17 @@ class StaffRelationManager extends RelationManager
                         ->mapWithKeys(fn (User $user): array => [$user->id => "{$user->name} ({$user->email})"])
                         ->all())
                     ->searchable()
-                    ->required(),
+                    ->required()
+                    ->disabledOn('edit'),
                 Select::make('role')
                     ->label('Peran')
                     ->options(StaffRole::class)
+                    ->helperText('Panitia: Meja Pintu, Ruang Kendali, Layar QR, dan Layar Hasil. Petugas Pintu: hanya Meja Pintu. Super Admin sudah bisa semuanya tanpa ditugaskan.')
                     ->required()
                     ->unique(
                         table: 'election_staff',
                         column: 'role',
+                        ignoreRecord: true,
                         modifyRuleUsing: fn (Unique $rule, Get $get): Unique => $rule
                             ->where('election_id', $this->getOwnerRecord()->getKey())
                             ->where('user_id', $get('user_id')),
@@ -93,6 +97,18 @@ class StaffRelationManager extends RelationManager
                     }),
             ])
             ->recordActions([
+                EditAction::make()
+                    ->label('Ubah peran')
+                    ->modalHeading('Ubah peran')
+                    ->using(function (ElectionStaff $record, array $data): ElectionStaff {
+                        $before = $record->role->value;
+                        $record->update(['role' => $data['role']]);
+
+                        app(AuditLogger::class)->log('election.staff_role_changed', $record->user, $this->getOwnerRecord(), meta: ['before' => $before, 'after' => $record->role->value]);
+                        $this->dispatch(EditElection::PREPARATION_UPDATED);
+
+                        return $record;
+                    }),
                 DeleteAction::make()
                     ->label('Cabut')
                     ->after(function (ElectionStaff $record): void {
