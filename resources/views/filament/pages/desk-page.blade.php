@@ -5,7 +5,7 @@
     @if ($election === null)
         <x-filament::section>Belum ada pemilihan Mode Resmi yang Siap atau Berlangsung.</x-filament::section>
     @else
-        <div wire:poll.3s class="space-y-6">
+        <div wire:poll.3s data-auto-refresh="off" class="space-y-6">
             {{-- Status laptop --}}
             <div class="flex flex-wrap items-center gap-3">
                 <x-filament::badge size="lg" :color="$election->status->getColor()">{{ $election->name }} · {{ $election->status->getLabel() }}</x-filament::badge>

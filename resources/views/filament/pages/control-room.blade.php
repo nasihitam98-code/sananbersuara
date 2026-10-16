@@ -11,7 +11,7 @@
         @php($d = $this->dashboard())
 
         {{-- Satu pembaruan per 5 detik untuk seluruh halaman (termasuk tabel peserta) agar server tidak terbebani. --}}
-        <div wire:poll.5s.visible class="space-y-6">
+        <div wire:poll.5s.visible data-auto-refresh="off" class="space-y-6">
             @if ($reissued)
                 <x-filament::section>
                     <div class="text-center space-y-2" role="status">

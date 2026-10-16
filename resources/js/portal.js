@@ -188,3 +188,47 @@ function initScrollSpy() {
 
 initCountUp();
 initScrollSpy();
+
+/*
+ * Data terbaru tanpa menekan refresh: tiap 60 detik halaman ini diambil ulang di latar belakang; bila isinya berubah
+ * (mis. pemilihan dimulai atau hasil diumumkan), halaman dimuat ulang. Dilewati saat tab tidak sedang dilihat.
+ */
+function initAutoRefresh() {
+    if (!('fetch' in window)) {
+        return;
+    }
+
+    const intervalMs = 60000;
+    let baseline = null;
+
+    const check = async () => {
+        if (document.visibilityState !== 'visible') {
+            return;
+        }
+
+        try {
+            const response = await fetch(window.location.href, { cache: 'no-store', headers: { Accept: 'text/html' } });
+
+            if (!response.ok) {
+                return;
+            }
+
+            const html = await response.text();
+
+            if (baseline !== null && html !== baseline) {
+                window.location.reload();
+
+                return;
+            }
+
+            baseline = html;
+        } catch {
+            // Jaringan putus sebentar: coba lagi di putaran berikutnya.
+        }
+    };
+
+    check();
+    setInterval(check, intervalMs);
+}
+
+initAutoRefresh();

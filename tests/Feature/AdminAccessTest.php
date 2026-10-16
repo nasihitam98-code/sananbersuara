@@ -213,6 +213,16 @@ class AdminAccessTest extends TestCase
         $this->assertFalse(Livewire::test(DoorDesk::class)->instance()->canReprint($own->fresh()));
     }
 
+    public function test_panel_pages_refresh_themselves_except_pages_with_their_own_polling(): void
+    {
+        $this->actingAs($this->superAdmin)->get('/admin')
+            ->assertOk()
+            ->assertSee('window.Livewire.all()', false)
+            ->assertSee('.fi-modal-open, .filepond--item', false);
+
+        $this->assertStringContainsString('data-auto-refresh="off"', file_get_contents(resource_path('views/filament/pages/control-room.blade.php')));
+    }
+
     public function test_door_desk_keeps_mixed_case_names_as_typed(): void
     {
         $this->assertSame('H. Abdul McLean', AttendeeRegistrar::tidyName('H. Abdul McLean'));

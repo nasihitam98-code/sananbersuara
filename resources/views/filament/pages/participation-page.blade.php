@@ -4,7 +4,7 @@
     @if ($election === null)
         <x-filament::section>Belum ada pemilihan Mode Resmi yang berjalan.</x-filament::section>
     @else
-        <div wire:poll.5s class="space-y-6">
+        <div wire:poll.5s data-auto-refresh="off" class="space-y-6">
             <div class="flex flex-wrap items-center gap-3">
                 <x-filament::badge size="lg" :color="$election->status->getColor()">{{ $election->name }} · {{ $election->status->getLabel() }}</x-filament::badge>
                 <span class="text-sm text-gray-500">Hanya jumlah sudah/belum memilih. Angka per calon tidak ditampilkan selama berlangsung.</span>

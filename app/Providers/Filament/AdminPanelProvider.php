@@ -86,6 +86,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->sidebarCollapsibleOnDesktop()
             ->renderHook(PanelsRenderHook::GLOBAL_SEARCH_BEFORE, fn (): View => view('filament.workspace-switcher'))
+            ->renderHook(PanelsRenderHook::BODY_END, fn (): View => view('filament.auto-refresh'))
             // Tujuan tombol "Kelola surat suara" / "Tugaskan" di daftar Persiapan: layar langsung bergulir ke tabelnya.
             ->renderHook(
                 PanelsRenderHook::RESOURCE_RELATION_MANAGER_BEFORE,
