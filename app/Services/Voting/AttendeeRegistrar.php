@@ -2,6 +2,8 @@
 
 namespace App\Services\Voting;
 
+use App\Enums\ElectionStatus;
+use App\Enums\RestoreReason;
 use App\Models\Attendee;
 use App\Models\Election;
 use App\Models\User;
@@ -73,6 +75,32 @@ class AttendeeRegistrar
         }
 
         return $name;
+    }
+
+    /**
+     * Cetak ulang dari Meja Pintu (mis. kertas habis, struk rusak): PIN lama tidak disimpan sehingga tidak bisa
+     * dicetak ulang, jadi dibuat PIN baru dan PIN lama hangus. Hanya untuk yang belum memilih.
+     */
+    public function reprintWithNewPin(Election $election, Attendee $attendee, User $actor): string
+    {
+        if ($attendee->election_id !== $election->id) {
+            throw VotingException::invalidChoice();
+        }
+
+        if ($election->status->isLive()) {
+            // Saat berlangsung lewat jalur Pulihkan (kunci baris, cek sudah memilih, audit beralasan).
+            return app(VoterRightRestorer::class)->restore($election, $attendee, RestoreReason::PinHilang, 'Cetak ulang dari Meja Pintu', $actor, onlyIfNotVoted: true)['pin'];
+        }
+
+        if ($election->status !== ElectionStatus::Ready) {
+            throw VotingException::invalidState('Cetak ulang hanya bisa saat pemilihan Siap atau Berlangsung.');
+        }
+
+        // Status Siap: voting belum pernah dibuka, jadi belum ada yang memilih.
+        $pin = $this->reissuePin($attendee);
+        $this->audit->log('attendee.pin_reprinted', $attendee, $election, meta: ['seq_no' => $attendee->seq_no], actor: $actor);
+
+        return $pin;
     }
 
     /**

@@ -9,11 +9,14 @@ use App\Filament\Pages\Concerns\InteractsWithElection;
 use App\Filament\Support\InElectionMenu;
 use App\Filament\Support\Workspace;
 use App\Models\Attendee;
+use App\Models\Election;
 use App\Models\Unit;
+use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\Voting\AttendeeRegistrar;
 use App\Services\Voting\VotingException;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -63,7 +66,7 @@ class DoorDesk extends Page
     /**
      * Hasil pendaftaran terakhir untuk ditampilkan sekali (nama, nomor, PIN).
      *
-     * @var array{name: string, number: string, pin: string}|null
+     * @var array{name: string, number: string, pin: string, note?: string}|null
      */
     public ?array $issued = null;
 
@@ -156,6 +159,91 @@ class DoorDesk extends Page
     public function acknowledge(): void
     {
         $this->issued = null;
+    }
+
+    /**
+     * "Cetak ulang" per orang (kertas habis, struk rusak/hilang). PIN lama tidak disimpan, jadi yang dicetak PIN baru.
+     */
+    public function reprintAction(): Action
+    {
+        return Action::make('reprint')
+            ->label('Cetak ulang')
+            ->icon(Heroicon::OutlinedPrinter)
+            ->link()
+            ->size('sm')
+            ->color('gray')
+            ->requiresConfirmation()
+            ->modalIcon(Heroicon::OutlinedPrinter)
+            ->modalHeading(fn (array $arguments): string => 'Cetak ulang struk '.($this->reprintTarget($arguments)?->name ?? '').'?')
+            ->modalDescription('PIN lama tidak disimpan sistem, jadi struk baru berisi PIN BARU dan PIN lama tidak berlaku lagi. Pastikan orangnya ada di depan Anda.')
+            ->modalSubmitActionLabel('Ya, cetak dengan PIN baru')
+            ->action(function (array $arguments): void {
+                $attendee = $this->reprintTarget($arguments);
+
+                if ($attendee === null || ! $this->canReprint($attendee)) {
+                    Notification::make()->title('Struk orang ini tidak bisa dicetak ulang di sini. Arahkan ke Panitia.')->danger()->send();
+
+                    return;
+                }
+
+                try {
+                    $pin = app(AttendeeRegistrar::class)->reprintWithNewPin($this->authorizedElection(), $attendee, $this->currentUser());
+                } catch (VotingException $exception) {
+                    Notification::make()->title($exception->getMessage())->danger()->send();
+
+                    return;
+                }
+
+                $this->issued = [
+                    'name' => $attendee->name,
+                    'number' => $attendee->displayNumber(),
+                    'pin' => $pin,
+                    'note' => 'PIN BARU. PIN lama tidak berlaku.',
+                ];
+            });
+    }
+
+    /**
+     * Belum memilih, dan yang menekan Super Admin, Panitia, atau petugas yang mendaftarkan orang itu sendiri
+     * (Petugas Pintu tidak bisa mengganti PIN orang yang didaftarkan petugas lain).
+     */
+    public function canReprint(Attendee $attendee): bool
+    {
+        $election = $this->election();
+        $user = $this->currentUser();
+
+        if ($election === null || $attendee->election_id !== $election->id || $this->hasVoted($attendee, $election)) {
+            return false;
+        }
+
+        return $user->isSuperAdmin()
+            || $user->hasElectionRole($election, StaffRole::Panitia)
+            || $attendee->created_by === $user->id;
+    }
+
+    private function hasVoted(Attendee $attendee, Election $election): bool
+    {
+        $round = $election->currentRound();
+
+        return $round !== null && $attendee->participations()->where('round_id', $round->id)->where('active_key', 1)->exists();
+    }
+
+    /**
+     * @param  array<string, mixed>  $arguments
+     */
+    private function reprintTarget(array $arguments): ?Attendee
+    {
+        $election = $this->election();
+
+        return $election === null ? null : $election->attendees()->where('public_id', $arguments['attendee'] ?? '')->first();
+    }
+
+    private function currentUser(): User
+    {
+        /** @var User $user */
+        $user = auth()->user();
+
+        return $user;
     }
 
     /**

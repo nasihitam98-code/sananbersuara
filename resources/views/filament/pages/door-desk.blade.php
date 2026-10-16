@@ -12,6 +12,9 @@
             <x-filament::section>
                 <div class="text-center space-y-3" role="status">
                     <p class="text-base text-gray-600 dark:text-gray-300">Kartu PIN dicetak otomatis. Berikan kertasnya kepada (atau tuliskan bila printer bermasalah):</p>
+                    @if (filled($issued['note'] ?? null))
+                        <p class="font-semibold text-warning-700 dark:text-warning-400">{{ $issued['note'] }}</p>
+                    @endif
                     <p class="text-2xl font-bold">{{ $issued['name'] }}</p>
                     <p class="text-gray-600 dark:text-gray-300">No. hadir {{ $issued['number'] }}</p>
                     <p class="text-sm font-semibold uppercase tracking-wide text-gray-500">PIN</p>
@@ -22,6 +25,7 @@
                         'number' => $issued['number'],
                         'pin' => $issued['pin'],
                         'election' => $election->name,
+                        'note' => $issued['note'] ?? null,
                     ], 'auto' => true])
                     <x-filament::button size="xl" color="primary" icon="heroicon-m-arrow-right" icon-position="after" wire:click="acknowledge" class="w-full">
                         Sudah diberikan, lanjut orang berikutnya
@@ -56,12 +60,18 @@
             </x-filament::section>
         @endif
 
-        <x-filament::section heading="10 pendaftaran terakhir" collapsible>
+        <x-filament::section heading="10 pendaftaran terakhir" description="Kertas habis atau struk hilang? Klik Cetak ulang di baris orangnya. Struk baru berisi PIN baru; PIN lama tidak berlaku." collapsible>
             <ul class="divide-y divide-gray-200 dark:divide-white/10">
                 @forelse ($this->recentAttendees() as $attendee)
-                    <li class="flex justify-between py-2">
+                    <li class="flex items-center justify-between gap-3 py-2">
                         <span><span class="font-mono text-gray-500">{{ $attendee->displayNumber() }}</span> · {{ $attendee->name }}</span>
-                        <span class="text-sm text-gray-500">{{ $attendee->unit?->name }} {{ $attendee->is_late ? '· datang terlambat' : '' }}</span>
+                        <span class="flex items-center gap-3">
+                            <span class="text-sm text-gray-500">{{ $attendee->unit?->name }} {{ $attendee->is_late ? '· datang terlambat' : '' }}</span>
+                            {{-- Disembunyikan saat kartu PIN sedang tampil, agar PIN yang belum diberikan tidak tertimpa. --}}
+                            @if (! $issued && $this->canReprint($attendee))
+                                {{ ($this->reprintAction)(['attendee' => $attendee->public_id]) }}
+                            @endif
+                        </span>
                     </li>
                 @empty
                     <li class="py-2 text-gray-500">Belum ada yang didata.</li>

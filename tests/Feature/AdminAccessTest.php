@@ -24,6 +24,7 @@ use App\Models\Election;
 use App\Models\ElectionStaff;
 use App\Models\User;
 use App\Services\Voting\AttendeeRegistrar;
+use App\Services\Voting\BallotBox;
 use App\Services\Voting\ElectionLifecycle;
 use App\Services\Voting\WaveManager;
 use Database\Seeders\DatabaseSeeder;
@@ -162,6 +163,54 @@ class AdminAccessTest extends TestCase
         $component->assertSeeHtml('<div class="pin">'.$pin.'</div>')->assertSeeHtml('<div class="name">Budi Santoso</div>');
 
         $component->call('acknowledge')->assertSet('issued', null)->assertDontSee('Cetak ulang kartu PIN');
+    }
+
+    public function test_door_desk_reprints_with_a_new_pin_only_for_own_registrations_that_have_not_voted(): void
+    {
+        $door = $this->makeUser(User::ROLE_STAFF, StaffRole::PetugasPintu);
+        $otherDoor = $this->makeUser(User::ROLE_STAFF, StaffRole::PetugasPintu);
+        $registrar = app(AttendeeRegistrar::class);
+        ['attendee' => $own, 'pin' => $oldPin] = $registrar->register($this->election, 'Ojan', null, $door);
+        ['attendee' => $others] = $registrar->register($this->election, 'Santi', null, $otherDoor);
+        $this->actingAs($door);
+
+        // Status Siap: struk dicetak ulang dengan PIN baru, PIN lama hangus.
+        $component = Livewire::test(DoorDesk::class)
+            ->assertSee('Cetak ulang')
+            ->callAction(TestAction::make('reprint')->arguments(['attendee' => $own->public_id]))
+            ->assertSet('issued.name', 'Ojan')
+            ->assertSee('PIN BARU. PIN lama tidak berlaku.');
+
+        $newPin = $component->get('issued.pin');
+        $this->assertNotSame($own->fresh()->pin_hash, $own->pin_hash);
+        $this->assertMatchesRegularExpression('/^\d{4}$/', $newPin);
+        $this->assertTrue(AuditLog::query()->where('action', 'attendee.pin_reprinted')->exists());
+
+        // Petugas Pintu tidak bisa mengganti PIN orang yang didaftarkan petugas lain.
+        $this->assertFalse($component->instance()->canReprint($others));
+        $hashBefore = $others->pin_hash;
+        Livewire::test(DoorDesk::class)
+            ->callAction(TestAction::make('reprint')->arguments(['attendee' => $others->public_id]))
+            ->assertNotified('Struk orang ini tidak bisa dicetak ulang di sini. Arahkan ke Panitia.');
+        $this->assertSame($hashBefore, $others->fresh()->pin_hash);
+
+        // Saat berlangsung: lewat jalur Pulihkan (tercatat beralasan); yang sudah memilih tidak bisa.
+        app(ElectionLifecycle::class)->start($this->election->fresh(), $this->superAdmin);
+        app(WaveManager::class)->open($this->election->fresh(), WaveKind::Terbuka, 5, $this->superAdmin);
+
+        $livePin = Livewire::test(DoorDesk::class)
+            ->callAction(TestAction::make('reprint')->arguments(['attendee' => $own->public_id]))
+            ->assertSee('PIN BARU. PIN lama tidak berlaku.')
+            ->get('issued.pin');
+        $this->assertTrue(AuditLog::query()->where('action', 'attendee.voting_right_restored')->where('reason_code', 'PIN_HILANG')->exists());
+
+        $election = $this->election->fresh();
+        $ballot = $election->ballots()->firstOrFail();
+        $box = app(BallotBox::class);
+        $wave = $box->verifyPin($election, $own->fresh(), $livePin);
+        $box->cast($election, $own->fresh(), $wave, $ballot, $ballot->candidates()->firstOrFail());
+
+        $this->assertFalse(Livewire::test(DoorDesk::class)->instance()->canReprint($own->fresh()));
     }
 
     public function test_door_desk_keeps_mixed_case_names_as_typed(): void
