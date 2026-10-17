@@ -42,6 +42,7 @@ class HistoryRelationManager extends RelationManager
         'gallery.photo_assigned' => 'Foto dari Media dipasang',
         'attendee.registered' => 'Peserta didata di pintu',
         'attendee.pin_reprinted' => 'Struk PIN dicetak ulang',
+        'attendee.deleted' => 'Peserta dihapus dari daftar hadir',
         'attendee.duplicate_name_confirmed' => 'Nama kembar dikonfirmasi',
         'attendee.pin_failed' => 'PIN salah',
         'attendee.pin_locked' => 'PIN terkunci',

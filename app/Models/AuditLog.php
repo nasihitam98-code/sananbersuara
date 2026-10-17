@@ -31,6 +31,7 @@ class AuditLog extends Model
         'attendee.pin_failed' => 'PIN salah',
         'attendee.pin_locked' => 'PIN terkunci',
         'attendee.pin_reprinted' => 'Struk PIN dicetak ulang',
+        'attendee.deleted' => 'Warga dihapus dari daftar hadir',
         'attendee.registered' => 'Warga didata (Meja Pintu)',
         'attendee.voting_right_restored' => 'Hak pilih dipulihkan',
         'auth.failed' => 'Login gagal',

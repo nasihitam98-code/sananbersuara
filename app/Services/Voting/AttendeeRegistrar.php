@@ -80,6 +80,36 @@ class AttendeeRegistrar
     }
 
     /**
+     * Hapus orang dari daftar hadir (salah ketik, terdaftar dua kali). Hanya yang belum pernah tercatat memilih
+     * (termasuk yang sudah dibatalkan lewat Pulihkan), agar riwayat suara tetap utuh. Tercatat di audit beserta alasan.
+     */
+    public function delete(Election $election, Attendee $attendee, User $actor, string $reason): void
+    {
+        if ($attendee->election_id !== $election->id) {
+            throw VotingException::invalidChoice();
+        }
+
+        if (! in_array($election->status, [ElectionStatus::Ready, ElectionStatus::Berlangsung, ElectionStatus::Paused], true)) {
+            throw VotingException::invalidState('Daftar hadir hanya bisa diubah saat pemilihan Siap atau Berlangsung.');
+        }
+
+        DB::transaction(function () use ($election, $attendee, $actor, $reason): void {
+            $locked = Attendee::query()->whereKey($attendee->id)->lockForUpdate()->firstOrFail();
+
+            if ($locked->participations()->exists()) {
+                throw VotingException::invalidState("{$locked->name} sudah tercatat memilih, jadi tidak bisa dihapus.");
+            }
+
+            $this->audit->log('attendee.deleted', $locked, $election, note: $reason, meta: [
+                'seq_no' => $locked->seq_no,
+                'name' => $locked->name,
+            ], actor: $actor);
+
+            $locked->delete();
+        });
+    }
+
+    /**
      * Cetak ulang struk (kertas habis, struk rusak/hilang): PIN yang sama bila masih tersimpan. Bila tidak tersimpan
      * (didata sebelum PIN disimpan), dibuat PIN baru dan PIN lama hangus, hanya untuk yang belum memilih.
      *

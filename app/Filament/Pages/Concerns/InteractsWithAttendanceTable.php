@@ -120,6 +120,7 @@ trait InteractsWithAttendanceTable
             ])
             ->recordActions([
                 $this->reprintTableAction(),
+                $this->deleteTableAction(),
                 $this->newPinTableAction(),
                 $this->restoreTableAction(),
             ])
@@ -188,6 +189,61 @@ trait InteractsWithAttendanceTable
                     'token' => Str::random(12),
                 ];
             });
+    }
+
+    /**
+     * "Hapus" dari daftar hadir (salah ketik, terdaftar dua kali): hanya yang belum memilih, dengan konfirmasi dan alasan.
+     * Panitia/Super Admin untuk siapa saja; Petugas Pintu hanya untuk orang yang ia daftarkan sendiri.
+     */
+    private function deleteTableAction(): Action
+    {
+        return Action::make('deleteAttendee')
+            ->label('Hapus')
+            ->iconButton()
+            ->icon(Heroicon::OutlinedTrash)
+            ->color('danger')
+            ->tooltip('Hapus dari daftar hadir')
+            ->visible(fn (Attendee $record): bool => $this->canDeleteAttendee($record))
+            ->requiresConfirmation()
+            ->modalHeading(fn (Attendee $record): string => "Hapus {$record->name} (No. {$record->displayNumber()}) dari daftar hadir?")
+            ->modalDescription('PIN orang ini langsung tidak berlaku. Nomor hadirnya tidak dipakai ulang. Tindakan ini tidak bisa dibatalkan dan tercatat di Audit Log.')
+            ->modalSubmitActionLabel('Ya, hapus')
+            ->schema([
+                Textarea::make('reason')
+                    ->label('Alasan')
+                    ->placeholder('Mis. salah ketik nama, terdaftar dua kali, bukan warga')
+                    ->required()
+                    ->minLength(3)
+                    ->maxLength(300),
+            ])
+            ->action(function (Attendee $record, array $data): void {
+                /** @var User $user */
+                $user = auth()->user();
+                abort_unless($this->canDeleteAttendee($record), 403);
+
+                try {
+                    app(AttendeeRegistrar::class)->delete($this->authorizedElection(), $record, $user, $data['reason']);
+                } catch (VotingException $exception) {
+                    Notification::make()->title($exception->getMessage())->danger()->send();
+
+                    return;
+                }
+
+                Notification::make()->title("{$record->name} dihapus dari daftar hadir.")->success()->send();
+            });
+    }
+
+    private function canDeleteAttendee(Attendee $attendee): bool
+    {
+        $election = $this->election();
+        $user = auth()->user();
+
+        if ($election === null || ! $user instanceof User || $this->hasVoted($attendee)
+            || ! in_array($election->status, [ElectionStatus::Ready, ElectionStatus::Berlangsung, ElectionStatus::Paused], true)) {
+            return false;
+        }
+
+        return $this->isCommittee() || $attendee->created_by === $user->id;
     }
 
     public function closePrintCard(): void

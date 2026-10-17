@@ -26,6 +26,7 @@ use App\Models\User;
 use App\Services\Voting\AttendeeRegistrar;
 use App\Services\Voting\BallotBox;
 use App\Services\Voting\ElectionLifecycle;
+use App\Services\Voting\VotingException;
 use App\Services\Voting\WaveManager;
 use Database\Seeders\DatabaseSeeder;
 use Filament\Actions\Action;
@@ -209,6 +210,49 @@ class AdminAccessTest extends TestCase
         $this->assertNotNull($own->fresh()->storedPin());
         app(ElectionLifecycle::class)->cancel($this->election->fresh(), $this->superAdmin, 'Gladi selesai');
         $this->assertSame(0, Attendee::query()->whereNotNull('pin_encrypted')->count());
+    }
+
+    public function test_attendee_can_be_deleted_with_confirmation_only_before_voting(): void
+    {
+        $door = $this->makeUser(User::ROLE_STAFF, StaffRole::PetugasPintu);
+        $otherDoor = $this->makeUser(User::ROLE_STAFF, StaffRole::PetugasPintu);
+        $registrar = app(AttendeeRegistrar::class);
+        ['attendee' => $typo] = $registrar->register($this->election, 'Ojann', null, $door);
+        ['attendee' => $others] = $registrar->register($this->election, 'Santi', null, $otherDoor);
+        ['attendee' => $voter, 'pin' => $voterPin] = $registrar->register($this->election, 'Budi', null, $door);
+
+        // Petugas Pintu: hanya orang yang ia daftarkan; alasan wajib.
+        $this->actingAs($door);
+        Livewire::test(DoorDesk::class)
+            ->assertTableActionVisible('deleteAttendee', $typo)
+            ->assertTableActionHidden('deleteAttendee', $others)
+            ->callTableAction('deleteAttendee', $typo, ['reason' => ''])
+            ->assertHasTableActionErrors(['reason' => 'required']);
+
+        Livewire::test(DoorDesk::class)
+            ->callTableAction('deleteAttendee', $typo, ['reason' => 'Salah ketik nama'])
+            ->assertHasNoTableActionErrors()
+            ->assertNotified('Ojann dihapus dari daftar hadir.');
+
+        $this->assertModelMissing($typo);
+        $this->assertTrue(AuditLog::query()->where('action', 'attendee.deleted')->where('note', 'Salah ketik nama')->exists());
+
+        // Yang sudah memilih tidak bisa dihapus.
+        app(ElectionLifecycle::class)->start($this->election->fresh(), $this->superAdmin);
+        app(WaveManager::class)->open($this->election->fresh(), WaveKind::Terbuka, 10, $this->superAdmin);
+        $election = $this->election->fresh();
+        $ballot = $election->ballots()->firstOrFail();
+        $box = app(BallotBox::class);
+        $box->cast($election, $voter->fresh(), $box->verifyPin($election, $voter->fresh(), $voterPin), $ballot, $ballot->candidates()->firstOrFail());
+
+        $this->actingAs($this->superAdmin);
+        Livewire::test(ControlRoom::class)
+            ->set('participantTab', 'semua')
+            ->assertTableActionVisible('deleteAttendee', $others)
+            ->assertTableActionHidden('deleteAttendee', $voter);
+
+        $this->expectException(VotingException::class);
+        $registrar->delete($election, $voter->fresh(), $this->superAdmin, 'Coba hapus');
     }
 
     public function test_control_room_lists_each_session_with_how_many_voted(): void
