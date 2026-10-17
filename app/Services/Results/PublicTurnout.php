@@ -29,8 +29,18 @@ class PublicTurnout
         return Cache::remember(
             "public-turnout:{$election->id}:".$election->published_at?->timestamp,
             now()->addMinutes(10),
-            fn (): array => $election->isDadakan() ? $this->dadakan($election) : $this->resmi($election),
+            fn (): array => $this->compute($election),
         );
+    }
+
+    /**
+     * Partisipasi saat ini tanpa syarat status dan tanpa cache (dipakai QuickCount, yang punya cache sendiri).
+     *
+     * @return array{voted: int, total: int, percent: float, units: array<int, array{unit: string, voted: int, total: int, percent: float}>}
+     */
+    public function compute(Election $election): array
+    {
+        return $election->isDadakan() ? $this->dadakan($election) : $this->resmi($election);
     }
 
     /**

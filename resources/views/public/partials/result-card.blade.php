@@ -22,7 +22,9 @@
             {{ $card['unit']?->name ?? $card['office'] }}
             <span class="race__office">{{ $card['unit'] !== null ? $card['office'] : 'Semua RT' }}</span>
         </h3>
-        @if ($card['decided'])
+        @if ($card['quick'] ?? false)
+            <span class="badge badge--quick">Sementara</span>
+        @elseif ($card['decided'])
             <span class="badge badge--done">{{ $card['label'] }}</span>
         @else
             <span class="badge badge--muted">Belum ditetapkan</span>

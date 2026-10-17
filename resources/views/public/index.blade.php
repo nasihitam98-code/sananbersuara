@@ -35,6 +35,9 @@
                         Hasil resmi diumumkan di halaman ini setelah panitia menetapkannya.
                     </p>
                     <div class="hero__actions">
+                        @if ($quick && $quick['election']->is($election))
+                            <a class="button button--light" href="#quick-count">Lihat quick count</a>
+                        @endif
                         <a class="button button--light" href="#cara-memilih">Cara memilih</a>
                     </div>
                 </div>
@@ -46,8 +49,8 @@
             {{-- Banner ringkas setelah selesai: nama, tanggal diumumkan, partisipasi. Hasil langsung di bawahnya. --}}
             <div class="hero hero--calm hero--compact reveal">
                 <div class="hero__body">
-                    <span class="chip chip--done">{{ $featured ? 'Hasil resmi' : 'Portal pemilihan warga' }}</span>
-                    <h1 class="hero__title">{{ $featured?->name ?? 'Informasi pemilihan warga' }}</h1>
+                    <span class="chip chip--done">{{ $featured ? 'Hasil resmi' : ($quick ? 'Voting selesai' : 'Portal pemilihan warga') }}</span>
+                    <h1 class="hero__title">{{ $featured?->name ?? $quick['election']->name ?? 'Informasi pemilihan warga' }}</h1>
                     @if ($featured)
                         <p class="hero__meta">
                             @if ($featured->published_at)
@@ -58,12 +61,16 @@
                             @endif
                         </p>
                     @else
-                        <p class="hero__text">Informasi resmi pemilihan warga dari panitia.</p>
+                        <p class="hero__text">{{ $quick ? 'Hasil sementara (quick count) ada di bawah. Hasil resmi diumumkan setelah panitia memeriksa dan menetapkannya.' : 'Informasi resmi pemilihan warga dari panitia.' }}</p>
                     @endif
                 </div>
             </div>
         @endforelse
     </section>
+
+    @if ($quick)
+        @include('public.sections.hitung-cepat')
+    @endif
 
     @include('public.sections.hasil')
 

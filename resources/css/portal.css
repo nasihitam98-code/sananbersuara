@@ -1885,3 +1885,26 @@ h4 {
         transform: none;
     }
 }
+
+/* Quick count: lencana "Sementara" dan keterangan waktu potret (angka belum resmi). */
+.badge--quick {
+    background: var(--p-amber-50);
+    color: var(--p-amber);
+}
+
+.quick-note {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    margin: 0 0 16px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    background: var(--p-amber-50);
+    color: var(--p-ink, inherit);
+    font-size: 14px;
+}
+
+.quick-note strong {
+    color: var(--p-amber);
+}

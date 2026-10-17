@@ -83,7 +83,7 @@
                 <p class="portal-footer__title">{{ config('app.name') }}</p>
                 <p>{{ $areaName }}</p>
             </div>
-            <p class="portal-footer__note">Halaman ini hanya menampilkan informasi resmi dari panitia. Angka suara baru tampil setelah hasil ditetapkan dan diumumkan, sesuai berita acara yang disahkan.</p>
+            <p class="portal-footer__note">Halaman ini hanya menampilkan informasi resmi dari panitia. {{ ($quick ?? null) ? 'Angka quick count bersifat sementara; hasil resmi tampil setelah ditetapkan dan diumumkan, sesuai berita acara yang disahkan.' : 'Angka suara baru tampil setelah hasil ditetapkan dan diumumkan, sesuai berita acara yang disahkan.' }}</p>
         </div>
     </footer>
 </body>

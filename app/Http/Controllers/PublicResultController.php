@@ -8,6 +8,7 @@ use App\Models\Candidate;
 use App\Models\Election;
 use App\Models\Unit;
 use App\Services\Results\PublicTurnout;
+use App\Services\Results\QuickCount;
 use App\Services\Results\ResultPublication;
 use App\Services\Results\ResultSlots;
 use App\Services\Voting\ResultsCalculator;
@@ -19,7 +20,7 @@ use Illuminate\Support\Collection;
 
 /**
  * Portal publik (tanpa login) untuk pengumuman akhir: hasil resmi yang sudah DIPUBLIKASIKAN, plus penanda
- * pemilihan yang sedang berjalan. Profil calon tidak ditampilkan di sini (visi & misi ada di surat suara pemilih).
+ * pemilihan yang sedang berjalan dan, bila dinyalakan panitia, quick count sementara (lihat QuickCount). Profil calon tidak ditampilkan di sini (visi & misi ada di surat suara pemilih).
  * Setelah diumumkan, yang ditampilkan: nama yang ditetapkan panitia, perolehan suara resmi tiap calon (K21 diubah
  * pemilik 2026-10-12), dan partisipasi warga. Data pemilih tidak pernah ditampilkan.
  */
@@ -37,6 +38,7 @@ class PublicResultController extends Controller
         private PublicTurnout $turnout,
         private ResultsCalculator $calculator,
         private RoundResolver $rounds,
+        private QuickCount $quickCount,
     ) {}
 
     /**
@@ -49,8 +51,10 @@ class PublicResultController extends Controller
         $featured = $announced->firstWhere('status', ElectionStatus::Published);
         $cards = $featured === null ? collect() : $this->resultCards($featured);
         $turnout = $featured === null ? null : $this->turnout->for($featured);
+        $quickElection = $this->quickCount->current();
 
         return $this->publicView('public.index', [
+            'quick' => $quickElection === null ? null : ['election' => $quickElection, 'snapshot' => $this->quickCount->snapshot($quickElection)],
             'running' => $running,
             'announced' => $announced,
             'featured' => $featured,

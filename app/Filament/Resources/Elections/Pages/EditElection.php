@@ -10,6 +10,7 @@ use App\Filament\Support\Reauthenticate;
 use App\Filament\Support\ReloadPage;
 use App\Models\Election;
 use App\Services\AuditLogger;
+use App\Services\Results\QuickCount;
 use App\Services\Voting\ElectionLifecycle;
 use App\Services\Voting\VotingException;
 use Filament\Actions\Action;
@@ -111,6 +112,35 @@ class EditElection extends EditRecord
             });
     }
 
+    /**
+     * Saklar quick count di portal publik (keputusan rapat panitia 17 Okt 2026): angka sementara tiap calon dan
+     * partisipasi selama voting, diperbarui tiap 10 menit. Bisa dinyalakan/dimatikan kapan saja, tercatat di audit.
+     */
+    private function quickCountAction(): Action
+    {
+        $on = fn (): bool => (bool) $this->record->setting('public_quick_count');
+
+        return Action::make('quickCount')
+            ->label(fn (): string => $on() ? 'Quick count: aktif' : 'Quick count: mati')
+            ->icon('heroicon-o-chart-bar')
+            ->color(fn (): string => $on() ? 'success' : 'gray')
+            ->visible(fn (): bool => (auth()->user()?->isSuperAdmin() ?? false) && $this->record->isPublic())
+            ->requiresConfirmation()
+            ->modalHeading(fn (): string => $on() ? 'Matikan quick count?' : 'Nyalakan quick count di halaman publik?')
+            ->modalDescription(fn (): string => $on()
+                ? 'Angka sementara tidak lagi tampil di halaman publik. Hasil resmi tetap tampil setelah diumumkan.'
+                : 'Selama voting, halaman publik menampilkan perolehan sementara tiap calon (RW dan tiap RT) dan partisipasi, diperbarui tiap '.QuickCount::INTERVAL_MINUTES.' menit dan ditandai "belum resmi". Angka sementara bisa memengaruhi warga yang belum memilih.')
+            ->modalSubmitActionLabel(fn (): string => $on() ? 'Matikan' : 'Nyalakan')
+            ->action(function () use ($on): void {
+                $enable = ! $on();
+                $this->record->forceFill(['settings' => array_merge($this->record->settings ?? [], ['public_quick_count' => $enable])])->save();
+
+                app(AuditLogger::class)->log('election.quick_count', $this->record, $this->record, meta: ['enabled' => $enable]);
+
+                Notification::make()->title($enable ? 'Quick count dinyalakan.' : 'Quick count dimatikan.')->success()->send();
+            });
+    }
+
     private function settingsAction(): Action
     {
         return Action::make('settings')
@@ -143,6 +173,7 @@ class EditElection extends EditRecord
         return [
             $this->settingsAction(),
             $this->publicListingAction(),
+            $this->quickCountAction(),
 
             Action::make('controlRoom')
                 ->label('Buka Ruang Kendali')
