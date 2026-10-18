@@ -86,6 +86,80 @@ function initCarousel(root) {
     ['mouseenter', 'focusin', 'touchstart'].forEach((type) => root.addEventListener(type, () => { paused = true; }, { passive: true }));
     root.addEventListener('mouseleave', () => { paused = false; });
 
+    // "Pilih RT Anda" tepat di atas carousel: lompat ke kartu RT itu (di laptop ke halaman berisi kartunya),
+    // sorot sebentar, lalu sematkan di bawah kartu RW. Sematan diingat di perangkat ini; link #rt-03 juga menyematkan.
+    const picker = root.previousElementSibling?.matches('[data-rt-picker]') ? root.previousElementSibling : null;
+    const pinned = picker?.previousElementSibling?.matches('[data-rt-pinned]') ? picker.previousElementSibling : null;
+
+    if (picker) {
+        const perPage = Number(root.dataset.perPage || 1);
+        const chips = [...picker.querySelectorAll('[data-rt-jump]')];
+
+        const jump = (index) => {
+            paused = true;
+            goTo(items() === cardSlides || perPage === 1 ? index : Math.floor(index / perPage));
+            cardSlides.forEach((card, cardIndex) => card.classList.toggle('is-target', cardIndex === index));
+            setTimeout(() => cardSlides[index]?.classList.remove('is-target'), 2500);
+        };
+
+        const button = (label, onClick) => {
+            const element = document.createElement('button');
+            element.type = 'button';
+            element.className = 'rt-pinned__action';
+            element.textContent = label;
+            element.addEventListener('click', () => onClick(element));
+
+            return element;
+        };
+
+        const render = (code) => {
+            const chip = chips.find((item) => item.dataset.rtCode === code);
+            chips.forEach((item) => item.classList.toggle('is-active', item === chip));
+
+            if (chip) {
+                // Di HP deretan tombol bisa lebih lebar dari layar: geser agar RT terpilih terlihat.
+                picker.scrollTo({ left: Math.max(0, chip.offsetLeft - picker.offsetLeft - 80), behavior: 'smooth' });
+            }
+
+            if (!pinned) {
+                return;
+            }
+
+            const card = cardSlides.find((item) => item.dataset.rt === code)?.querySelector('.race');
+
+            if (!chip || !card) {
+                pinned.hidden = true;
+                pinned.replaceChildren();
+
+                return;
+            }
+
+            const head = document.createElement('div');
+            head.className = 'rt-pinned__head';
+            const title = document.createElement('span');
+            title.className = 'rt-pinned__title';
+            title.textContent = `📌 RT Anda: ${chip.textContent.trim()}`;
+            const link = `${window.location.origin}${window.location.pathname}#rt-${code}`;
+            const copy = button('Salin link RT ini', (element) => {
+                const done = () => { element.textContent = 'Link disalin ✓'; };
+                (navigator.clipboard?.writeText(link) ?? Promise.reject()).then(done, () => window.prompt('Salin link ini:', link));
+            });
+            const unpin = button('Lepas', () => pin(null));
+            head.append(title, copy, unpin);
+            pinned.replaceChildren(head, card.cloneNode(true));
+            pinned.hidden = false;
+        };
+
+        chips.forEach((chip) => chip.addEventListener('click', () => {
+            jump(Number(chip.dataset.rtJump));
+            pin(chip.dataset.rtCode);
+        }));
+
+        // Satu sematan untuk semua kartu di halaman (quick count dan hasil resmi).
+        window.addEventListener('rt-pin', (event) => render(event.detail));
+        render(pinnedRt());
+    }
+
     if (!reduceMotion && pages() > 1) {
         setInterval(() => {
             if (!paused && !document.hidden) {
@@ -103,8 +177,49 @@ function initCarousel(root) {
     update();
 }
 
+/* RT yang disematkan warga: dari link #rt-03 (dibagikan Admin RT), atau yang terakhir dipilih di perangkat ini. */
+const pinStorageKey = 'rtrw.pinnedRt';
+
+function pinnedRt() {
+    const fromLink = window.location.hash.match(/^#rt-([\w-]+)$/)?.[1];
+
+    if (fromLink) {
+        try { localStorage.setItem(pinStorageKey, fromLink); } catch {}
+
+        return fromLink;
+    }
+
+    try { return localStorage.getItem(pinStorageKey); } catch { return null; }
+}
+
+function pin(code) {
+    try {
+        if (code) {
+            localStorage.setItem(pinStorageKey, code);
+        } else {
+            localStorage.removeItem(pinStorageKey);
+        }
+    } catch {}
+
+    // Link #rt-.. di alamat ikut diganti/dihapus, agar saat halaman dimuat ulang tidak kembali ke RT dari link lama.
+    if (window.location.hash.startsWith('#rt-')) {
+        history.replaceState(null, '', window.location.pathname + window.location.search + (code ? `#rt-${code}` : ''));
+    }
+
+    window.dispatchEvent(new CustomEvent('rt-pin', { detail: code }));
+}
+
 initReveal();
 document.querySelectorAll('[data-carousel]').forEach(initCarousel);
+
+// Link #rt-.. dibuka saat portal sudah terbuka (halaman tidak dimuat ulang): sematkan RT itu juga.
+window.addEventListener('hashchange', () => {
+    const fromLink = window.location.hash.match(/^#rt-([\w-]+)$/)?.[1];
+
+    if (fromLink) {
+        pin(fromLink);
+    }
+});
 
 /* Angka berhitung naik saat terlihat (format Indonesia: koma desimal). */
 function countUp(element) {

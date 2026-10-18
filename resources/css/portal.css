@@ -1908,3 +1908,82 @@ h4 {
 .quick-note strong {
     color: var(--p-amber);
 }
+
+/* Tombol "Lihat RT": lompat ke kartu RT tertentu di carousel; di HP digeser menyamping. */
+.rt-picker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+}
+
+.rt-picker::-webkit-scrollbar {
+    display: none;
+}
+
+.rt-picker__label {
+    flex: none;
+    color: var(--p-muted);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.rt-picker__chip {
+    flex: none;
+    padding: 6px 14px;
+    border: 1px solid var(--p-line);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--p-ink);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.rt-picker__chip:hover,
+.rt-picker__chip.is-active {
+    border-color: var(--p-indigo-500);
+    background: var(--p-indigo-500);
+    color: #fff;
+}
+
+.carousel__card.is-target .race {
+    box-shadow: 0 0 0 3px var(--p-indigo-500);
+    transition: box-shadow 0.3s;
+}
+
+/* RT yang disematkan warga: kartu RT-nya tepat di bawah kartu RW. */
+.rt-pinned__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.rt-pinned__title {
+    margin-right: auto;
+    color: var(--p-ink-strong);
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.rt-pinned__action {
+    padding: 6px 12px;
+    border: 1px solid var(--p-line);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--p-indigo-600);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.rt-pinned .race {
+    box-shadow: 0 0 0 2px var(--p-indigo-500);
+}

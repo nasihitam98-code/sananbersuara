@@ -26,13 +26,25 @@
         Di HP halaman dilepas (display: contents) sehingga kartu digeser satu per satu.
     --}}
     @php($perPage = $unitCards->count() > 3 ? 6 : 1)
-    <div class="carousel {{ $perPage > 1 ? 'carousel--pages' : '' }} subsection reveal" data-carousel>
+    {{--
+        RT pilihan warga disematkan di bawah kartu RW (diingat di perangkatnya; link #rt-03 dari Admin RT juga
+        menyematkannya). Diisi portal.js dari kartu di carousel; kosong/tersembunyi tanpa JavaScript.
+    --}}
+    <div class="rt-pinned subsection" data-rt-pinned hidden></div>
+    {{-- Tombol per RT: lompat ke kartu RT itu sekaligus menyematkannya. --}}
+    <nav class="rt-picker subsection reveal" data-rt-picker aria-label="Pilih RT Anda">
+        <span class="rt-picker__label">Pilih RT Anda:</span>
+        @foreach ($unitCards->values() as $index => $card)
+            <button type="button" class="rt-picker__chip" data-rt-jump="{{ $index }}" data-rt-code="{{ $card['unit']->code }}">{{ $card['unit']->name }}</button>
+        @endforeach
+    </nav>
+    <div class="carousel {{ $perPage > 1 ? 'carousel--pages' : '' }} reveal" data-carousel data-per-page="{{ $perPage }}">
         <button type="button" class="carousel__nav carousel__nav--prev" data-carousel-prev aria-label="Sebelumnya">‹</button>
         <div class="carousel__track" data-carousel-track tabindex="0" aria-label="Kartu hasil per RT">
             @foreach ($unitCards->chunk($perPage) as $page)
                 <div class="carousel__slide {{ $perPage > 1 ? 'carousel__page' : '' }}" data-carousel-slide>
                     @foreach ($page as $card)
-                        <div class="carousel__card" data-carousel-card>
+                        <div class="carousel__card" data-carousel-card data-rt="{{ $card['unit']->code }}">
                             @include('public.partials.result-card', ['card' => $card])
                         </div>
                     @endforeach

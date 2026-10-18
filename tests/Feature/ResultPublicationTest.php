@@ -15,6 +15,7 @@ use App\Models\Ballot;
 use App\Models\Candidate;
 use App\Models\Election;
 use App\Models\ElectionStaff;
+use App\Models\Unit;
 use App\Models\User;
 use App\Services\Results\OfficialReportService;
 use App\Services\Results\ResultPublication;
@@ -141,6 +142,25 @@ class ResultPublicationTest extends TestCase
                 'Calon Nomor 4', '0,0', '0 suara',
                 '4 suara sah.',
             ]);
+    }
+
+    public function test_many_rt_cards_get_rt_buttons_and_a_pin_slot_for_each_visitor(): void
+    {
+        $units = Unit::query()->orderBy('sort')->take(3)->get();
+        $cards = $units->map(fn (Unit $unit): array => [
+            'title' => 'Ketua RT '.$unit->name, 'office' => 'Ketua RT', 'unit' => $unit, 'label' => 'Terpilih',
+            'decided' => false, 'candidates' => collect(), 'tally' => ['valid' => 0, 'rows' => []],
+        ]);
+
+        $html = (string) $this->view('public.partials.result-grid', ['cards' => $cards, 'unitCards' => $cards]);
+
+        $this->assertStringContainsString('data-rt-pinned hidden', $html);
+        $this->assertStringContainsString('Pilih RT Anda:', $html);
+
+        foreach ($units as $unit) {
+            $this->assertStringContainsString('data-rt-code="'.$unit->code.'"', $html);
+            $this->assertStringContainsString('data-rt="'.$unit->code.'"', $html);
+        }
     }
 
     public function test_votes_are_hidden_again_while_result_is_under_review(): void
