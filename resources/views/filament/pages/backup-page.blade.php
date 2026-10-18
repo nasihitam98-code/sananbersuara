@@ -10,7 +10,10 @@
                     <p class="text-warning-600">⚠ Salinan off-server belum dikonfigurasi (BACKUP_OFFSITE_DISK). Unduh backup secara berkala dan simpan di luar server.</p>
                 @endif
             </div>
-            @if ($this->backupNowAction->isVisible()) {{ $this->backupNowAction }} @endif
+            <div class="flex flex-wrap gap-2">
+                @if ($this->pruneAction->isVisible()) {{ $this->pruneAction }} @endif
+                @if ($this->backupNowAction->isVisible()) {{ $this->backupNowAction }} @endif
+            </div>
         </div>
     </x-filament::section>
 
@@ -21,6 +24,7 @@
                     <tr><th class="py-1 pe-3">Waktu</th><th class="pe-3">Jenis</th><th class="pe-3">Status</th><th class="pe-3">Ukuran</th><th class="pe-3">Off-server</th><th class="pe-3">Pembuat</th><th></th></tr>
                 </thead>
                 <tbody>
+                    @php($latestSuccessId = $this->latestSuccessId())
                     @forelse ($this->backups() as $backup)
                         <tr class="border-t border-gray-100 align-middle dark:border-white/5">
                             <td class="py-2 pe-3">{{ $backup->created_at->format('d/m/Y H:i') }}</td>
@@ -37,6 +41,10 @@
                                     @if (($this->downloadAction)(['backup' => $backup->public_id])->isVisible()) {{ ($this->downloadAction)(['backup' => $backup->public_id]) }} @endif
                                     @if (($this->restoreAction)(['backup' => $backup->public_id])->isVisible()) {{ ($this->restoreAction)(['backup' => $backup->public_id]) }} @endif
                                 @endif
+                                {{-- Backup berhasil terbaru tidak bisa dihapus (selalu ada titik pemulihan). --}}
+                                @unless ($backup->id === $latestSuccessId)
+                                    {{ ($this->deleteAction)(['backup' => $backup->public_id]) }}
+                                @endunless
                             </div></td>
                         </tr>
                     @empty

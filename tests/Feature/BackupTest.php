@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Filament\Pages\BackupPage;
+use App\Models\AuditLog;
 use App\Models\Backup;
 use App\Models\Ballot;
 use App\Models\Candidate;
@@ -12,10 +13,13 @@ use App\Services\Backups\BackupService;
 use App\Services\Voting\ElectionLifecycle;
 use App\Services\Voting\VotingException;
 use Database\Seeders\DatabaseSeeder;
+use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
+use Livewire\Livewire;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 use ZipArchive;
@@ -157,6 +161,55 @@ class BackupTest extends TestCase
             ->assertSee('Terhenti')
             ->assertSee('Manual (dari panel)')
             ->assertDontSee('>BERJALAN<', false);
+    }
+
+    private function fakeBackup(string $trigger, int $minutesAgo, string $status = Backup::STATUS_SUCCESS): Backup
+    {
+        $filename = $status === Backup::STATUS_SUCCESS ? 'uji-'.$trigger.'-'.$minutesAgo.'.zip' : null;
+        $backup = (new Backup)->forceFill(['public_id' => (string) Str::ulid(), 'status' => $status, 'trigger' => $trigger, 'filename' => $filename]);
+        $backup->save();
+        Backup::query()->whereKey($backup->id)->update(['created_at' => now()->subMinutes($minutesAgo)]);
+
+        if ($filename !== null) {
+            Storage::disk('local')->put('backups-uji/'.$filename, 'isi');
+        }
+
+        return $backup->fresh();
+    }
+
+    public function test_backups_can_be_deleted_except_the_latest_successful_one(): void
+    {
+        $old = $this->fakeBackup('MANUAL', 60);
+        $failed = $this->fakeBackup('TERJADWAL', 30, Backup::STATUS_FAILED);
+        $latest = $this->fakeBackup('MANUAL', 5);
+        $this->actingAs($this->superAdmin);
+
+        Livewire::test(BackupPage::class)
+            ->callAction(TestAction::make('delete')->arguments(['backup' => $old->public_id]), ['current_password' => 'password'])
+            ->assertNotified('Backup dihapus.');
+        $this->assertModelMissing($old);
+        Storage::disk('local')->assertMissing('backups-uji/'.$old->filename);
+        $this->assertTrue(AuditLog::query()->where('action', 'backup.deleted')->exists());
+
+        app(BackupService::class)->delete($failed, $this->superAdmin);
+        $this->assertModelMissing($failed);
+
+        $this->expectException(VotingException::class);
+        app(BackupService::class)->delete($latest, $this->superAdmin);
+    }
+
+    public function test_tidy_up_keeps_the_five_newest_scheduled_backups_and_all_manual_ones(): void
+    {
+        $scheduled = collect(range(1, 8))->map(fn (int $hour): Backup => $this->fakeBackup('TERJADWAL', $hour * 60));
+        $manual = $this->fakeBackup('MANUAL', 600);
+        $safety = $this->fakeBackup('SEBELUM_RESTORE', 700);
+
+        $this->assertSame(3, app(BackupService::class)->pruneScheduled($this->superAdmin));
+
+        $this->assertSame($scheduled->take(5)->pluck('id')->all(), Backup::query()->where('trigger', 'TERJADWAL')->latest()->pluck('id')->all());
+        $this->assertModelExists($manual);
+        $this->assertModelExists($safety);
+        Storage::disk('local')->assertMissing('backups-uji/'.$scheduled->last()->filename);
     }
 
     public function test_download_requires_signed_link_for_the_same_super_admin(): void

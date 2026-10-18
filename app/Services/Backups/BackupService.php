@@ -212,6 +212,76 @@ class BackupService
         return $old->count();
     }
 
+    /**
+     * Hapus satu backup (file lokal dan salinan off-server). Backup berhasil yang paling baru tidak bisa dihapus,
+     * agar selalu ada titik pemulihan.
+     */
+    public function delete(Backup $backup, User $actor): void
+    {
+        abort_unless($actor->isSuperAdmin(), 403);
+
+        if ($this->isLatestSuccess($backup)) {
+            throw VotingException::invalidState('Backup berhasil yang paling baru tidak bisa dihapus, agar selalu ada titik pemulihan.');
+        }
+
+        $this->deleteFiles($backup);
+        $backup->delete();
+
+        $this->audit->log('backup.deleted', meta: ['file' => $backup->filename, 'trigger' => $backup->trigger, 'status' => $backup->status], actor: $actor);
+    }
+
+    /**
+     * Rapikan: hapus backup otomatis (terjadwal) kecuali beberapa terbaru. Backup manual dan pengaman tidak disentuh.
+     */
+    public function pruneScheduled(User $actor, int $keep = 5): int
+    {
+        abort_unless($actor->isSuperAdmin(), 403);
+
+        $old = Backup::query()
+            ->where('trigger', 'TERJADWAL')
+            ->latest()
+            ->get()
+            ->slice($keep)
+            ->reject(fn (Backup $backup): bool => $this->isLatestSuccess($backup));
+
+        foreach ($old as $backup) {
+            $this->deleteFiles($backup);
+            $backup->delete();
+        }
+
+        $this->audit->log('backup.pruned', meta: ['deleted' => $old->count(), 'kept_scheduled' => $keep], actor: $actor);
+
+        return $old->count();
+    }
+
+    public function isLatestSuccess(Backup $backup): bool
+    {
+        return $this->latestSuccessId() === $backup->id;
+    }
+
+    public function latestSuccessId(): ?int
+    {
+        return Backup::query()->where('status', Backup::STATUS_SUCCESS)->latest()->latest('id')->value('id');
+    }
+
+    private function deleteFiles(Backup $backup): void
+    {
+        if ($backup->filename === null) {
+            return;
+        }
+
+        $path = config('voting.backup.directory').'/'.$backup->filename;
+        Storage::disk(config('voting.backup.disk'))->delete($path);
+
+        if (filled($offsite = config('voting.backup.offsite_disk'))) {
+            try {
+                Storage::disk($offsite)->delete($path);
+            } catch (Throwable $exception) {
+                Log::warning('Hapus salinan backup off-server gagal', ['error' => $exception->getMessage()]);
+            }
+        }
+    }
+
     public function absolutePath(Backup $backup): string
     {
         return Storage::disk(config('voting.backup.disk'))->path(config('voting.backup.directory').'/'.$backup->filename);

@@ -51,6 +51,14 @@ class BackupPage extends Page
         return Backup::query()->with('creator')->latest()->limit(100)->get();
     }
 
+    /**
+     * Backup berhasil terbaru: tombol Hapus disembunyikan di barisnya.
+     */
+    public function latestSuccessId(): ?int
+    {
+        return app(BackupService::class)->latestSuccessId();
+    }
+
     public function offsiteConfigured(): bool
     {
         return filled(config('voting.backup.offsite_disk'));
@@ -109,6 +117,59 @@ class BackupPage extends Page
                 }
 
                 Notification::make()->title('Database dipulihkan. Silakan login ulang bila diminta.')->success()->persistent()->send();
+            });
+    }
+
+    /**
+     * Hapus satu baris riwayat backup beserta filenya (berhasil, gagal, atau terhenti).
+     */
+    public function deleteAction(): Action
+    {
+        return Action::make('delete')
+            ->label('Hapus')
+            ->iconButton()
+            ->icon('heroicon-o-trash')
+            ->color('gray')
+            ->tooltip('Hapus backup ini')
+            ->requiresConfirmation()
+            ->modalHeading('Hapus backup ini?')
+            ->modalDescription('File backup ikut dihapus dan tidak bisa dipulihkan lagi. Backup berhasil yang paling baru tidak bisa dihapus.')
+            ->modalSubmitActionLabel('Ya, hapus')
+            ->schema([Reauthenticate::field()])
+            ->action(function (array $arguments): void {
+                $backup = Backup::query()->where('public_id', $arguments['backup'] ?? '')->firstOrFail();
+
+                try {
+                    app(BackupService::class)->delete($backup, auth()->user());
+                } catch (VotingException $exception) {
+                    Notification::make()->title($exception->getMessage())->danger()->send();
+
+                    return;
+                }
+
+                Notification::make()->title('Backup dihapus.')->success()->send();
+            });
+    }
+
+    /**
+     * Hapus banyak sekaligus: backup otomatis lama, menyisakan 5 terbaru. Backup manual dan pengaman tetap.
+     */
+    public function pruneAction(): Action
+    {
+        return Action::make('prune')
+            ->label('Rapikan backup otomatis')
+            ->icon('heroicon-o-trash')
+            ->color('gray')
+            ->visible(fn (): bool => Backup::query()->where('trigger', 'TERJADWAL')->count() > 5)
+            ->requiresConfirmation()
+            ->modalHeading('Rapikan backup otomatis?')
+            ->modalDescription('Backup otomatis (terjadwal) dihapus kecuali 5 terbaru. Backup manual dan backup pengaman sebelum restore tidak ikut terhapus.')
+            ->modalSubmitActionLabel('Ya, rapikan')
+            ->schema([Reauthenticate::field()])
+            ->action(function (): void {
+                $count = app(BackupService::class)->pruneScheduled(auth()->user());
+
+                Notification::make()->title("{$count} backup otomatis dihapus.")->success()->send();
             });
     }
 
