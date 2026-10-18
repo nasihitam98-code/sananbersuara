@@ -53,7 +53,7 @@ class ElectionChecklist
                 $missing = Unit::query()->whereNotIn('id', $candidates->where('ballot_id', $perRtBallot->id)->pluck('unit_id')->filter())->orderBy('sort')->pluck('name');
 
                 if ($missing->isNotEmpty()) {
-                    $candidateDetail .= '. Belum ada calon RT untuk: '.$missing->implode(', ');
+                    $candidateDetail = rtrim($candidateDetail, '.').'. Belum ada calon RT untuk: '.$missing->implode(', ');
                 }
             }
         }
