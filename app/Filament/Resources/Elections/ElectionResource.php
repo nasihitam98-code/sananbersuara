@@ -22,6 +22,7 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
@@ -110,6 +111,13 @@ class ElectionResource extends Resource
                         ->required()
                         ->live()
                         ->disabled(fn (?Election $record): bool => $record !== null && $record->status !== ElectionStatus::Draft),
+                    // Hanya saat membuat; sesudahnya lewat tombol "Quick count" di halaman pemilihan (bisa diubah kapan saja).
+                    Toggle::make('settings.public_quick_count')
+                        ->label('Quick count di halaman publik')
+                        ->helperText('Selama voting, halaman publik menampilkan angka sementara tiap calon dan partisipasi, diperbarui tiap 10 menit. Bisa diubah nanti di halaman pemilihan. Mode Dadakan: pemilihan juga perlu ditampilkan di halaman publik.')
+                        ->default(false)
+                        ->visible(fn (?Election $record): bool => $record === null)
+                        ->columnSpanFull(),
                 ]),
             Section::make('Pengaturan lanjutan Mode Resmi (boleh dibiarkan)')
                 ->description('Kosongkan untuk memakai nilai bawaan. Bisa diubah selama status Draf atau Siap.')

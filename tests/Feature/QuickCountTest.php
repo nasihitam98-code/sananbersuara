@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ElectionMode;
 use App\Enums\WaveKind;
+use App\Filament\Resources\Elections\Pages\CreateElection;
 use App\Filament\Resources\Elections\Pages\EditElection;
 use App\Models\AuditLog;
 use App\Models\Ballot;
@@ -87,6 +89,21 @@ class QuickCountTest extends TestCase
             ->assertSee('Calon Pertama')
             ->assertSee('1 suara')
             ->assertSee('Lihat quick count');
+    }
+
+    public function test_quick_count_can_be_switched_on_while_creating_the_election(): void
+    {
+        $this->actingAs($this->superAdmin);
+
+        Livewire::test(CreateElection::class)
+            ->assertSee('Quick count di halaman publik')
+            ->fillForm(['name' => 'Pemilihan RT RW', 'mode' => ElectionMode::Resmi->value, 'settings.public_quick_count' => true])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $created = Election::query()->where('name', 'Pemilihan RT RW')->firstOrFail();
+        $this->assertTrue((bool) $created->setting('public_quick_count'));
+        $this->assertTrue($created->isPublic());
     }
 
     public function test_numbers_refresh_every_ten_minutes_and_final_numbers_show_once_closed(): void
