@@ -88,9 +88,12 @@ class BallotsRelationManager extends RelationManager
                 CreateAction::make()
                     ->label('Tambah surat suara')
                     ->createAnother(false)
+                    // Surat suara hanya bisa ditambah selama Draf/Siap (bukan saat berlangsung, ditutup, atau dibatalkan).
+                    ->visible(fn (): bool => $this->getOwnerRecord()->status->allowsConfigurationChanges())
                     ->using(function (array $data): Model {
                         /** @var Election $election */
                         $election = $this->getOwnerRecord();
+                        abort_unless($election->status->allowsConfigurationChanges(), 403);
                         $ballot = new Ballot($data);
                         $ballot->scope = $election->isDadakan() ? BallotScope::DaftarHadir : ($data['scope'] ?? BallotScope::SemuaRt);
                         $ballot->sort ??= (int) $election->ballots()->max('sort') + 1;

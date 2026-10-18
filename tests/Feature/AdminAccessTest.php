@@ -460,6 +460,20 @@ class AdminAccessTest extends TestCase
         $this->assertSame(1, $ballot->sort);
     }
 
+    public function test_ballots_cannot_be_added_once_the_election_has_started(): void
+    {
+        $this->actingAs($this->superAdmin);
+        app(ElectionLifecycle::class)->start($this->election, $this->superAdmin);
+
+        Livewire::test(BallotsRelationManager::class, ['ownerRecord' => $this->election->fresh(), 'pageClass' => EditElection::class])
+            ->assertActionHidden(TestAction::make('create')->table());
+
+        app(ElectionLifecycle::class)->cancel($this->election->fresh(), $this->superAdmin, 'Gladi selesai');
+
+        Livewire::test(BallotsRelationManager::class, ['ownerRecord' => $this->election->fresh(), 'pageClass' => EditElection::class])
+            ->assertActionHidden(TestAction::make('create')->table());
+    }
+
     public function test_committee_opens_wave_from_control_room(): void
     {
         $committee = $this->makeUser(User::ROLE_STAFF, StaffRole::Panitia);
