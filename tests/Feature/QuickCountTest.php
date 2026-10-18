@@ -59,16 +59,19 @@ class QuickCountTest extends TestCase
 
     public function test_quick_count_is_off_until_super_admin_turns_it_on(): void
     {
+        // Daftar Persiapan (sebelum dimulai) menunjukkan letak saklarnya.
+        $this->actingAs($this->superAdmin);
+        Livewire::test(EditElection::class, ['record' => $this->election->public_id])
+            ->assertSee('Halaman publik & quick count (opsional)')
+            ->assertSee('quick count mati');
+
         app(ElectionLifecycle::class)->start($this->election->fresh(), $this->superAdmin);
         app(WaveManager::class)->open($this->election->fresh(), WaveKind::Terbuka, 30, $this->superAdmin);
         $this->vote('Santi');
 
         $this->get(route('public.index'))->assertOk()->assertDontSee('Quick count · hasil sementara');
 
-        $this->actingAs($this->superAdmin);
         Livewire::test(EditElection::class, ['record' => $this->election->public_id])
-            ->assertSee('Halaman publik & quick count (opsional)')
-            ->assertSee('quick count mati')
             ->assertActionVisible('quickCount')
             ->callAction('quickCount')
             ->assertNotified('Quick count dinyalakan.');
