@@ -460,6 +460,22 @@ class AdminAccessTest extends TestCase
         $this->assertSame(1, $ballot->sort);
     }
 
+    public function test_resmi_ballot_offers_only_per_rt_or_all_rt(): void
+    {
+        $resmi = Election::factory()->create(['mode' => ElectionMode::Resmi]);
+        $this->actingAs($this->superAdmin);
+
+        Livewire::test(BallotsRelationManager::class, ['ownerRecord' => $resmi, 'pageClass' => EditElection::class])
+            ->callAction(TestAction::make('create')->table(), ['title' => 'Ulang', 'scope' => BallotScope::RtTertentu->value])
+            ->assertHasFormErrors(['scope']);
+
+        Livewire::test(BallotsRelationManager::class, ['ownerRecord' => $resmi, 'pageClass' => EditElection::class])
+            ->callAction(TestAction::make('create')->table(), ['title' => 'Ketua RT', 'scope' => BallotScope::PerRt->value, 'sort' => 1])
+            ->assertHasNoFormErrors();
+
+        $this->assertSame(BallotScope::PerRt, $resmi->ballots()->firstOrFail()->scope);
+    }
+
     public function test_ballots_cannot_be_added_once_the_election_has_started(): void
     {
         $this->actingAs($this->superAdmin);

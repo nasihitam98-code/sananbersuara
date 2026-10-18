@@ -46,11 +46,13 @@ class BallotsRelationManager extends RelationManager
                     ->maxLength(150),
                 Select::make('scope')
                     ->label('Siapa yang berhak memilih')
-                    ->options(collect(BallotScope::cases())
-                        ->reject(fn (BallotScope $scope): bool => $scope === BallotScope::DaftarHadir)
-                        ->mapWithKeys(fn (BallotScope $scope): array => [$scope->value => $scope->getLabel()])
-                        ->all())
-                    ->helperText('Per RT: tiap RT punya calon sendiri (mis. Ketua RT). Semua RT: calon sama untuk semua (mis. Ketua RW).')
+                    // Cukup dua pilihan (permintaan pemilik). "RT tertentu saja" tetap didukung untuk data lama/putaran ulang,
+                    // jadi hanya muncul bila surat suara yang diubah memang memakainya.
+                    ->options(fn (?Ballot $record): array => array_filter([
+                        BallotScope::PerRt->value => 'Per RT: tiap RT punya calon sendiri (untuk Ketua RT)',
+                        BallotScope::SemuaRt->value => 'Semua RT: calon sama untuk semua warga (untuk Ketua RW)',
+                        BallotScope::RtTertentu->value => $record?->scope === BallotScope::RtTertentu ? BallotScope::RtTertentu->getLabel() : null,
+                    ]))
                     ->visible(! $election->isDadakan())
                     ->required(! $election->isDadakan())
                     ->live(),
