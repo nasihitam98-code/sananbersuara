@@ -453,6 +453,7 @@ class HomeGuide extends Widget implements HasActions, HasSchemas
                 [GalleryPage::class, 'Media: unggah dan pasang foto calon', ''],
                 [UserResource::class, 'Buat akun Admin RT untuk tiap RT', 'Centang izin Kelola data pemilih dan/atau Petugas Meja.'],
                 [VoterResource::class, 'Isi data pemilih per RT', 'Satu per satu atau import Excel (template tersedia).'],
+                [ElectionResource::class, 'Quick count di halaman publik (opsional)', 'Di halaman pemilihan, tombol "Quick count: mati" di kanan atas. Bila aktif, warga melihat angka sementara tiap 10 menit selama voting.'],
                 [DevicesPage::class, 'Tandai Siap, lalu pasang laptop dengan token', 'Laptop meja dan bilik tiap RT. Setelah itu Mulai Pemilihan.'],
                 [DeskPage::class, 'Meja Izin: izinkan pemilih ke bilik', 'Cari nama di RT sendiri, tekan Izinkan Memilih.'],
                 [ParticipationPage::class, 'Pantau partisipasi per RT', ''],

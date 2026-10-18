@@ -67,6 +67,8 @@ class QuickCountTest extends TestCase
 
         $this->actingAs($this->superAdmin);
         Livewire::test(EditElection::class, ['record' => $this->election->public_id])
+            ->assertSee('Halaman publik & quick count (opsional)')
+            ->assertSee('quick count mati')
             ->assertActionVisible('quickCount')
             ->callAction('quickCount')
             ->assertNotified('Quick count dinyalakan.');

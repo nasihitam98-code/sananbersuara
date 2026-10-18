@@ -101,6 +101,20 @@ class ElectionChecklist
             ];
         }
 
+        // Opsional (tidak menghalangi Tandai Siap): tampil di halaman publik dan quick count, lewat tombol di kanan atas.
+        $quickCount = (bool) $election->setting('public_quick_count');
+        $steps[] = [
+            'title' => 'Halaman publik & quick count (opsional)',
+            'done' => true,
+            'detail' => match (true) {
+                ! $election->isPublic() => 'Tidak tampil di halaman publik. Tekan "Tidak tampil di halaman publik" di kanan atas untuk menampilkannya; setelah itu tombol Quick count muncul.',
+                $quickCount => 'Tampil di halaman publik, quick count aktif: warga melihat angka sementara tiap 10 menit selama voting.',
+                default => 'Tampil di halaman publik; quick count mati (hasil hanya tampil setelah diumumkan). Untuk menyalakan: tombol "Quick count: mati" di kanan atas.',
+            },
+            'actionLabel' => null,
+            'url' => null,
+        ];
+
         $ready = $election->status !== ElectionStatus::Draft;
         $prepared = collect($steps)->every(fn (array $step): bool => $step['done']);
 
