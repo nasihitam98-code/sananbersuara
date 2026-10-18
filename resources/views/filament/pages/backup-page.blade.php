@@ -36,7 +36,7 @@
                             <td class="py-2 pe-3">{{ $backup->size_bytes ? $backup->humanSize() : '-' }}</td>
                             <td class="py-2 pe-3">{{ $backup->offsite_copied ? '✓' : '—' }}</td>
                             <td class="py-2 pe-3">{{ $backup->creator?->name ?? 'Sistem' }}</td>
-                            <td class="py-2"><div class="flex justify-end gap-2">
+                            <td class="py-2"><div class="flex items-center justify-end gap-2">
                                 @if ($backup->status === 'BERHASIL')
                                     @if (($this->downloadAction)(['backup' => $backup->public_id])->isVisible()) {{ ($this->downloadAction)(['backup' => $backup->public_id]) }} @endif
                                     @if (($this->restoreAction)(['backup' => $backup->public_id])->isVisible()) {{ ($this->restoreAction)(['backup' => $backup->public_id]) }} @endif
