@@ -67,8 +67,8 @@ class BallotsRelationManager extends RelationManager
                     ->label(fn (Get $get): string => in_array($get('scope'), [BallotScope::PerRt, BallotScope::PerRt->value], true) ? 'Batas jumlah calon per RT (opsional)' : 'Batas jumlah calon (opsional)')
                     ->numeric()->minValue(1)->maxValue(100),
                 TextInput::make('sort')
-                    ->label('Urutan tampil')
-                    ->helperText('Surat suara dengan angka lebih kecil tampil lebih dulu di bilik (mis. Ketua RT = 1, Ketua RW = 2).')
+                    ->label('Urutan di bilik')
+                    ->helperText('Terisi otomatis, biasanya tidak perlu diubah. 1 = muncul pertama di layar bilik, 2 = sesudahnya (mis. Ketua RT = 1, Ketua RW = 2).')
                     ->numeric()
                     ->default(fn (): int => (int) $election->ballots()->max('sort') + 1)
                     ->visible(! $election->isDadakan()),
