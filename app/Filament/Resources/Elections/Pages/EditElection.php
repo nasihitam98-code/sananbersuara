@@ -116,6 +116,35 @@ class EditElection extends EditRecord
      * Saklar quick count di portal publik (keputusan rapat panitia 17 Okt 2026): angka sementara tiap calon dan
      * partisipasi selama voting, diperbarui tiap 10 menit. Bisa dinyalakan/dimatikan kapan saja, tercatat di audit.
      */
+    /**
+     * Saklar visi & misi di bagian "Kenali calon" portal publik (pilihan pemilik 2026-10-19). Bawaan mati: hanya foto,
+     * nomor, dan nama. Visi & misi selalu tetap ada di surat suara pemilih.
+     */
+    private function publicProfilesAction(): Action
+    {
+        $on = fn (): bool => (bool) $this->record->setting('public_profiles');
+
+        return Action::make('publicProfiles')
+            ->label(fn (): string => $on() ? 'Visi & misi publik: tampil' : 'Visi & misi publik: tidak')
+            ->icon('heroicon-o-document-text')
+            ->color(fn (): string => $on() ? 'success' : 'gray')
+            ->visible(fn (): bool => (auth()->user()?->isSuperAdmin() ?? false) && $this->record->isPublic())
+            ->requiresConfirmation()
+            ->modalHeading(fn (): string => $on() ? 'Sembunyikan visi & misi dari halaman publik?' : 'Tampilkan visi & misi di halaman publik?')
+            ->modalDescription(fn (): string => $on()
+                ? 'Bagian "Kenali calon" hanya menampilkan foto, nomor, dan nama. Visi & misi tetap ada di surat suara pemilih.'
+                : 'Di bagian "Kenali calon", setiap calon yang mengisi visi & misi mendapat tombol "Visi & misi" yang bisa dibuka warga.')
+            ->modalSubmitActionLabel(fn (): string => $on() ? 'Sembunyikan' : 'Tampilkan')
+            ->action(function () use ($on): void {
+                $enable = ! $on();
+                $this->record->forceFill(['settings' => array_merge($this->record->settings ?? [], ['public_profiles' => $enable])])->save();
+
+                app(AuditLogger::class)->log('election.public_profiles', $this->record, $this->record, meta: ['enabled' => $enable]);
+
+                Notification::make()->title($enable ? 'Visi & misi tampil di halaman publik.' : 'Visi & misi disembunyikan dari halaman publik.')->success()->send();
+            });
+    }
+
     private function quickCountAction(): Action
     {
         $on = fn (): bool => (bool) $this->record->setting('public_quick_count');
@@ -173,6 +202,7 @@ class EditElection extends EditRecord
         return [
             $this->settingsAction(),
             $this->publicListingAction(),
+            $this->publicProfilesAction(),
             $this->quickCountAction(),
 
             Action::make('controlRoom')

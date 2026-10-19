@@ -44,6 +44,9 @@
                     @include('public.partials.portrait', ['candidate' => $row['candidate'], 'class' => 'portrait--'.$row['tone']])
                     <p class="contender__number">Nomor {{ $row['candidate']->displayNumber() }}@if ($row['candidate']->originLabel()) · {{ $row['candidate']->originLabel() }}@endif</p>
                     <p class="contender__name">{{ $row['candidate']->name }}</p>
+                    @if ($showcase && ($card['profiles'] ?? false))
+                        @include('public.partials.profile-peek', ['candidate' => $row['candidate']])
+                    @endif
                     @unless ($showcase)
                         <p class="contender__percent">{{ $percent($row['percent']) }}<small>%</small></p>
                         <p class="contender__votes">{{ $votes($row['votes']) }} suara</p>
@@ -62,6 +65,9 @@
                     <span class="standing__body">
                         <span class="standing__name">{{ $row['candidate']->name }}</span>
                         <span class="standing__meta">Nomor {{ $row['candidate']->displayNumber() }}@if ($row['candidate']->originLabel()) · {{ $row['candidate']->originLabel() }}@endif</span>
+                        @if ($showcase && ($card['profiles'] ?? false))
+                            @include('public.partials.profile-peek', ['candidate' => $row['candidate']])
+                        @endif
                         @unless ($showcase)
                             <svg class="standing__bar" viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true">
                                 <rect class="standing__track" x="0" y="0" width="100" height="6" rx="3"></rect>

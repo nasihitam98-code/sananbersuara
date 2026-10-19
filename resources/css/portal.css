@@ -1914,6 +1914,46 @@ h4 {
     grid-template-columns: 44px minmax(0, 1fr);
 }
 
+.profile-peek {
+    width: 100%;
+    margin-top: 6px;
+    text-align: left;
+    font-size: 13px;
+}
+
+.profile-peek__toggle {
+    cursor: pointer;
+    color: var(--p-blue-700);
+    font-weight: 600;
+    text-align: center;
+}
+
+.standing .profile-peek__toggle {
+    text-align: left;
+}
+
+.profile-peek__body {
+    margin-top: 6px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--p-blue-50);
+}
+
+.profile-peek__label {
+    margin: 0 0 2px;
+    font-weight: 700;
+}
+
+.profile-peek__text {
+    margin: 0 0 8px;
+    white-space: pre-line;
+}
+
+.profile-peek__list {
+    margin: 0;
+    padding-left: 18px;
+}
+
 .quick-note--calm {
     background: var(--p-blue-50);
 }

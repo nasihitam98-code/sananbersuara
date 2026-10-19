@@ -124,6 +124,28 @@ class QuickCountTest extends TestCase
         $this->get(route('public.index'))->assertDontSee('Kenali calon')->assertDontSee('Calon Pertama');
     }
 
+    public function test_vision_and_mission_show_on_the_public_page_only_when_switched_on(): void
+    {
+        $this->first->update(['vision' => 'RW rukun dan aman.', 'mission' => "Ronda malam bergilir\nLaporan kas terbuka"]);
+
+        $this->get(route('public.index'))->assertSee('Calon Pertama')->assertDontSee('RW rukun dan aman.');
+
+        $this->actingAs($this->superAdmin);
+        Livewire::test(EditElection::class, ['record' => $this->election->public_id])
+            ->assertActionVisible('publicProfiles')
+            ->callAction('publicProfiles')
+            ->assertNotified('Visi & misi tampil di halaman publik.');
+
+        $this->assertTrue(AuditLog::query()->where('action', 'election.public_profiles')->exists());
+
+        $page = $this->get(route('public.index'))
+            ->assertSee('RW rukun dan aman.')
+            ->assertSee('<li>Laporan kas terbuka</li>', false);
+
+        // Hanya calon yang mengisi visi & misi yang punya tombolnya.
+        $this->assertSame(1, substr_count($page->getContent(), 'class="profile-peek"'));
+    }
+
     public function test_quick_count_can_be_switched_on_while_creating_the_election(): void
     {
         $this->actingAs($this->superAdmin);

@@ -22,7 +22,7 @@ use Illuminate\Support\Collection;
  * Portal publik (tanpa login) untuk pengumuman akhir: hasil resmi yang sudah DIPUBLIKASIKAN, plus penanda
  * pemilihan yang sedang berjalan dan, bila dinyalakan panitia, quick count sementara (lihat QuickCount).
  * Sejak Siap sampai quick count/hasil tampil, bagian Calon memperkenalkan foto, nomor, dan nama calon tanpa angka
- * (diubah pemilik 2026-10-19). Visi & misi tetap hanya di surat suara pemilih.
+ * (diubah pemilik 2026-10-19). Visi & misi ikut tampil hanya bila saklarnya dinyalakan (settings.public_profiles).
  * Setelah diumumkan, yang ditampilkan: nama yang ditetapkan panitia, perolehan suara resmi tiap calon (K21 diubah
  * pemilik 2026-10-12), dan partisipasi warga. Data pemilih tidak pernah ditampilkan.
  */
@@ -150,8 +150,10 @@ class PublicResultController extends Controller
      */
     private function candidateCards(Election $election): Collection
     {
+        $withProfiles = (bool) $election->setting('public_profiles');
+
         return $this->slots->slots($election)
-            ->map(function (array $slot): array {
+            ->map(function (array $slot) use ($withProfiles): array {
                 $candidates = $slot['ballot']->ballotCandidates()
                     ->with('originUnit')
                     ->when($slot['unit'] !== null, fn ($query) => $query->where('unit_id', $slot['unit']->id))
@@ -164,6 +166,7 @@ class PublicResultController extends Controller
                     'label' => $candidates->count().' calon',
                     'decided' => false,
                     'showcase' => true,
+                    'profiles' => $withProfiles,
                     'candidates' => $candidates,
                     'tally' => [
                         'valid' => 0,
