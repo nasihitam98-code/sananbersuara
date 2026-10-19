@@ -120,7 +120,10 @@ class ParticipationPage extends Page
     /** Batas nama yang ditampilkan sekaligus (Semua RT); saring per RT atau nama untuk melihat sisanya. */
     public const NOT_VOTED_LIMIT = 1000;
 
-    /** Klik kartu RT (Super Admin): daftar "Belum memilih" langsung disaring ke RT itu. */
+    /** Daftar nama: 'belum' (belum menyelesaikan semua surat suara) atau 'sudah' (sudah semua). */
+    public string $voterTab = 'belum';
+
+    /** Klik kartu RT (Super Admin): daftar nama langsung disaring ke RT itu. */
     public function showUnit(?int $unitId): void
     {
         abort_unless($this->user()->isSuperAdmin(), 403);
@@ -129,30 +132,34 @@ class ParticipationPage extends Page
     }
 
     /**
-     * Jumlah pemilih yang belum menyelesaikan semua surat suara berhaknya (sesuai saringan RT, tanpa saringan nama).
+     * Jumlah pemilih per daftar (sesuai saringan RT, tanpa saringan nama).
+     *
+     * @return array{belum: int, sudah: int}
      */
-    public function notVotedCount(): int
+    public function voterCounts(): array
     {
-        return count($this->pendingVoterIds());
+        $ids = $this->voterIdsByStatus();
+
+        return ['belum' => count($ids['belum']), 'sudah' => count($ids['sudah'])];
     }
 
     /**
-     * Pemilih yang belum menyelesaikan semua surat suara berhaknya (tanpa pilihan kandidat). Super Admin tanpa
+     * Nama pemilih pada tab yang dipilih (tanpa pilihan kandidat dan tanpa jam memilih). Super Admin tanpa
      * saringan RT: semua RT.
      *
      * @return Collection<int, Voter>
      */
-    public function notVoted(): Collection
+    public function voterList(): Collection
     {
-        $pendingIds = $this->pendingVoterIds();
+        $ids = $this->voterIdsByStatus()[$this->voterTab === 'sudah' ? 'sudah' : 'belum'];
 
-        if ($pendingIds === []) {
+        if ($ids === []) {
             return collect();
         }
 
         return Voter::query()
             ->with('unit')
-            ->whereIn('id', $pendingIds)
+            ->whereIn('id', $ids)
             ->when(mb_strlen(trim($this->notVotedSearch)) >= 2, fn ($query) => $query->where('name_search', 'like', '%'.addcslashes(Attendee::normalizeForSearch($this->notVotedSearch), '%_\\').'%'))
             ->orderBy('name')
             ->limit(self::NOT_VOTED_LIMIT)
@@ -160,15 +167,17 @@ class ParticipationPage extends Page
     }
 
     /**
-     * @return array<int, int>
+     * Pemilih berhak dibagi dua: belum menyelesaikan semua surat suara berhaknya, dan sudah.
+     *
+     * @return array{belum: array<int, int>, sudah: array<int, int>}
      */
-    private function pendingVoterIds(): array
+    private function voterIdsByStatus(): array
     {
         $election = $this->election();
         $unitId = $this->user()->isSuperAdmin() ? $this->unitFilter : $this->user()->unit_id;
 
         if ($election === null || (! $this->user()->isSuperAdmin() && $unitId === null)) {
-            return [];
+            return ['belum' => [], 'sudah' => []];
         }
 
         $round = $election->currentRound();
@@ -179,6 +188,8 @@ class ParticipationPage extends Page
         $voted = Vote::query()->whereIn('ballot_id', $ballotIds)->where('round_id', $round?->id)->where('status', VoteStatus::Sah)
             ->whereIn('voter_id', $eligible->keys())->get(['voter_id', 'ballot_id'])->groupBy('voter_id');
 
-        return $eligible->filter(fn ($rows, $voterId): bool => $rows->count() > $voted->get($voterId, collect())->count())->keys()->all();
+        [$pending, $done] = $eligible->partition(fn ($rows, $voterId): bool => $rows->count() > $voted->get($voterId, collect())->count());
+
+        return ['belum' => $pending->keys()->all(), 'sudah' => $done->keys()->all()];
     }
 }

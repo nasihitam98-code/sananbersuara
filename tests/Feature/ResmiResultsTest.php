@@ -167,10 +167,20 @@ class ResmiResultsTest extends TestCase
             ->assertSee('RT 04')
             ->assertSee('50%')
             ->assertSee('Belum memilih (1 orang)')
+            ->assertSee('Sudah memilih (4 orang)')
             ->assertSee($pendingRt04->name)
             ->call('showUnit', $this->rt03->id)
             ->assertSee('Belum memilih (0 orang)')
             ->assertSee('Semua pemilih sudah memilih.')
+            ->assertDontSee($pendingRt04->name);
+
+        // Admin RT: tab Sudah memilih berisi nama di RT-nya saja.
+        $this->actingAs($this->adminRt03);
+        $votedRt03 = Voter::query()->where('unit_id', $this->rt03->id)->first();
+        Livewire::test(ParticipationPage::class)
+            ->assertSee('Sudah memilih (3 orang)')
+            ->set('voterTab', 'sudah')
+            ->assertSee($votedRt03->name)
             ->assertDontSee($pendingRt04->name);
 
         // Admin RT tidak bisa memakai saringan RT lain.
