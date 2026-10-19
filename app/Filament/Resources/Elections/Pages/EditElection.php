@@ -117,7 +117,7 @@ class EditElection extends EditRecord
      * partisipasi selama voting, diperbarui tiap 10 menit. Bisa dinyalakan/dimatikan kapan saja, tercatat di audit.
      */
     /**
-     * Saklar visi & misi di bagian "Kenali calon" portal publik (pilihan pemilik 2026-10-19). Bawaan mati: hanya foto,
+     * Saklar tombol "Detail" (visi & misi di jendela) pada kartu Kenali calon dan quick count portal publik (pilihan pemilik 2026-10-19). Bawaan mati: hanya foto,
      * nomor, dan nama. Visi & misi selalu tetap ada di surat suara pemilih.
      */
     private function publicProfilesAction(): Action
@@ -132,8 +132,8 @@ class EditElection extends EditRecord
             ->requiresConfirmation()
             ->modalHeading(fn (): string => $on() ? 'Sembunyikan visi & misi dari halaman publik?' : 'Tampilkan visi & misi di halaman publik?')
             ->modalDescription(fn (): string => $on()
-                ? 'Bagian "Kenali calon" hanya menampilkan foto, nomor, dan nama. Visi & misi tetap ada di surat suara pemilih.'
-                : 'Di bagian "Kenali calon", setiap calon yang mengisi visi & misi mendapat tombol "Visi & misi" yang bisa dibuka warga.')
+                ? 'Tombol "Detail" hilang dari kartu calon dan quick count. Visi & misi tetap ada di surat suara pemilih.'
+                : 'Setiap calon yang mengisi visi & misi mendapat tombol "Detail" di kartu Kenali calon dan quick count; warga mengetuknya untuk membaca visi & misi di jendela kecil.')
             ->modalSubmitActionLabel(fn (): string => $on() ? 'Sembunyikan' : 'Tampilkan')
             ->action(function () use ($on): void {
                 $enable = ! $on();

@@ -26,6 +26,10 @@
 
     @include('public.partials.result-grid', ['cards' => $quickCards, 'unitCards' => $quickUnitCards])
 
+    @if ($quick['election']->setting('public_profiles'))
+        @include('public.partials.profile-dialogs', ['cards' => $quickCards])
+    @endif
+
     @if (count($quickTurnout['units']) > 1)
         <div class="subsection reveal">
             <h3 class="subsection__title">Partisipasi sementara per RT</h3>

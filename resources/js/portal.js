@@ -317,7 +317,8 @@ function initAutoRefresh() {
     let baseline = null;
 
     const check = async () => {
-        if (document.visibilityState !== 'visible') {
+        // Jangan muat ulang saat warga sedang membaca jendela visi & misi.
+        if (document.visibilityState !== 'visible' || document.querySelector('dialog[open]')) {
             return;
         }
 
@@ -347,3 +348,28 @@ function initAutoRefresh() {
 }
 
 initAutoRefresh();
+
+/*
+ * Jendela visi & misi: tombol "Detail" di kartu calon/quick count. Lewat delegasi agar kartu RT yang disematkan
+ * (salinan kartu) ikut berfungsi. Klik di luar jendela atau tombol Tutup menutupnya.
+ */
+document.addEventListener('click', (event) => {
+    const opener = event.target.closest('[data-profile-open]');
+
+    if (opener) {
+        event.preventDefault();
+        document.getElementById(opener.dataset.profileOpen)?.showModal();
+
+        return;
+    }
+
+    if (event.target.closest('[data-profile-close]')) {
+        event.target.closest('dialog')?.close();
+
+        return;
+    }
+
+    if (event.target instanceof HTMLDialogElement && event.target.classList.contains('profile-dialog')) {
+        event.target.close();
+    }
+});

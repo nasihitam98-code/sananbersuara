@@ -142,8 +142,16 @@ class QuickCountTest extends TestCase
             ->assertSee('RW rukun dan aman.')
             ->assertSee('<li>Laporan kas terbuka</li>', false);
 
-        // Hanya calon yang mengisi visi & misi yang punya tombolnya.
-        $this->assertSame(1, substr_count($page->getContent(), 'class="profile-peek"'));
+        // Hanya calon yang mengisi visi & misi yang punya tombol Detail dan jendelanya.
+        $this->assertSame(1, substr_count($page->getContent(), 'data-profile-open='));
+        $this->assertSame(1, substr_count($page->getContent(), 'class="profile-dialog"'));
+
+        // Selama voting, tombol Detail ikut ada di kartu quick count.
+        $this->election->forceFill(['settings' => array_merge($this->election->fresh()->settings, ['public_quick_count' => true])])->save();
+        app(ElectionLifecycle::class)->start($this->election->fresh(), $this->superAdmin);
+
+        $page = $this->get(route('public.index'))->assertSee('Quick count · hasil sementara')->assertSee('RW rukun dan aman.');
+        $this->assertSame(1, substr_count($page->getContent(), 'data-profile-open='));
     }
 
     public function test_quick_count_can_be_switched_on_while_creating_the_election(): void

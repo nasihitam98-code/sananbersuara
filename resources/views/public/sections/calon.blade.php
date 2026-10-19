@@ -21,4 +21,8 @@
     </p>
 
     @include('public.partials.result-grid', ['cards' => $showcaseCards, 'unitCards' => $showcaseUnitCards])
+
+    @if ($showcase['election']->setting('public_profiles'))
+        @include('public.partials.profile-dialogs', ['cards' => $showcaseCards])
+    @endif
 </section>
