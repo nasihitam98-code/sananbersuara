@@ -292,7 +292,12 @@ class VerificationDesk extends Page
     public function decideAction(): Action
     {
         return Action::make('decide')
-            ->label('Tetapkan')
+            // Sudah ditetapkan: tombol yang sama untuk mengubah, dengan nama yang menjelaskannya.
+            ->label(function (array $arguments): string {
+                $slot = $this->slotFromArguments($arguments);
+
+                return $slot !== null && app(ResultPublication::class)->outcome($slot['ballot'], $slot['unit']) !== null ? 'Ubah penetapan' : 'Tetapkan';
+            })
             ->icon('heroicon-o-check-badge')
             ->visible(fn (): bool => in_array($this->election()?->status, [ElectionStatus::Verifikasi, ElectionStatus::Unpublished], true))
             ->modalHeading(fn (array $arguments): string => 'Penetapan: '.($this->slotFromArguments($arguments)['title'] ?? ''))

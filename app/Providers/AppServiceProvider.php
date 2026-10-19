@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\AppSetting;
+use Filament\Actions\Action;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -36,6 +37,14 @@ class AppServiceProvider extends ServiceProvider
             ->letters()
             ->numbers()
             ->when($this->app->isProduction(), fn (Password $rule): Password => $rule->uncompromised()));
+
+        // Tombol konfirmasi di jendela memakai nama aksinya ("Sahkan", "Buat Token Meja") alih-alih "Kirim"/"Konfirmasi".
+        // Hanya Action biasa; aksi bawaan (Buat/Simpan/Hapus) dan aksi dengan label khusus tidak berubah.
+        Action::configureUsing(function (Action $action): void {
+            if ($action::class === Action::class) {
+                $action->modalSubmitActionLabel(fn (Action $action): string => (string) $action->getLabel());
+            }
+        });
     }
 
     /**

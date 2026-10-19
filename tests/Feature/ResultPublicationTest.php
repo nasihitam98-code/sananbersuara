@@ -300,6 +300,7 @@ class ResultPublicationTest extends TestCase
                 'status' => OutcomeStatus::Ditetapkan->value,
                 'candidates' => [$this->candidates[0]->id],
             ])
+            ->assertSee('Ubah penetapan')
             ->callAction(TestAction::make('draftReport')->arguments(['unit' => 0]))
             ->assertSee('Terpilih');
 

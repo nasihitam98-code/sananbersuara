@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\BallotScope;
 use App\Enums\DeviceKind;
 use App\Enums\ElectionMode;
+use App\Enums\PermitStatus;
 use App\Filament\Pages\DeskPage;
 use App\Filament\Pages\DevicesPage;
 use App\Models\Ballot;
@@ -95,6 +96,32 @@ class DeskPageTest extends TestCase
             ->assertSet('lastAssignment.booth', 'Bilik 1');
 
         $this->assertSame(1, Permit::query()->whereNotNull('active_voter_id')->count());
+    }
+
+    public function test_go_to_booth_card_disappears_once_the_permit_ends(): void
+    {
+        $this->actingAs($this->deskOfficer);
+
+        $page = Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])
+            ->test(DeskPage::class)
+            ->callAction(TestAction::make('grant')->arguments(['voter' => $this->voter->public_id]))
+            ->assertSee('Silakan ke Bilik 1');
+
+        Permit::query()->update(['status' => PermitStatus::Selesai, 'active_voter_id' => null, 'active_device_id' => null]);
+
+        $page->call('$refresh')->assertDontSee('Silakan ke Bilik 1')->assertSet('lastAssignment', null);
+    }
+
+    public function test_login_page_confirms_a_paired_desk_laptop(): void
+    {
+        $this->withCookie(DeviceManager::COOKIE, $this->deskCookie)
+            ->get('/admin/login')
+            ->assertOk()
+            ->assertSee('Laptop ini terpasang sebagai Meja RT 03');
+
+        // Laptop lain (tanpa cookie meja): tidak ada pesan.
+        $this->defaultCookies = [];
+        $this->get('/admin/login')->assertOk()->assertDontSee('Laptop ini terpasang sebagai');
     }
 
     public function test_same_officer_on_another_laptop_cannot_grant(): void

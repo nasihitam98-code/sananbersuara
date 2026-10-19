@@ -109,7 +109,7 @@ class UserResource extends Resource
                             ->label('Izin Admin RT')
                             ->options(static::permissionOptions())
                             ->visible(fn (Get $get): bool => $get('role') === User::ROLE_ADMIN_RT)
-                            ->helperText('Boleh keduanya (K07). Petugas meja relawan cukup diberi izin Petugas Meja saja.'),
+                            ->helperText('Boleh keduanya (satu akun untuk data pemilih dan meja RT). Petugas meja relawan cukup diberi izin Petugas Meja saja.'),
                         Toggle::make('is_active')->label('Aktif')->default(true)->visibleOn('edit'),
                     ]),
             ]);

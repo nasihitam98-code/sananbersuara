@@ -22,7 +22,7 @@
                 @if ($this->resumeTpsAction->isVisible()) {{ $this->resumeTpsAction }} @endif
             </div>
 
-            @if ($lastAssignment)
+            @if ($lastAssignment && $this->assignmentStillActive())
                 <div class="rounded-2xl bg-success-600 p-6 text-center text-white" role="status">
                     <p class="text-lg">{{ $lastAssignment['name'] }}</p>
                     <p class="text-4xl font-black">Silakan ke {{ $lastAssignment['booth'] }}</p>

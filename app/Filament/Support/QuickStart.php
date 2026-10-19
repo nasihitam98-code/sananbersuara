@@ -101,7 +101,11 @@ class QuickStart
 
                 Notification::make()
                     ->title($openNow ? 'Pemilihan dimulai dan voting dibuka.' : 'Pemilihan dimulai.')
-                    ->body($openNow ? 'Tampilkan Layar QR agar warga bisa memilih.' : 'Buka voting dari Ruang Kendali saat siap.')
+                    ->body(match (true) {
+                        $openNow => 'Tampilkan Layar QR agar warga bisa memilih.',
+                        $record->isDadakan() => 'Buka voting dari Ruang Kendali saat siap.',
+                        default => 'Petugas meja tiap RT sudah bisa mengizinkan pemilih ke bilik.',
+                    })
                     ->success()
                     ->send();
 

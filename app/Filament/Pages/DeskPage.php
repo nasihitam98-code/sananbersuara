@@ -7,6 +7,7 @@ use App\Enums\DeviceReleaseReason;
 use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
 use App\Enums\PermitCancelReason;
+use App\Enums\PermitStatus;
 use App\Enums\TpsPauseReason;
 use App\Enums\VoteStatus;
 use App\Filament\Support\Workspace;
@@ -64,7 +65,7 @@ class DeskPage extends Page
     /**
      * Penugasan terakhir: "Silakan ke Bilik N".
      *
-     * @var array{name: string, booth: string}|null
+     * @var array{name: string, booth: string, permit?: int}|null
      */
     public ?array $lastAssignment = null;
 
@@ -207,7 +208,7 @@ class DeskPage extends Page
                     return;
                 }
 
-                $this->lastAssignment = ['name' => $voter->name, 'booth' => $permit->device->name()];
+                $this->lastAssignment = ['name' => $voter->name, 'booth' => $permit->device->name(), 'permit' => $permit->id];
             });
     }
 
@@ -316,6 +317,26 @@ class DeskPage extends Page
     public function dismissAssignment(): void
     {
         $this->lastAssignment = null;
+    }
+
+    /**
+     * Kartu "Silakan ke Bilik N" hilang sendiri begitu pemilih itu selesai atau izinnya berakhir (halaman diperbarui tiap 3 detik).
+     */
+    public function assignmentStillActive(): bool
+    {
+        $permitId = $this->lastAssignment['permit'] ?? null;
+
+        if ($permitId === null) {
+            return $this->lastAssignment !== null;
+        }
+
+        $active = Permit::query()->whereKey($permitId)->whereIn('status', [PermitStatus::Aktif, PermitStatus::Dipakai])->exists();
+
+        if (! $active) {
+            $this->lastAssignment = null;
+        }
+
+        return $active;
     }
 
     public function dismissToken(): void

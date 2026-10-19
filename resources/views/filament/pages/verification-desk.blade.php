@@ -26,7 +26,7 @@
                         <p class="mt-2 text-sm">Halaman publik: <a class="text-primary-600 underline" href="{{ route('public.show', $election->public_id) }}" target="_blank">{{ route('public.show', $election->public_id) }}</a></p>
                     @endif
                     @if ($election->vote_links_destroyed_at)
-                        <p class="mt-2 text-sm text-gray-500">Keterkaitan pemilih-pilihan sudah dihapus permanen pada {{ $election->vote_links_destroyed_at->format('d-m-Y') }} (K26).</p>
+                        <p class="mt-2 text-sm text-gray-500">Keterkaitan pemilih-pilihan sudah dihapus permanen pada {{ $election->vote_links_destroyed_at->format('d-m-Y') }}.</p>
                     @elseif ($deadline = $this->retentionDeadline())
                         <p class="mt-2 text-sm text-gray-500">Detail suara (siapa memilih siapa) akan dihapus otomatis pada <strong>{{ $deadline->format('d-m-Y') }}</strong>. @if ($this->extendRetentionAction->isVisible()) {{ $this->extendRetentionAction }} @endif</p>
                     @endif

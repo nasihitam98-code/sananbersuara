@@ -348,7 +348,11 @@ class CandidateResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->defaultSort('number')
+            // Dikelompokkan: surat suara (urutan di bilik), lalu RT, lalu nomor urut, agar calon RT dan RW tidak berselang-seling.
+            ->defaultSort(fn (Builder $query): Builder => $query
+                ->orderBy(Ballot::query()->select('sort')->whereColumn('ballots.id', 'candidates.ballot_id'))
+                ->orderBy(Unit::query()->select('sort')->whereColumn('units.id', 'candidates.unit_id'))
+                ->orderBy('number'))
             ->modifyQueryUsing(fn (Builder $query) => $query->with('ballot.election')
                 // Calon dari pemilihan yang dibatalkan/diarsipkan tidak ikut ditampilkan.
                 ->whereHas('ballot.election', fn (Builder $election): Builder => $election->whereNotIn('status', [ElectionStatus::Cancelled, ElectionStatus::Archived]))
@@ -367,6 +371,7 @@ class CandidateResource extends Resource
                     ->sortable()
                     ->type('number')
                     ->extraInputAttributes(['style' => 'width: 4.5rem'])
+                    ->extraAttributes(['style' => 'width: 5.5rem'])
                     ->rules(fn (Candidate $record): array => [
                         'required', 'integer', 'min:1', 'max:999',
                         Rule::unique('candidates', 'number')
@@ -404,6 +409,7 @@ class CandidateResource extends Resource
                     ->options(fn (): array => Unit::query()->orderBy('sort')->pluck('name', 'id')->all())
                     ->placeholder('-')
                     ->extraInputAttributes(['style' => 'width: 7.5rem'])
+                    ->toggleable(isToggledHiddenByDefault: true)
                     // Surat suara per RT tidak memakai asal RT.
                     ->disabled(fn (Candidate $record): bool => ! static::canEdit($record) || $record->ballot->scope === BallotScope::PerRt)
                     ->afterStateUpdated(fn (Candidate $record, mixed $state) => static::auditInlineEdit($record, 'origin_unit_id', $state)),

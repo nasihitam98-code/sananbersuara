@@ -231,7 +231,10 @@ class EditElection extends EditRecord
                     ->color('danger')
                     ->visible(fn (): bool => $this->record->status->isLive())
                     ->modalHeading('Tutup pemilihan?')
-                    ->modalDescription('Tidak ada suara baru yang diterima dan Pulihkan Hak Pilih tidak bisa lagi dilakukan. Tindakan ini tidak bisa dibatalkan.')
+                    ->modalDescription(fn (): string => $this->record->isDadakan()
+                        ? 'Tidak ada suara baru yang diterima dan Pulihkan Hak Pilih tidak bisa lagi dilakukan. Tindakan ini tidak bisa dibatalkan.'
+                        : 'Tidak ada suara baru yang diterima: izin di meja dihentikan dan semua laptop meja/bilik dilepas. Tindakan ini tidak bisa dibatalkan.')
+                    ->modalSubmitActionLabel('Ya, tutup pemilihan')
                     ->schema([Reauthenticate::field()])
                     ->action(fn () => $this->runLifecycle(fn (ElectionLifecycle $lifecycle) => $lifecycle->close($this->record, auth()->user()), 'Pemilihan ditutup.')),
 

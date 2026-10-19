@@ -356,7 +356,6 @@ class HomeGuide extends Widget implements HasActions, HasSchemas
 
         // Yang tidak bisa mengelola pemilihan (Panitia, Petugas Pintu, Admin RT) tidak diberi petunjuk tombol yang tidak mereka punya.
         $manager = ElectionResource::canAccess();
-        $startedBy = $manager ? 'buka halaman pemilihan lalu klik Mulai Pemilihan.' : 'pemilihan dimulai oleh Super Admin.';
 
         // Draf: petunjuk mengikuti daftar Persiapan (langkah pertama yang belum beres), bukan kalimat tetap.
         $pending = $election->status === ElectionStatus::Draft
@@ -385,7 +384,8 @@ class HomeGuide extends Widget implements HasActions, HasSchemas
                     ]]
                 : [$manager
                     ? 'Sudah siap. Pasang laptop meja dan bilik dengan token, lalu buka halaman pemilihan dan klik Mulai Pemilihan.'
-                    : 'Sudah siap. Laptop meja dan bilik dipasang Super Admin; '.$startedBy, [
+                    : 'Sudah siap. Laptop meja dipasang Super Admin; laptop bilik Anda pasang sendiri dari Meja Izin (tombol Buat Token di tiap bilik). Pemilihan dimulai oleh Super Admin.', [
+                        fn () => $page(DeskPage::class, 'Buka Meja Izin (pasang bilik)'),
                         fn () => $page(DevicesPage::class, 'Pasang laptop (Perangkat)'),
                         fn () => $edit('Buka halaman pemilihan (Mulai Pemilihan)'),
                     ]],
