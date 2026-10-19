@@ -8,6 +8,7 @@ use App\Enums\ElectionMode;
 use App\Enums\PermitStatus;
 use App\Filament\Pages\DeskPage;
 use App\Filament\Pages\DevicesPage;
+use App\Filament\Pages\MonitoringPage;
 use App\Filament\Support\ElectionChecklist;
 use App\Models\Ballot;
 use App\Models\Candidate;
@@ -148,6 +149,26 @@ class DeskPageTest extends TestCase
         $this->assertStringContainsString('Belum ada pemilih: RT 01', $steps['Data pemilih']['detail']);
         $this->assertStringContainsString('Belum ada akun Meja Izin: RT 01', $steps['Akun petugas meja (Admin RT)']['detail']);
         $this->assertStringNotContainsString('RT 03', $steps['Akun petugas meja (Admin RT)']['detail']);
+    }
+
+    public function test_monitoring_shows_every_rt_with_devices_and_participation(): void
+    {
+        $this->actingAs($this->superAdmin);
+
+        Livewire::test(MonitoringPage::class)
+            ->assertSee('Monitoring')
+            ->assertSee('RT 03')
+            ->assertSee('dari 1 pemilih sudah memilih')
+            ->assertSee('1 dari 1 tersambung')
+            ->assertSee('Tersambung');
+
+        // Laptop bilik RT 03 lama tidak terdengar: RT itu ditandai perlu dicek.
+        Device::query()->where('kind', DeviceKind::Bilik)->update(['last_seen_at' => now()->subMinutes(5)]);
+        Livewire::test(MonitoringPage::class)
+            ->assertSee('RT perlu dicek')
+            ->assertSee('Bilik terputus: RT03-01');
+
+        $this->actingAs($this->deskOfficer)->get(MonitoringPage::getUrl())->assertForbidden();
     }
 
     public function test_pages_are_restricted_by_role(): void
