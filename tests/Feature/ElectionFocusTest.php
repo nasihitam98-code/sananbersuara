@@ -10,6 +10,7 @@ use App\Filament\Pages\DoorDesk;
 use App\Filament\Resources\Candidates\Pages\ListCandidates;
 use App\Filament\Resources\Elections\ElectionResource;
 use App\Filament\Resources\Elections\Pages\ListElections;
+use App\Filament\Support\QuickStart;
 use App\Filament\Support\Workspace;
 use App\Filament\Widgets\HomeGuide;
 use App\Models\AuditLog;
@@ -167,15 +168,20 @@ class ElectionFocusTest extends TestCase
         $this->assertTrue(Workspace::election()->is($draft), 'Pemilihan yang dimulai menjadi pemilihan yang dikerjakan');
     }
 
-    public function test_start_from_card_explains_what_is_missing(): void
+    public function test_start_button_appears_only_when_the_election_can_start(): void
     {
+        // Persiapan belum lengkap: tombol Mulai tidak muncul (langkah berikutnya ditunjukkan di daftar Persiapan).
         $empty = Election::factory()->create(['name' => 'Belum Ada Calon']);
-
         Livewire::test(HomeGuide::class)
-            ->callAction(TestAction::make('startElection')->arguments(['election' => $empty->public_id]), ['current_password' => 'password'])
-            ->assertNotified('Belum bisa dimulai');
-
+            ->assertActionHidden(TestAction::make('startElection')->arguments(['election' => $empty->public_id]));
         $this->assertSame(ElectionStatus::Draft, $empty->fresh()->status);
+
+        // Mode Resmi: harus Tandai Siap dulu (laptop meja/bilik dipasang setelah Siap), walau calon sudah lengkap.
+        $resmi = Election::factory()->create(['name' => 'Resmi Lengkap', 'mode' => ElectionMode::Resmi]);
+        Candidate::factory()->for(Ballot::factory()->for($resmi))->create(['number' => 1]);
+        $this->assertFalse(QuickStart::canStart($resmi));
+        app(ElectionLifecycle::class)->markReady($resmi, $this->superAdmin);
+        $this->assertTrue(QuickStart::canStart($resmi->fresh()));
     }
 
     public function test_election_menus_appear_only_after_choosing_an_election(): void

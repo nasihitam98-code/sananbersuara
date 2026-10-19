@@ -212,7 +212,9 @@ class ElectionResource extends Resource
                     ->label('Masuk')
                     ->icon('heroicon-m-arrow-right')
                     ->color('primary')
-                    ->requiresConfirmation(fn (Election $record): bool => Workspace::otherLiveElection($record) !== null)
+                    ->requiresConfirmation()
+                    // Jendela hanya bila memang ada pemilihan lain berlangsung (heading/deskripsi saja membuat Filament selalu membukanya).
+                    ->modalHidden(fn (Election $record): bool => Workspace::otherLiveElection($record) === null)
                     ->modalHeading('Ada pemilihan lain yang sedang berlangsung')
                     ->modalDescription(fn (Election $record): string => 'Pemilihan "'.Workspace::otherLiveElection($record)?->name.'" sedang berlangsung. Tetap masuk ke "'.$record->name.'"? Voting di sana tetap berjalan.')
                     ->modalSubmitActionLabel('Tetap masuk')

@@ -29,6 +29,19 @@ class QuickStart
      * @param  Closure(array<string, mixed>, ?Model): ?Election  $election  dari argumen aksi (kartu) atau baris tabel ($record)
      * @param  (Closure(Election): void)|null  $after
      */
+    /**
+     * Tombol Mulai hanya bila memang bisa dimulai: status Siap, atau (Mode Dadakan) Draf yang persiapannya lengkap.
+     * Mode Resmi harus Tandai Siap dulu, karena laptop meja dan bilik baru bisa dipasang setelah Siap.
+     */
+    public static function canStart(?Election $election): bool
+    {
+        return match ($election?->status) {
+            ElectionStatus::Ready => true,
+            ElectionStatus::Draft => $election->isDadakan() && app(ElectionLifecycle::class)->readinessProblems($election) === [],
+            default => false,
+        };
+    }
+
     public static function action(string $name, Closure $election, ?Closure $after = null): Action
     {
         $isSuperAdmin = fn (): bool => ($user = auth()->user()) instanceof User && $user->isSuperAdmin();
@@ -38,7 +51,7 @@ class QuickStart
             ->icon('heroicon-o-play')
             ->color('success')
             ->size('xl')
-            ->visible(fn (array $arguments, ?Model $record = null): bool => $isSuperAdmin() && in_array($election($arguments, $record)?->status, [ElectionStatus::Draft, ElectionStatus::Ready], true))
+            ->visible(fn (array $arguments, ?Model $record = null): bool => $isSuperAdmin() && static::canStart($election($arguments, $record)))
             ->modalHeading(fn (array $arguments, ?Model $record = null): string => 'Mulai "'.($election($arguments, $record)?->name ?? '').'"?')
             ->modalDescription('Calon dan surat suara dikunci setelah dimulai. Tidak bisa dibatalkan.')
             ->modalSubmitActionLabel('Mulai sekarang')

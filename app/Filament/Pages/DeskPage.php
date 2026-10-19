@@ -233,7 +233,9 @@ class DeskPage extends Page
             ->visible(fn (): bool => $this->desk() !== null)
             ->label('Buat Token')
             ->size('sm')
-            ->requiresConfirmation(fn (array $arguments): bool => $this->boothFromArguments($arguments)?->isPaired() === true)
+            ->requiresConfirmation()
+            // Konfirmasi hanya bila bilik sedang terpasang (deskripsi saja membuat Filament selalu membuka jendela).
+            ->modalHidden(fn (array $arguments): bool => $this->boothFromArguments($arguments)?->isPaired() !== true)
             ->modalDescription('Bilik ini sedang terpasang. Token baru dipakai untuk mengganti laptop; laptop lama akan terlepas saat token dipakai.')
             ->action(function (array $arguments): void {
                 $booth = $this->boothFromArguments($arguments);
