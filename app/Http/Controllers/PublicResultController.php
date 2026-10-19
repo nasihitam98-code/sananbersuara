@@ -20,7 +20,9 @@ use Illuminate\Support\Collection;
 
 /**
  * Portal publik (tanpa login) untuk pengumuman akhir: hasil resmi yang sudah DIPUBLIKASIKAN, plus penanda
- * pemilihan yang sedang berjalan dan, bila dinyalakan panitia, quick count sementara (lihat QuickCount). Profil calon tidak ditampilkan di sini (visi & misi ada di surat suara pemilih).
+ * pemilihan yang sedang berjalan dan, bila dinyalakan panitia, quick count sementara (lihat QuickCount).
+ * Sejak Siap sampai quick count/hasil tampil, bagian Calon memperkenalkan foto, nomor, dan nama calon tanpa angka
+ * (diubah pemilik 2026-10-19). Visi & misi tetap hanya di surat suara pemilih.
  * Setelah diumumkan, yang ditampilkan: nama yang ditetapkan panitia, perolehan suara resmi tiap calon (K21 diubah
  * pemilik 2026-10-12), dan partisipasi warga. Data pemilih tidak pernah ditampilkan.
  */
@@ -52,9 +54,13 @@ class PublicResultController extends Controller
         $cards = $featured === null ? collect() : $this->resultCards($featured);
         $turnout = $featured === null ? null : $this->turnout->for($featured);
         $quickElection = $this->quickCount->current();
+        // Pemilihan yang sedang menampilkan quick count tidak perlu bagian Calon: kartunya sudah memuat foto & nomor.
+        $showcaseElection = $running->first(fn (Election $election): bool => $quickElection === null || ! $election->is($quickElection));
+        $showcaseCards = $showcaseElection === null ? collect() : $this->candidateCards($showcaseElection);
 
         return $this->publicView('public.index', [
             'quick' => $quickElection === null ? null : ['election' => $quickElection, 'snapshot' => $this->quickCount->snapshot($quickElection)],
+            'showcase' => $showcaseCards->isEmpty() ? null : ['election' => $showcaseElection, 'cards' => $showcaseCards],
             'running' => $running,
             'announced' => $announced,
             'featured' => $featured,
@@ -134,6 +140,40 @@ class PublicResultController extends Controller
                     ],
                 ];
             })
+            ->values();
+    }
+
+    /**
+     * Kartu perkenalan calon (bentuk sama dengan kartu hasil, tanpa angka): satu kartu per jabatan/RT, urut nomor.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function candidateCards(Election $election): Collection
+    {
+        return $this->slots->slots($election)
+            ->map(function (array $slot): array {
+                $candidates = $slot['ballot']->ballotCandidates()
+                    ->with('originUnit')
+                    ->when($slot['unit'] !== null, fn ($query) => $query->where('unit_id', $slot['unit']->id))
+                    ->get();
+
+                return [
+                    'title' => $slot['ballot']->title.($slot['unit'] instanceof Unit ? ' '.$slot['unit']->name : ''),
+                    'office' => $slot['ballot']->title,
+                    'unit' => $slot['unit'],
+                    'label' => $candidates->count().' calon',
+                    'decided' => false,
+                    'showcase' => true,
+                    'candidates' => $candidates,
+                    'tally' => [
+                        'valid' => 0,
+                        'rows' => $candidates->values()
+                            ->map(fn (Candidate $candidate, int $index): array => ['candidate' => $candidate, 'votes' => 0, 'percent' => 0.0, 'rank' => $index + 1, 'elected' => false])
+                            ->all(),
+                    ],
+                ];
+            })
+            ->filter(fn (array $card): bool => $card['tally']['rows'] !== [])
             ->values();
     }
 

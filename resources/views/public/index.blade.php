@@ -37,6 +37,8 @@
                     <div class="hero__actions">
                         @if ($quick && $quick['election']->is($election))
                             <a class="button button--light" href="#quick-count">Lihat quick count</a>
+                        @elseif ($showcase && $showcase['election']->is($election))
+                            <a class="button button--light" href="#calon">Lihat calon</a>
                         @endif
                         <a class="button button--light" href="#cara-memilih">Cara memilih</a>
                     </div>
@@ -70,6 +72,10 @@
 
     @if ($quick)
         @include('public.sections.hitung-cepat')
+    @endif
+
+    @if ($showcase)
+        @include('public.sections.calon')
     @endif
 
     @include('public.sections.hasil')

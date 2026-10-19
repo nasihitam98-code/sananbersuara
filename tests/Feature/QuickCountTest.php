@@ -91,6 +91,39 @@ class QuickCountTest extends TestCase
             ->assertSee('Lihat quick count');
     }
 
+    public function test_public_page_introduces_candidates_without_numbers_until_quick_count_takes_over(): void
+    {
+        $this->election->forceFill(['settings' => ['show_public' => true, 'public_quick_count' => true]])->save();
+
+        // Siap: foto, nomor, dan nama calon tampil tanpa angka.
+        $this->get(route('public.index'))
+            ->assertOk()
+            ->assertSee('Kenali calon')
+            ->assertSee('data-section="calon"', false)
+            ->assertSee('Lihat calon')
+            ->assertSeeInOrder(['Calon Pertama', 'Calon Kedua'])
+            ->assertSee('Quick count tampil di sini setelah voting dimulai.')
+            ->assertDontSee('suara sah')
+            ->assertDontSee('0 suara');
+
+        // Voting berjalan dengan quick count: kartu quick count menggantikan bagian Calon.
+        app(ElectionLifecycle::class)->start($this->election->fresh(), $this->superAdmin);
+        $this->get(route('public.index'))
+            ->assertSee('Quick count · hasil sementara')
+            ->assertDontSee('Kenali calon');
+
+        // Quick count dimatikan: bagian Calon kembali, tetap tanpa angka.
+        $this->election->forceFill(['settings' => ['show_public' => true, 'public_quick_count' => false]])->save();
+        $this->get(route('public.index'))
+            ->assertSee('Kenali calon')
+            ->assertSee('Perolehan suara tampil setelah hasil resmi diumumkan panitia.')
+            ->assertDontSee('Quick count · hasil sementara');
+
+        // Disembunyikan dari publik: calon tidak tampil.
+        $this->election->forceFill(['settings' => ['show_public' => false]])->save();
+        $this->get(route('public.index'))->assertDontSee('Kenali calon')->assertDontSee('Calon Pertama');
+    }
+
     public function test_quick_count_can_be_switched_on_while_creating_the_election(): void
     {
         $this->actingAs($this->superAdmin);

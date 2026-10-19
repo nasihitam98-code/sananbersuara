@@ -70,16 +70,17 @@ class VoterFlowTest extends TestCase
         $this->assertSame(1, substr_count($page->getContent(), 'data-profile-open='), 'Hanya calon yang mengisi profil');
     }
 
-    public function test_portal_is_for_announcements_only_and_old_candidate_links_go_home(): void
+    public function test_portal_introduces_candidates_without_vision_and_old_candidate_links_go_home(): void
     {
         $this->candidate->update(['vision' => 'RW rukun dan aman.', 'mission' => 'Ronda malam bergilir']);
         $this->election->forceFill(['settings' => ['show_public' => true]])->save();
 
+        // Foto, nomor, dan nama calon tampil; visi & misi tetap hanya di surat suara pemilih.
         $this->get(route('public.index'))
             ->assertOk()
             ->assertSee($this->election->name)
-            ->assertDontSee('Kenali calon')
-            ->assertDontSee('Bapak Sutrisno')
+            ->assertSee('Kenali calon')
+            ->assertSee('Bapak Sutrisno')
             ->assertDontSee('RW rukun dan aman.');
 
         $this->get('/calon/'.$this->election->public_id)->assertRedirect('/');

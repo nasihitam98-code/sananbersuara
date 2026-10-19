@@ -1909,6 +1909,19 @@ h4 {
     color: var(--p-amber);
 }
 
+/* Bagian Calon (sebelum ada angka): kartu tanpa persen/suara, keterangan biru. */
+.race--showcase .standing {
+    grid-template-columns: 44px minmax(0, 1fr);
+}
+
+.quick-note--calm {
+    background: var(--p-blue-50);
+}
+
+.quick-note--calm strong {
+    color: var(--p-blue-700);
+}
+
 /* Tombol "Lihat RT": lompat ke kartu RT tertentu di carousel; di HP digeser menyamping. */
 .rt-picker {
     display: flex;

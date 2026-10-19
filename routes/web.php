@@ -30,7 +30,7 @@ foreach (['pemilihan', 'cara-memilih', 'hasil'] as $section) {
     Route::get('/'.$section, [PublicResultController::class, 'section'])->defaults('section', $section)->name('public.section.'.$section);
 }
 Route::get('/hasil/{election:public_id}', [PublicResultController::class, 'show'])->name('public.show');
-// Halaman "Kenali calon" sudah ditiadakan (portal khusus pengumuman); tautan lama yang beredar diarahkan ke beranda.
+// Halaman detail calon ditiadakan (calon tampil di bagian Calon beranda); tautan lama yang beredar diarahkan ke beranda.
 Route::redirect('/calon/{election?}', '/');
 
 /*

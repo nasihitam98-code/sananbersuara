@@ -52,8 +52,8 @@
             {{-- Satu halaman: menu meluncur ke bagiannya; di halaman detail, menu kembali ke bagian di beranda. --}}
             @php($onHome = request()->routeIs('public.index'))
             <div class="portal-nav__tabs" data-scrollspy>
-                @php($labels = ['beranda' => 'Beranda', 'hasil' => 'Hasil', 'pemilihan' => 'Pemilihan', 'cara-memilih' => 'Cara memilih'])
-                @php($hidden = array_filter(['pemilihan' => ! ($showElections ?? true), 'cara-memilih' => ! ($showGuide ?? true)]))
+                @php($labels = ['beranda' => 'Beranda', 'calon' => 'Calon', 'hasil' => 'Hasil', 'pemilihan' => 'Pemilihan', 'cara-memilih' => 'Cara memilih'])
+                @php($hidden = array_filter(['calon' => empty($showcase), 'pemilihan' => ! ($showElections ?? true), 'cara-memilih' => ! ($showGuide ?? true)]))
                 @foreach (array_diff_key($labels, $hidden) as $section => $label)
                     @php($active = match ($section) {
                         'beranda' => $onHome,
