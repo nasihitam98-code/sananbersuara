@@ -95,7 +95,9 @@ class EditElection extends EditRecord
             ->label(fn (): string => $this->record->isPublic() ? 'Tampil di halaman publik' : 'Tidak tampil di halaman publik')
             ->icon(fn (): string => $this->record->isPublic() ? 'heroicon-o-globe-alt' : 'heroicon-o-eye-slash')
             ->color(fn (): string => $this->record->isPublic() ? 'success' : 'gray')
-            ->visible(fn (): bool => auth()->user()?->isSuperAdmin() ?? false)
+            // Pemilihan batal/arsip tidak pernah tampil di halaman publik, jadi saklarnya tidak berpengaruh.
+            ->visible(fn (): bool => (auth()->user()?->isSuperAdmin() ?? false)
+                && ! in_array($this->record->status, [ElectionStatus::Cancelled, ElectionStatus::Archived], true))
             ->requiresConfirmation()
             ->modalHeading(fn (): string => $this->record->isPublic() ? 'Sembunyikan dari halaman publik?' : 'Tampilkan di halaman publik?')
             ->modalDescription(fn (): string => $this->record->isPublic()
@@ -128,7 +130,7 @@ class EditElection extends EditRecord
             ->label(fn (): string => $on() ? 'Visi & misi publik: tampil' : 'Visi & misi publik: tidak')
             ->icon('heroicon-o-document-text')
             ->color(fn (): string => $on() ? 'success' : 'gray')
-            ->visible(fn (): bool => (auth()->user()?->isSuperAdmin() ?? false) && $this->record->isPublic())
+            ->visible(fn (): bool => (auth()->user()?->isSuperAdmin() ?? false) && $this->record->isPublic() && $this->beforeOfficialResults())
             ->requiresConfirmation()
             ->modalHeading(fn (): string => $on() ? 'Sembunyikan visi & misi dari halaman publik?' : 'Tampilkan visi & misi di halaman publik?')
             ->modalDescription(fn (): string => $on()
@@ -153,7 +155,7 @@ class EditElection extends EditRecord
             ->label(fn (): string => $on() ? 'Quick count: aktif' : 'Quick count: mati')
             ->icon('heroicon-o-chart-bar')
             ->color(fn (): string => $on() ? 'success' : 'gray')
-            ->visible(fn (): bool => (auth()->user()?->isSuperAdmin() ?? false) && $this->record->isPublic())
+            ->visible(fn (): bool => (auth()->user()?->isSuperAdmin() ?? false) && $this->record->isPublic() && $this->beforeOfficialResults())
             ->requiresConfirmation()
             ->modalHeading(fn (): string => $on() ? 'Matikan quick count?' : 'Nyalakan quick count di halaman publik?')
             ->modalDescription(fn (): string => $on()
@@ -190,6 +192,15 @@ class EditElection extends EditRecord
                 $this->record->refresh();
                 Notification::make()->title('Pengaturan disimpan.')->success()->send();
             });
+    }
+
+    /**
+     * Quick count dan tombol Detail (visi & misi) hanya berpengaruh sampai hasil resmi diumumkan; setelah itu
+     * halaman publik menampilkan hasil resmi, dan pemilihan batal/arsip tidak tampil sama sekali.
+     */
+    private function beforeOfficialResults(): bool
+    {
+        return ! in_array($this->record->status, [ElectionStatus::Published, ElectionStatus::Unpublished, ElectionStatus::Cancelled, ElectionStatus::Archived], true);
     }
 
     private function isConfigurable(): bool
@@ -234,7 +245,9 @@ class EditElection extends EditRecord
                 ->color('success')
                 ->visible(fn (): bool => $this->record->status === ElectionStatus::Ready)
                 ->modalHeading('Mulai pemilihan?')
-                ->modalDescription('Surat suara dan kandidat terkunci setelah dimulai. Voting di HP baru terbuka saat Anda membuka gelombang di Ruang Kendali.')
+                ->modalDescription(fn (): string => $this->record->isDadakan()
+                    ? 'Surat suara dan kandidat terkunci setelah dimulai. Voting di HP baru terbuka saat Anda membuka gelombang di Ruang Kendali.'
+                    : 'Surat suara, calon, dan daftar pemilih dikunci setelah dimulai. Meja Izin tiap RT langsung bisa memberi izin ke bilik.')
                 ->schema([Reauthenticate::field()])
                 ->action(fn () => $this->runLifecycle(fn (ElectionLifecycle $lifecycle) => $lifecycle->start($this->record, auth()->user()), 'Pemilihan dimulai.')),
 

@@ -113,7 +113,7 @@ function initCarousel(root) {
         };
 
         const render = (code) => {
-            const chip = chips.find((item) => item.dataset.rtCode === code);
+            const chip = chips.find((item) => sameRt(item.dataset.rtCode, code));
             chips.forEach((item) => item.classList.toggle('is-active', item === chip));
 
             if (chip) {
@@ -125,7 +125,7 @@ function initCarousel(root) {
                 return;
             }
 
-            const card = cardSlides.find((item) => item.dataset.rt === code)?.querySelector('.race');
+            const card = cardSlides.find((item) => sameRt(item.dataset.rt, code))?.querySelector('.race');
 
             if (!chip || !card) {
                 pinned.hidden = true;
@@ -179,6 +179,13 @@ function initCarousel(root) {
 
 /* RT yang disematkan warga: dari link #rt-03 (dibagikan Admin RT), atau yang terakhir dipilih di perangkat ini. */
 const pinStorageKey = 'rtrw.pinnedRt';
+
+/* Kode RT dibandingkan tanpa nol di depan: link #rt-3 dan #rt-03 sama-sama menyematkan RT 03. */
+function sameRt(a, b) {
+    const normalize = (value) => String(value ?? '').replace(/^0+(?=.)/, '');
+
+    return a != null && b != null && normalize(a) === normalize(b);
+}
 
 function pinnedRt() {
     const fromLink = window.location.hash.match(/^#rt-([\w-]+)$/)?.[1];

@@ -59,7 +59,19 @@ class UnitManagementTest extends TestCase
 
         Livewire::test(ManageUnits::class)
             ->callAction('create', ['code' => '03', 'name' => 'RT kembar', 'sort' => 99])
-            ->assertHasFormErrors(['code' => 'unique']);
+            ->assertHasFormErrors(['code']);
+
+        // "3" sama dengan RT 03 yang sudah ada.
+        Livewire::test(ManageUnits::class)
+            ->callAction('create', ['code' => '3', 'name' => 'RT kembar', 'sort' => 99])
+            ->assertHasFormErrors(['code']);
+
+        // Satu angka disimpan dua angka, agar link #rt-16 dan impor pemilih cocok.
+        Livewire::test(ManageUnits::class)
+            ->callAction('create', ['code' => '016', 'name' => 'RT 16', 'sort' => 16])
+            ->assertHasNoFormErrors();
+
+        $this->assertTrue(Unit::query()->where('code', '16')->exists());
     }
 
     public function test_delete_only_unused_rt(): void

@@ -118,6 +118,12 @@ class ElectionResource extends Resource
                         ->default(false)
                         ->visible(fn (?Election $record): bool => $record === null)
                         ->columnSpanFull(),
+                    Toggle::make('settings.public_profiles')
+                        ->label('Visi & misi calon di halaman publik')
+                        ->helperText('Tiap calon yang mengisi visi & misi mendapat tombol "Detail" di halaman publik (kartu calon dan quick count). Bisa diubah nanti di halaman pemilihan.')
+                        ->default(false)
+                        ->visible(fn (?Election $record): bool => $record === null)
+                        ->columnSpanFull(),
                 ]),
             Section::make('Pengaturan lanjutan Mode Resmi (boleh dibiarkan)')
                 ->description('Kosongkan untuk memakai nilai bawaan. Bisa diubah selama status Draf atau Siap.')

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\ElectionMode;
+use App\Enums\ElectionStatus;
 use App\Enums\WaveKind;
 use App\Filament\Resources\Elections\Pages\CreateElection;
 use App\Filament\Resources\Elections\Pages\EditElection;
@@ -152,6 +153,35 @@ class QuickCountTest extends TestCase
 
         $page = $this->get(route('public.index'))->assertSee('Quick count · hasil sementara')->assertSee('RW rukun dan aman.');
         $this->assertSame(1, substr_count($page->getContent(), 'data-profile-open='));
+    }
+
+    public function test_public_page_switches_disappear_once_they_no_longer_matter(): void
+    {
+        $this->actingAs($this->superAdmin);
+
+        Livewire::test(EditElection::class, ['record' => $this->election->public_id])
+            ->assertActionVisible('publicListing')
+            ->assertActionVisible('publicProfiles')
+            ->assertActionVisible('quickCount');
+
+        // Setelah ditutup quick count masih tampil (angka akhir) sampai diumumkan.
+        app(ElectionLifecycle::class)->start($this->election->fresh(), $this->superAdmin);
+        app(ElectionLifecycle::class)->close($this->election->fresh(), $this->superAdmin);
+        Livewire::test(EditElection::class, ['record' => $this->election->public_id])
+            ->assertActionVisible('quickCount')
+            ->assertActionVisible('publicProfiles');
+
+        $this->election->forceFill(['status' => ElectionStatus::Published])->save();
+        Livewire::test(EditElection::class, ['record' => $this->election->public_id])
+            ->assertActionVisible('publicListing')
+            ->assertActionHidden('publicProfiles')
+            ->assertActionHidden('quickCount');
+
+        $this->election->forceFill(['status' => ElectionStatus::Cancelled])->save();
+        Livewire::test(EditElection::class, ['record' => $this->election->public_id])
+            ->assertActionHidden('publicListing')
+            ->assertActionHidden('publicProfiles')
+            ->assertActionHidden('quickCount');
     }
 
     public function test_quick_count_can_be_switched_on_while_creating_the_election(): void

@@ -101,15 +101,18 @@ class ElectionChecklist
             ];
         }
 
-        // Opsional (tidak menghalangi Tandai Siap): tampil di halaman publik dan quick count, lewat tombol di kanan atas.
+        // Opsional (tidak menghalangi Tandai Siap): tampil di halaman publik, visi & misi, dan quick count, lewat tombol di kanan atas.
         $quickCount = (bool) $election->setting('public_quick_count');
+        $profiles = (bool) $election->setting('public_profiles')
+            ? ' Visi & misi: tombol Detail per calon tampil.'
+            : ' Visi & misi: tidak tampil (tombol "Visi & misi publik" di kanan atas).';
         $steps[] = [
             'title' => 'Halaman publik & quick count (opsional)',
             'done' => true,
             'detail' => match (true) {
-                ! $election->isPublic() => 'Tidak tampil di halaman publik. Tekan "Tidak tampil di halaman publik" di kanan atas untuk menampilkannya; setelah itu tombol Quick count muncul.',
-                $quickCount => 'Tampil di halaman publik, quick count aktif: warga melihat angka sementara tiap 10 menit selama voting.',
-                default => 'Tampil di halaman publik; quick count mati (hasil hanya tampil setelah diumumkan). Untuk menyalakan: tombol "Quick count: mati" di kanan atas.',
+                ! $election->isPublic() => 'Tidak tampil di halaman publik. Tekan "Tidak tampil di halaman publik" di kanan atas untuk menampilkannya; setelah itu tombol Visi & misi publik dan Quick count muncul.',
+                $quickCount => 'Tampil di halaman publik: foto, nomor, dan nama calon sejak Siap; quick count aktif (angka sementara tiap 10 menit selama voting).'.$profiles,
+                default => 'Tampil di halaman publik: foto, nomor, dan nama calon sejak Siap; quick count mati (angka hanya tampil setelah diumumkan). Untuk menyalakan: tombol "Quick count: mati" di kanan atas.'.$profiles,
             },
             'actionLabel' => null,
             'url' => null,

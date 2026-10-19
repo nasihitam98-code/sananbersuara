@@ -38,6 +38,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\SelectColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -279,7 +280,7 @@ class CandidateResource extends Resource
                             ->visibleOn('edit'),
                     ]),
                 Section::make('Visi & misi (opsional)')
-                    ->description('Tampil di HP warga (tombol "Lihat visi & misi" di surat suara) dan di Halaman Publik sebelum hari H.')
+                    ->description('Selalu tampil di surat suara (tombol "Lihat visi & misi"). Di halaman publik hanya bila tombol "Visi & misi publik" di halaman pemilihan dinyalakan (tombol Detail per calon).')
                     ->collapsible()
                     ->schema([
                         Textarea::make('vision')
@@ -413,6 +414,14 @@ class CandidateResource extends Resource
                     // Surat suara per RT tidak memakai asal RT.
                     ->disabled(fn (Candidate $record): bool => ! static::canEdit($record) || $record->ballot->scope === BallotScope::PerRt)
                     ->afterStateUpdated(fn (Candidate $record, mixed $state) => static::auditInlineEdit($record, 'origin_unit_id', $state)),
+                // Sekilas terlihat calon mana yang belum mengisi visi & misi (diisi lewat Ubah).
+                IconColumn::make('has_profile')
+                    ->label('Visi & misi')
+                    ->state(fn (Candidate $record): bool => $record->hasProfile())
+                    ->boolean()
+                    ->alignCenter()
+                    ->tooltip(fn (Candidate $record): string => $record->hasProfile() ? 'Sudah diisi' : 'Belum diisi. Klik Ubah untuk mengisi.')
+                    ->toggleable(),
                 TextColumn::make('ballot.election.name')->label('Pemilihan')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('status')->label('Status')->badge(),
             ])
@@ -445,7 +454,7 @@ class CandidateResource extends Resource
             // Tombol ikon agar tabel tidak perlu digeser; keterangan muncul saat kursor diarahkan.
             ->recordActions([
                 static::galleryPhotoAction()->iconButton()->tooltip('Foto: unggah atau pilih dari Media'),
-                EditAction::make()->iconButton()->tooltip('Ubah (ganti/hapus foto, dll.)'),
+                EditAction::make()->iconButton()->tooltip('Ubah (visi & misi, foto, dll.)'),
                 static::deleteAction()->iconButton()->tooltip('Hapus calon'),
             ]);
     }
