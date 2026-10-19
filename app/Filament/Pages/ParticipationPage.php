@@ -104,7 +104,7 @@ class ParticipationPage extends Page
 
         return $election->ballots()->get()->map(function ($ballot) use ($round, $calculator, $units): array {
             $perUnit = $units
-                ->map(fn (Unit $unit): array => ['unit' => $unit->name] + $calculator->ballotParticipation($ballot, app(RoundResolver::class)->roundFor($ballot->election, $ballot, $unit->id) ?? $round, $unit->id))
+                ->map(fn (Unit $unit): array => ['unit' => $unit->name, 'unit_id' => $unit->id] + $calculator->ballotParticipation($ballot, app(RoundResolver::class)->roundFor($ballot->election, $ballot, $unit->id) ?? $round, $unit->id))
                 ->filter(fn (array $row): bool => $row['eligible'] > 0)
                 ->values()
                 ->all();
@@ -117,35 +117,68 @@ class ParticipationPage extends Page
         })->all();
     }
 
+    /** Batas nama yang ditampilkan sekaligus (Semua RT); saring per RT atau nama untuk melihat sisanya. */
+    public const NOT_VOTED_LIMIT = 1000;
+
+    /** Klik kartu RT (Super Admin): daftar "Belum memilih" langsung disaring ke RT itu. */
+    public function showUnit(?int $unitId): void
+    {
+        abort_unless($this->user()->isSuperAdmin(), 403);
+
+        $this->unitFilter = $unitId;
+    }
+
     /**
-     * Pemilih yang belum menyelesaikan semua surat suara berhaknya (tanpa pilihan kandidat).
+     * Jumlah pemilih yang belum menyelesaikan semua surat suara berhaknya (sesuai saringan RT, tanpa saringan nama).
+     */
+    public function notVotedCount(): int
+    {
+        return count($this->pendingVoterIds());
+    }
+
+    /**
+     * Pemilih yang belum menyelesaikan semua surat suara berhaknya (tanpa pilihan kandidat). Super Admin tanpa
+     * saringan RT: semua RT.
      *
      * @return Collection<int, Voter>
      */
     public function notVoted(): Collection
     {
+        $pendingIds = $this->pendingVoterIds();
+
+        if ($pendingIds === []) {
+            return collect();
+        }
+
+        return Voter::query()
+            ->with('unit')
+            ->whereIn('id', $pendingIds)
+            ->when(mb_strlen(trim($this->notVotedSearch)) >= 2, fn ($query) => $query->where('name_search', 'like', '%'.addcslashes(Attendee::normalizeForSearch($this->notVotedSearch), '%_\\').'%'))
+            ->orderBy('name')
+            ->limit(self::NOT_VOTED_LIMIT)
+            ->get();
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function pendingVoterIds(): array
+    {
         $election = $this->election();
         $unitId = $this->user()->isSuperAdmin() ? $this->unitFilter : $this->user()->unit_id;
 
-        if ($election === null || $unitId === null) {
-            return collect();
+        if ($election === null || (! $this->user()->isSuperAdmin() && $unitId === null)) {
+            return [];
         }
 
         $round = $election->currentRound();
         $ballotIds = $election->ballots()->pluck('id');
 
-        $eligible = BallotVoter::query()->whereIn('ballot_id', $ballotIds)->where('unit_id', $unitId)->whereNull('revoked_at')
+        $eligible = BallotVoter::query()->whereIn('ballot_id', $ballotIds)->when($unitId !== null, fn ($query) => $query->where('unit_id', $unitId))->whereNull('revoked_at')
             ->get(['voter_id', 'ballot_id'])->groupBy('voter_id');
         $voted = Vote::query()->whereIn('ballot_id', $ballotIds)->where('round_id', $round?->id)->where('status', VoteStatus::Sah)
             ->whereIn('voter_id', $eligible->keys())->get(['voter_id', 'ballot_id'])->groupBy('voter_id');
 
-        $pendingIds = $eligible->filter(fn ($rows, $voterId): bool => $rows->count() > $voted->get($voterId, collect())->count())->keys();
-
-        return Voter::query()
-            ->whereIn('id', $pendingIds)
-            ->when(mb_strlen(trim($this->notVotedSearch)) >= 2, fn ($query) => $query->where('name_search', 'like', '%'.addcslashes(Attendee::normalizeForSearch($this->notVotedSearch), '%_\\').'%'))
-            ->orderBy('name')
-            ->limit(300)
-            ->get();
+        return $eligible->filter(fn ($rows, $voterId): bool => $rows->count() > $voted->get($voterId, collect())->count())->keys()->all();
     }
 }

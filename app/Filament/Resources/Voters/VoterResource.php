@@ -163,7 +163,9 @@ class VoterResource extends Resource
                     ->color('danger')
                     ->visible(fn (Voter $record): bool => auth()->user()->can('delete', $record))
                     ->requiresConfirmation()
-                    ->modalDescription('Hanya untuk pemilih yang belum pernah punya riwayat pemilihan.')
+                    ->modalHeading(fn (Voter $record): string => "Hapus {$record->name} ({$record->unit?->name})?")
+                    ->modalDescription('Data pemilih ini dihapus permanen dan tercatat di audit. Bila hanya pindah/meninggal/tidak memenuhi syarat, lebih baik "Nonaktifkan".')
+                    ->modalSubmitActionLabel('Ya, hapus')
                     ->action(fn (Voter $record) => static::run(fn () => app(VoterRegistry::class)->delete($record, auth()->user()), 'Pemilih dihapus.')),
             ])
             ->headerActions([

@@ -160,7 +160,22 @@ class ResmiResultsTest extends TestCase
             ->assertDontSee('RT 04');
 
         $this->actingAs($this->superAdmin);
-        Livewire::test(ParticipationPage::class)->assertSee('RT 04')->assertSee('50%');
+        $pendingRt04 = Voter::query()->where('unit_id', $this->rt04->id)->whereDoesntHave('votes')->firstOrFail();
+
+        // Super Admin: langsung semua RT (dikelompokkan), lalu klik kartu RT untuk menyaring.
+        Livewire::test(ParticipationPage::class)
+            ->assertSee('RT 04')
+            ->assertSee('50%')
+            ->assertSee('Belum memilih (1 orang)')
+            ->assertSee($pendingRt04->name)
+            ->call('showUnit', $this->rt03->id)
+            ->assertSee('Belum memilih (0 orang)')
+            ->assertSee('Semua pemilih sudah memilih.')
+            ->assertDontSee($pendingRt04->name);
+
+        // Admin RT tidak bisa memakai saringan RT lain.
+        $this->actingAs($this->adminRt03);
+        Livewire::test(ParticipationPage::class)->call('showUnit', $this->rt04->id)->assertForbidden();
     }
 
     public function test_correction_flow_respects_k17_and_allows_revote_while_live(): void
