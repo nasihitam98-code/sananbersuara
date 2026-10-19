@@ -8,6 +8,7 @@ use App\Enums\ElectionMode;
 use App\Enums\PermitStatus;
 use App\Filament\Pages\DeskPage;
 use App\Filament\Pages\DevicesPage;
+use App\Filament\Support\ElectionChecklist;
 use App\Models\Ballot;
 use App\Models\Candidate;
 use App\Models\Device;
@@ -134,6 +135,19 @@ class DeskPageTest extends TestCase
             ->assertActionHidden(TestAction::make('grant')->arguments(['voter' => $this->voter->public_id]));
 
         $this->assertSame(0, Permit::query()->count());
+    }
+
+    public function test_checklist_names_rts_without_voters_or_desk_account(): void
+    {
+        $this->actingAs($this->superAdmin);
+        $draft = Election::factory()->create(['mode' => ElectionMode::Resmi]);
+
+        $steps = collect(ElectionChecklist::steps($draft))->keyBy('title');
+
+        $this->assertStringContainsString('RT 03 1', $steps['Data pemilih']['detail']);
+        $this->assertStringContainsString('Belum ada pemilih: RT 01', $steps['Data pemilih']['detail']);
+        $this->assertStringContainsString('Belum ada akun Meja Izin: RT 01', $steps['Akun petugas meja (Admin RT)']['detail']);
+        $this->assertStringNotContainsString('RT 03', $steps['Akun petugas meja (Admin RT)']['detail']);
     }
 
     public function test_pages_are_restricted_by_role(): void

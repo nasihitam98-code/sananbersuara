@@ -3,6 +3,10 @@
  * podium + confetti di akhir. Tanpa skrip inline (CSP ketat); gaya diatur lewat CSSOM, bukan atribut style.
  */
 
+import { keepScreenAwake } from './wake-lock';
+
+keepScreenAwake();
+
 const COLORS = ['#4b44c4', '#0f8f86', '#d6303a', '#f59e0b', '#2453d6', '#16a34a'];
 
 function confetti() {

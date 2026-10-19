@@ -3,9 +3,13 @@
  * Tanpa skrip inline (CSP ketat).
  */
 
+import { keepScreenAwake } from './wake-lock';
+
 const body = document.body;
 const statusUrl = body.dataset.statusUrl;
 const pollMs = 3000;
+
+keepScreenAwake();
 
 const el = (name) => document.querySelector(`[data-${name}]`);
 

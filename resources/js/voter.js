@@ -2,6 +2,8 @@
  * Skrip halaman pemilih. Tanpa skrip inline (CSP ketat) dan tanpa menyimpan data pemilih di browser.
  */
 
+import { keepScreenAwake } from './wake-lock';
+
 const body = document.body;
 const statusUrl = body.dataset.statusUrl;
 const statusFallbackUrl = body.dataset.statusFallbackUrl;
@@ -235,6 +237,11 @@ function pollBooth(onStatus, intervalMs = 2000) {
     };
 
     setTimeout(tick, intervalMs);
+}
+
+// Laptop bilik: layar jangan meredup/tidur selama menunggu atau dipakai pemilih.
+if (['booth-wait', 'booth-ballot', 'booth-done'].includes(page)) {
+    keepScreenAwake();
 }
 
 if (page === 'booth-wait') {

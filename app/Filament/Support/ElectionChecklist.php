@@ -82,20 +82,32 @@ class ElectionChecklist
                 'url' => $editUrl(1),
             ];
         } else {
-            $voters = Voter::query()->count();
-            $deskOfficers = User::role(User::ROLE_ADMIN_RT)->permission(User::PERMISSION_DESK)->count();
+            // Per RT, agar RT yang terlewat (tanpa pemilih atau tanpa akun Meja Izin) terlihat sebelum hari H.
+            $units = Unit::query()->orderBy('sort')->get(['id', 'name']);
+            $votersPerUnit = Voter::query()->where('is_active', true)->selectRaw('unit_id, count(*) as total')->groupBy('unit_id')->pluck('total', 'unit_id');
+            $voters = (int) $votersPerUnit->sum();
+            $deskUnitIds = User::role(User::ROLE_ADMIN_RT)->permission(User::PERMISSION_DESK)->where('is_active', true)->pluck('unit_id')->filter()->unique();
+            $deskOfficers = User::role(User::ROLE_ADMIN_RT)->permission(User::PERMISSION_DESK)->where('is_active', true)->count();
+            $unitsWithoutVoters = $units->reject(fn (Unit $unit): bool => $votersPerUnit->has($unit->id))->pluck('name');
+            $unitsWithoutDesk = $units->reject(fn (Unit $unit): bool => $deskUnitIds->contains($unit->id))->pluck('name');
 
             $steps[] = [
                 'title' => 'Data pemilih',
                 'done' => $voters > 0,
-                'detail' => $voters > 0 ? "{$voters} pemilih terdaftar." : 'Belum ada. Isi per RT atau import Excel.',
+                'detail' => $voters === 0
+                    ? 'Belum ada. Isi per RT atau import Excel.'
+                    : "{$voters} pemilih aktif: ".$units->filter(fn (Unit $unit): bool => $votersPerUnit->has($unit->id))->map(fn (Unit $unit): string => "{$unit->name} {$votersPerUnit[$unit->id]}")->implode(', ').'.'
+                        .($unitsWithoutVoters->isNotEmpty() ? ' Belum ada pemilih: '.$unitsWithoutVoters->implode(', ').'.' : ''),
                 'actionLabel' => 'Data pemilih',
                 'url' => VoterResource::getUrl('index'),
             ];
             $steps[] = [
                 'title' => 'Akun petugas meja (Admin RT)',
                 'done' => $deskOfficers > 0,
-                'detail' => $deskOfficers > 0 ? "{$deskOfficers} akun petugas meja." : 'Belum ada. Buat akun Admin RT dengan izin Petugas Meja.',
+                'detail' => $deskOfficers === 0
+                    ? 'Belum ada. Buat akun Admin RT dengan izin Petugas Meja.'
+                    : "{$deskOfficers} akun petugas meja aktif."
+                        .($unitsWithoutDesk->isNotEmpty() ? ' Belum ada akun Meja Izin: '.$unitsWithoutDesk->implode(', ').'.' : ' Semua RT punya akun Meja Izin.'),
                 'actionLabel' => 'Akun',
                 'url' => UserResource::getUrl('index'),
             ];
