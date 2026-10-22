@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Enums\BallotScope;
 use App\Enums\ElectionMode;
+use App\Filament\Resources\Voters\Pages\CreateVoter;
+use App\Filament\Resources\Voters\Pages\ListVoters;
 use App\Filament\Resources\Voters\VoterResource;
 use App\Models\Ballot;
 use App\Models\BallotVoter;
@@ -20,6 +22,7 @@ use App\Services\Voting\VotingException;
 use Database\Seeders\DatabaseSeeder;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
@@ -61,6 +64,48 @@ class VoterManagementTest extends TestCase
     private function adminRt(Unit $unit): User
     {
         return $this->makeUser(User::ROLE_ADMIN_RT, $unit, [User::PERMISSION_MANAGE_VOTERS]);
+    }
+
+    public function test_name_and_rt_are_enough_and_emergency_section_only_shows_while_live(): void
+    {
+        $this->actingAs($this->superAdmin);
+
+        Livewire::test(CreateVoter::class)
+            ->assertDontSee('Tambah darurat saat pemilihan berlangsung')
+            ->fillForm(['name' => 'Ojan', 'unit_id' => $this->rt03->id])
+            ->call('create')
+            ->assertHasNoFormErrors()
+            ->assertRedirect(VoterResource::getUrl('index'));
+
+        $this->assertSame('', Voter::query()->where('name', 'Ojan')->sole()->address);
+    }
+
+    public function test_many_voters_can_be_pasted_with_their_rt(): void
+    {
+        $this->actingAs($this->superAdmin);
+
+        Livewire::test(ListVoters::class)
+            ->callAction('bulkAdd', ['unit_id' => $this->rt03->id, 'names' => "Tes Satu\nTes Dua | RT 04\nTes Tiga | 3 | Jl. Mawar 1"])
+            ->assertNotified('3 pemilih ditambahkan.');
+
+        $this->assertSame(['Tes Dua' => '04', 'Tes Satu' => '03', 'Tes Tiga' => '03'], Voter::query()->with('unit')->orderBy('name')->get()->mapWithKeys(fn (Voter $voter): array => [$voter->name => $voter->unit->code])->all());
+
+        // Satu baris salah (RT tidak dikenal): tidak ada yang disimpan.
+        Livewire::test(ListVoters::class)->callAction('bulkAdd', ['unit_id' => null, 'names' => "Tes Empat | RT 03\nTes Lima | RT 77"]);
+        $this->assertSame(3, Voter::query()->count());
+
+        // Nama sama perlu dicentang dulu.
+        Livewire::test(ListVoters::class)->callAction('bulkAdd', ['names' => 'Tes Satu | RT 03']);
+        $this->assertSame(3, Voter::query()->count());
+        Livewire::test(ListVoters::class)->callAction('bulkAdd', ['names' => 'Tes Satu | RT 03', 'confirm_same_names' => true]);
+        $this->assertSame(4, Voter::query()->count());
+
+        // Admin RT: semua masuk RT sendiri; baris RT lain ditolak.
+        $this->actingAs($this->adminRt($this->rt03));
+        Livewire::test(ListVoters::class)->callAction('bulkAdd', ['names' => 'Warga RT Tiga']);
+        $this->assertSame('03', Voter::query()->where('name', 'Warga RT Tiga')->sole()->unit->code);
+        Livewire::test(ListVoters::class)->callAction('bulkAdd', ['names' => 'Penyusup | RT 04']);
+        $this->assertFalse(Voter::query()->where('name', 'Penyusup')->exists());
     }
 
     public function test_nik_is_never_stored_in_full(): void

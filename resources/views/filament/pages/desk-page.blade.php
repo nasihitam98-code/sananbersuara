@@ -97,7 +97,7 @@
                         <li class="flex flex-wrap items-center justify-between gap-3 py-3">
                             <div>
                                 <p class="text-lg font-bold">{{ $voter->name }}</p>
-                                <p class="text-sm text-gray-500">{{ $voter->address }} · {{ $voter->voter_number }}</p>
+                                <p class="text-sm text-gray-500">{{ collect([$voter->address, $voter->voter_number])->filter()->implode(' · ') }}</p>
                                 <p class="mt-1 flex flex-wrap gap-2 text-sm">
                                     @foreach ($ballots as $ballot)
                                         @php($value = $status['ballots'][$ballot->id] ?? 'TIDAK_BERHAK')

@@ -193,7 +193,7 @@ class DeskPage extends Page
             ->size('lg')
             ->requiresConfirmation()
             ->modalHeading(fn (array $arguments): string => 'Izinkan '.($this->voterFromArguments($arguments)?->name ?? '').' memilih?')
-            ->modalDescription(fn (array $arguments): string => 'Pastikan orangnya sesuai (wajah/KTP). Alamat: '.($this->voterFromArguments($arguments)?->address ?? '-'))
+            ->modalDescription(fn (array $arguments): string => 'Pastikan orangnya sesuai (wajah/KTP). Alamat: '.(filled($this->voterFromArguments($arguments)?->address) ? $this->voterFromArguments($arguments)->address : '-'))
             ->modalSubmitActionLabel('Ya, izinkan')
             ->action(function (array $arguments): void {
                 $voter = $this->voterFromArguments($arguments);

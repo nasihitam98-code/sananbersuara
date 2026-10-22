@@ -2,7 +2,8 @@
     @if ($rows === [])
         <x-filament::section>
             <p class="mb-3 text-sm text-gray-600 dark:text-gray-300">
-                Kolom template: <strong>nama, rt, alamat</strong> (wajib), jenis_kelamin (L/P), tanggal_lahir (31-12-1970), nik (16 digit), no_hp.
+                Kolom template: <strong>nama, rt</strong> (wajib); alamat, jenis_kelamin (L/P), tanggal_lahir (31-12-1970), nik (16 digit), no_hp boleh kosong.
+                Hanya punya daftar nama? Lebih cepat lewat <strong>Tambah banyak pemilih</strong> di daftar pemilih (tempel "Nama | RT").
                 Maksimal {{ \App\Services\Voters\VoterImport::MAX_ROWS }} baris, 5 MB.
                 <a class="text-primary-600 underline" href="{{ route('voters.template') }}">Unduh template</a>
             </p>

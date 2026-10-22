@@ -44,6 +44,46 @@ class VoterImport
             throw VotingException::invalidState('Maksimal '.self::MAX_ROWS.' baris per file.');
         }
 
+        return $this->check($rows, $actor);
+    }
+
+    /**
+     * Tambah banyak pemilih dari teks tempelan: satu orang per baris, "Nama | RT 03", "Nama<TAB>03" (dari Excel),
+     * atau nama saja (memakai RT bawaan). Pemeriksaan sama dengan import file.
+     *
+     * @return array<int, array{line: int, name: string, unit: string, address: string, data: array<string, mixed>, unit_id: ?int, nik: ?string, errors: array<int, string>, warnings: array<int, string>}>
+     */
+    public function previewText(string $text, ?string $defaultUnitCode, User $actor): array
+    {
+        $rows = [];
+
+        foreach (preg_split('/\R/u', $text) ?: [] as $index => $line) {
+            $columns = array_values(array_filter(array_map('trim', preg_split('/\t|;|\|/u', $line) ?: []), fn (string $column): bool => $column !== ''));
+
+            if ($columns === []) {
+                continue;
+            }
+
+            $rows[$index + 1] = ['nama' => $columns[0], 'rt' => $columns[1] ?? $defaultUnitCode, 'alamat' => $columns[2] ?? null];
+        }
+
+        if ($rows === []) {
+            throw VotingException::invalidState('Belum ada nama. Tempel satu nama per baris.');
+        }
+
+        if (count($rows) > self::MAX_ROWS) {
+            throw VotingException::invalidState('Maksimal '.self::MAX_ROWS.' baris sekaligus.');
+        }
+
+        return $this->check($rows, $actor);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $rows  nomor baris => nilai per kolom template
+     * @return array<int, array{line: int, name: string, unit: string, address: string, data: array<string, mixed>, unit_id: ?int, nik: ?string, errors: array<int, string>, warnings: array<int, string>}>
+     */
+    private function check(array $rows, User $actor): array
+    {
         $units = Unit::query()->get()->keyBy(fn (Unit $unit): string => ltrim($unit->code, '0') ?: '0');
         $seenNik = [];
         $seenIdentity = [];
@@ -70,10 +110,6 @@ class VoterImport
                 $errors[] = 'RT tidak dikenal';
             } elseif (! $actor->canManageVotersOf($unit->id)) {
                 $errors[] = 'Anda hanya boleh mengimpor pemilih RT sendiri';
-            }
-
-            if ($address === '') {
-                $errors[] = 'Alamat kosong';
             }
 
             if ($gender !== null && ! in_array($gender, ['L', 'P'], true)) {

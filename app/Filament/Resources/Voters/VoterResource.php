@@ -77,6 +77,7 @@ class VoterResource extends Resource
 
         return $schema
             ->components([
+                // Yang wajib hanya nama (dan RT untuk Super Admin; Admin RT otomatis RT sendiri).
                 Section::make('Data pemilih')
                     ->columns(2)
                     ->schema([
@@ -87,9 +88,18 @@ class VoterResource extends Resource
                             ->required()
                             ->visible($user->isSuperAdmin())
                             ->disabledOn('edit')
-                            ->helperText('Koreksi RT dilakukan lewat tombol "Koreksi RT" (Super Admin, dengan alasan).'),
-                        TextInput::make('address')->label('Alamat singkat / no. rumah')->required()->maxLength(190)
-                            ->helperText('Pembeda untuk nama kembar di Meja Izin.'),
+                            ->helperText(fn (string $operation): ?string => $operation === 'edit' ? 'Koreksi RT dilakukan lewat tombol "Koreksi RT" (Super Admin, dengan alasan).' : null),
+                        Checkbox::make('confirm_different_person')
+                            ->label('Saya sudah memastikan ini orang yang berbeda (jika muncul peringatan nama sama)')
+                            ->columnSpanFull(),
+                    ]),
+                Section::make('Data tambahan (opsional)')
+                    ->description('Boleh dikosongkan. Alamat membantu membedakan nama kembar di Meja Izin; NIK atau tanggal lahir mencegah orang yang sama terdaftar dua kali.')
+                    ->columns(2)
+                    ->collapsible()
+                    ->collapsed(fn (string $operation): bool => $operation === 'create')
+                    ->schema([
+                        TextInput::make('address')->label('Alamat singkat / no. rumah')->maxLength(190),
                         Select::make('gender')->label('Jenis kelamin')->options(['L' => 'Laki-laki', 'P' => 'Perempuan']),
                         DatePicker::make('birth_date')->label('Tanggal lahir')->native(false)->displayFormat('d-m-Y')->maxDate(now()),
                         TextInput::make('nik')
@@ -99,14 +109,11 @@ class VoterResource extends Resource
                             ->numeric()
                             ->autocomplete(false),
                         TextInput::make('phone')->label('No. HP (opsional)')->tel()->maxLength(15),
-                        Checkbox::make('confirm_different_person')
-                            ->label('Saya sudah memastikan ini orang yang berbeda (jika muncul peringatan nama sama)')
-                            ->columnSpanFull(),
                     ]),
+                // Hanya saat membuat DAN ada pemilihan Resmi berlangsung (visibleOn() sendirian menimpa syarat ini).
                 Section::make('Tambah darurat saat pemilihan berlangsung')
                     ->description('Daftar pemilih sedang dibekukan karena pemilihan berlangsung. Penambahan dicatat khusus di laporan dan dilaporkan ke Super Admin.')
-                    ->visible($liveElection !== null)
-                    ->visibleOn('create')
+                    ->visible(fn (string $operation): bool => $operation === 'create' && $liveElection !== null)
                     ->schema([
                         Select::make('emergency_reason')->label('Alasan')->options(EmergencyAddReason::class)->required($liveElection !== null),
                     ]),
@@ -124,7 +131,7 @@ class VoterResource extends Resource
                 TextColumn::make('voter_number')->label('ID')->searchable()->fontFamily('mono'),
                 TextColumn::make('name')->label('Nama')->searchable(query: fn (Builder $query, string $search): Builder => $query->where('name_search', 'like', '%'.addcslashes(mb_strtolower($search), '%_\\').'%'))->weight('bold'),
                 TextColumn::make('unit.name')->label('RT')->sortable(),
-                TextColumn::make('address')->label('Alamat')->limit(30),
+                TextColumn::make('address')->label('Alamat')->limit(30)->placeholder('-'),
                 TextColumn::make('nik_last4')->label('NIK')->formatStateUsing(fn (Voter $record): string => $record->maskedNik())->placeholder('-'),
                 IconColumn::make('is_active')->label('Aktif')->boolean(),
                 IconColumn::make('added_during_live')->label('Darurat')->boolean()->trueColor('warning'),

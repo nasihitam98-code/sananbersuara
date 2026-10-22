@@ -26,7 +26,7 @@ class VoterRegistry
     public function __construct(private AuditLogger $audit) {}
 
     /**
-     * @param  array{name: string, address: string, gender?: ?string, birth_date?: ?string, phone?: ?string}  $data
+     * @param  array{name: string, address?: ?string, gender?: ?string, birth_date?: ?string, phone?: ?string}  $data
      * @return array{blocked: ?string, similar: array<int, string>}
      */
     public function checkDuplicates(array $data, int $unitId, #[SensitiveParameter] ?string $nik = null, ?Voter $ignore = null): array
@@ -61,14 +61,14 @@ class VoterRegistry
         $similar = $query()
             ->where('name_search', $nameSearch)
             ->get()
-            ->map(fn (Voter $voter): string => "{$voter->name} · {$voter->unit->name} · {$voter->address}")
+            ->map(fn (Voter $voter): string => collect([$voter->name, $voter->unit->name, $voter->address])->filter()->implode(' · '))
             ->all();
 
         return ['blocked' => null, 'similar' => $similar];
     }
 
     /**
-     * @param  array{name: string, address: string, gender?: ?string, birth_date?: ?string, phone?: ?string}  $data
+     * @param  array{name: string, address?: ?string, gender?: ?string, birth_date?: ?string, phone?: ?string}  $data
      */
     public function create(array $data, int $unitId, User $actor, #[SensitiveParameter] ?string $nik = null, bool $confirmedDifferentPerson = false, ?string $emergencyReason = null): Voter
     {
@@ -93,7 +93,7 @@ class VoterRegistry
         }
 
         $voter = DB::transaction(function () use ($data, $unitId, $actor, $nik, $live, $emergencyReason): Voter {
-            $voter = new Voter($data);
+            $voter = new Voter([...$data, 'address' => trim((string) ($data['address'] ?? ''))]);
             $voter->unit_id = $unitId;
             $voter->setNik($nik);
             $voter->created_by = $actor->id;
@@ -124,7 +124,7 @@ class VoterRegistry
     }
 
     /**
-     * @param  array{name: string, address: string, gender?: ?string, birth_date?: ?string, phone?: ?string}  $data
+     * @param  array{name: string, address?: ?string, gender?: ?string, birth_date?: ?string, phone?: ?string}  $data
      */
     public function update(Voter $voter, array $data, User $actor, #[SensitiveParameter] ?string $nik = null, bool $changeNik = false): Voter
     {
@@ -137,7 +137,7 @@ class VoterRegistry
         }
 
         $before = $voter->only(['name', 'address', 'gender', 'birth_date']);
-        $voter->fill($data);
+        $voter->fill([...$data, 'address' => trim((string) ($data['address'] ?? ''))]);
 
         if ($changeNik) {
             $voter->setNik($nik);
