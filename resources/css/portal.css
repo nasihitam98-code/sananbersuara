@@ -946,6 +946,11 @@ h4 {
     align-items: start;
 }
 
+/* Dua RT: berdampingan dalam satu halaman (tetap carousel agar Pilih RT Anda dan pin berfungsi). */
+.carousel__page--2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .carousel__card {
     height: 100%;
 }

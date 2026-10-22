@@ -13,19 +13,19 @@
     </div>
 @endif
 
-{{-- Kartu per RT: digeser bila banyak (seperti kartu hasil di contoh), lebar bila hanya 1–2. --}}
-@if ($unitCards->count() > 0 && $unitCards->count() <= 2)
-    <div class="grid feature feature--{{ $unitCards->count() }} subsection reveal">
+{{-- Kartu per RT: satu RT tampil lebar; mulai dua RT memakai carousel agar bisa dipilih/disematkan (Pilih RT Anda). --}}
+@if ($unitCards->count() === 1)
+    <div class="grid feature feature--1 subsection reveal">
         @foreach ($unitCards as $card)
             @include('public.partials.result-card', ['card' => $card, 'wide' => true])
         @endforeach
     </div>
-@elseif ($unitCards->count() > 2)
+@elseif ($unitCards->count() >= 2)
     {{--
-        Lebih dari 3 RT: halaman berisi 6 kartu (3 kolom × 2 baris, urut RT) yang digeser per halaman.
-        Di HP halaman dilepas (display: contents) sehingga kartu digeser satu per satu.
+        2–3 RT: semua kartu dalam satu halaman (berdampingan). Lebih dari 3 RT: halaman berisi 6 kartu (3 kolom × 2
+        baris, urut RT) yang digeser per halaman. Di HP halaman dilepas (display: contents) sehingga kartu digeser satu per satu.
     --}}
-    @php($perPage = $unitCards->count() > 3 ? 6 : 1)
+    @php($perPage = $unitCards->count() > 3 ? 6 : $unitCards->count())
     {{--
         RT pilihan warga disematkan di bawah kartu RW (diingat di perangkatnya; link #rt-03 dari Admin RT juga
         menyematkannya). Diisi portal.js dari kartu di carousel; kosong/tersembunyi tanpa JavaScript.
@@ -42,7 +42,7 @@
         <button type="button" class="carousel__nav carousel__nav--prev" data-carousel-prev aria-label="Sebelumnya">‹</button>
         <div class="carousel__track" data-carousel-track tabindex="0" aria-label="Kartu hasil per RT">
             @foreach ($unitCards->chunk($perPage) as $page)
-                <div class="carousel__slide {{ $perPage > 1 ? 'carousel__page' : '' }}" data-carousel-slide>
+                <div class="carousel__slide {{ $perPage > 1 ? 'carousel__page carousel__page--'.$perPage : '' }}" data-carousel-slide>
                     @foreach ($page as $card)
                         <div class="carousel__card" data-carousel-card data-rt="{{ $card['unit']->code }}">
                             @include('public.partials.result-card', ['card' => $card])

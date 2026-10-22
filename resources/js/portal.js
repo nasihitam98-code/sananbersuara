@@ -65,6 +65,10 @@ function initCarousel(root) {
         count.textContent = `${index + 1} / ${pages()}`;
         prev.disabled = index === 0;
         next.disabled = index >= pages() - 1;
+        // Semua kartu muat di satu halaman (mis. 2–3 RT di layar lebar): tanpa titik dan "1 / 1".
+        if (count.parentElement) {
+            count.parentElement.hidden = pages() <= 1;
+        }
     };
 
     prev.addEventListener('click', () => goTo(current() - 1));

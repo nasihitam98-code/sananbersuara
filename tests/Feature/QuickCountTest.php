@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\BallotScope;
 use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
 use App\Enums\WaveKind;
@@ -11,6 +12,7 @@ use App\Models\AuditLog;
 use App\Models\Ballot;
 use App\Models\Candidate;
 use App\Models\Election;
+use App\Models\Unit;
 use App\Models\User;
 use App\Services\Voting\AttendeeRegistrar;
 use App\Services\Voting\BallotBox;
@@ -123,6 +125,23 @@ class QuickCountTest extends TestCase
         // Disembunyikan dari publik: calon tidak tampil.
         $this->election->forceFill(['settings' => ['show_public' => false]])->save();
         $this->get(route('public.index'))->assertDontSee('Kenali calon')->assertDontSee('Calon Pertama');
+    }
+
+    public function test_rt_picker_and_pin_show_from_two_rts(): void
+    {
+        $perRt = Ballot::factory()->for($this->election)->create(['title' => 'Ketua RT', 'scope' => BallotScope::PerRt]);
+
+        foreach (['01', '02'] as $code) {
+            Candidate::factory()->for($perRt)->create(['number' => 1, 'unit_id' => Unit::query()->where('code', $code)->value('id')]);
+        }
+
+        $this->get(route('public.index'))
+            ->assertOk()
+            ->assertSee('data-rt-picker', false)
+            ->assertSee('data-rt-code="01"', false)
+            ->assertSee('data-rt-code="02"', false)
+            ->assertSee('data-rt-pinned', false)
+            ->assertSee('carousel__page--2', false);
     }
 
     public function test_vision_and_mission_show_on_the_public_page_only_when_switched_on(): void
