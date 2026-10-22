@@ -108,8 +108,12 @@ class UserResource extends Resource
                         CheckboxList::make('permissions')
                             ->label('Izin Admin RT')
                             ->options(static::permissionOptions())
+                            // Umumnya satu akun per RT memegang keduanya; tanpa izin sama sekali akun tidak bisa apa-apa.
+                            ->default(array_keys(static::permissionOptions()))
                             ->visible(fn (Get $get): bool => $get('role') === User::ROLE_ADMIN_RT)
-                            ->helperText('Boleh keduanya (satu akun untuk data pemilih dan meja RT). Petugas meja relawan cukup diberi izin Petugas Meja saja.'),
+                            ->required(fn (Get $get): bool => $get('role') === User::ROLE_ADMIN_RT)
+                            ->validationMessages(['required' => 'Centang minimal satu izin.'])
+                            ->helperText('Biasanya keduanya (satu akun untuk data pemilih dan Meja Izin RT). Petugas meja relawan cukup diberi izin Petugas Meja saja.'),
                         Toggle::make('is_active')->label('Aktif')->default(true)->visibleOn('edit'),
                     ]),
             ]);
