@@ -51,7 +51,7 @@ trait InteractsWithElection
         }
 
         return $user->isSuperAdmin()
-            || $user->electionAssignments()->whereIn('role', static::allowedStaffRoles())->exists()
+            || $user->activeElectionAssignments()->whereIn('role', static::allowedStaffRoles())->exists()
             || (in_array(ElectionMode::Resmi, static::allowedModes(), true) && $user->isAdminRt());
     }
 

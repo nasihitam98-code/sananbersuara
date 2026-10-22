@@ -42,7 +42,7 @@ class Workspace
 
         $modes = [];
 
-        if ($user->electionAssignments()->exists()) {
+        if ($user->activeElectionAssignments()->exists()) {
             $modes[] = ElectionMode::Dadakan;
         }
 

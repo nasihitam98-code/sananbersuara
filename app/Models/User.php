@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ElectionStatus;
 use App\Enums\StaffRole;
 use Database\Factories\UserFactory;
 use Filament\Auth\MultiFactor\Email\Concerns\InteractsWithEmailAuthentication;
@@ -101,6 +102,18 @@ class User extends Authenticatable implements FilamentUser, HasEmailAuthenticati
     public function electionAssignments(): HasMany
     {
         return $this->hasMany(ElectionStaff::class);
+    }
+
+    /**
+     * Penugasan di pemilihan yang masih dipakai (bukan dibatalkan/diarsipkan): penugasan lama, mis. dari pemilihan
+     * uji coba yang dibatalkan, tidak lagi memunculkan Mode Dadakan di Beranda.
+     *
+     * @return HasMany<ElectionStaff, $this>
+     */
+    public function activeElectionAssignments(): HasMany
+    {
+        return $this->electionAssignments()
+            ->whereHas('election', fn ($query) => $query->whereNotIn('status', [ElectionStatus::Cancelled, ElectionStatus::Archived]));
     }
 
     /**

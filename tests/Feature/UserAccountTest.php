@@ -2,8 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ElectionMode;
+use App\Enums\ElectionStatus;
+use App\Enums\StaffRole;
 use App\Filament\Resources\Users\Pages\CreateUser;
 use App\Filament\Resources\Users\UserResource;
+use App\Filament\Support\Workspace;
+use App\Models\Election;
 use App\Models\Unit;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
@@ -44,6 +49,24 @@ class UserAccountTest extends TestCase
         $created = User::query()->where('email', 'rt01@contoh.test')->sole();
         $this->assertTrue($created->hasPermissionTo(User::PERMISSION_MANAGE_VOTERS));
         $this->assertTrue($created->hasPermissionTo(User::PERMISSION_DESK));
+    }
+
+    public function test_assignment_in_a_cancelled_election_no_longer_offers_dadakan_mode(): void
+    {
+        $rt01 = Unit::query()->where('code', '01')->firstOrFail();
+        $adminRt = User::factory()->create();
+        $adminRt->forceFill(['unit_id' => $rt01->id, 'has_email_authentication' => true])->save();
+        $adminRt->assignRole(User::ROLE_ADMIN_RT);
+
+        $test = Election::factory()->create(['mode' => ElectionMode::Dadakan]);
+        $test->staff()->create(['user_id' => $adminRt->id, 'role' => StaffRole::Panitia]);
+
+        $this->assertSame([ElectionMode::Dadakan, ElectionMode::Resmi], Workspace::allowedModes($adminRt));
+
+        $test->forceFill(['status' => ElectionStatus::Cancelled])->save();
+
+        // Hanya Mode Resmi: Beranda langsung masuk tanpa pilihan mode.
+        $this->assertSame([ElectionMode::Resmi], Workspace::allowedModes($adminRt));
     }
 
     public function test_admin_rt_needs_at_least_one_permission_and_an_unused_email(): void
