@@ -1335,10 +1335,24 @@ h4 {
 }
 
 /* Kartu besar di atas (mis. Ketua RW): calon berjajar lebih besar di tengah. */
+/* Kartu lebar: calon selalu sejajar (jumlah kolom = jumlah calon), juga di kartu RT setengah lebar. */
 .race--wide .duel {
-    grid-template-columns: repeat(auto-fit, minmax(200px, 300px));
+    grid-template-columns: repeat(2, minmax(0, 260px));
     justify-content: center;
-    gap: 20px;
+    gap: 16px;
+}
+
+.race--wide .duel--1 {
+    grid-template-columns: minmax(0, 300px);
+}
+
+.race--wide .duel--3 {
+    grid-template-columns: repeat(3, minmax(0, 240px));
+}
+
+.race--wide .duel--4 {
+    grid-template-columns: repeat(4, minmax(0, 220px));
+    gap: 12px;
 }
 
 .race--wide .contender {
@@ -1347,7 +1361,7 @@ h4 {
 }
 
 .race--wide .contender .portrait {
-    width: 128px;
+    width: min(128px, 100%);
     padding: 3px;
     margin-bottom: 12px;
 }

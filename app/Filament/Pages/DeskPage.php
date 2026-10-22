@@ -334,19 +334,19 @@ class DeskPage extends Page
     }
 
     /**
-     * Koreksi suara langsung dari baris pemilih (tab Sudah memilih): Admin RT mengajukan, Super Admin memutuskan
-     * (orang kedua). Setelah disetujui suara berstatus dibatalkan dan pemilih kembali ke "Belum memilih".
+     * Koreksi suara langsung dari baris pemilih: diputuskan di RT tanpa menunggu Super Admin (keputusan pemilik
+     * 2026-10-23). Suara berstatus dibatalkan dan pemilih kembali ke "Belum memilih"; Super Admin diberi tahu.
      */
     public function requestCorrectionAction(): Action
     {
         return Action::make('requestCorrection')
-            ->label('Ajukan koreksi')
+            ->label('Koreksi')
             ->color('gray')
             ->size('sm')
             ->visible(fn (): bool => in_array($this->election()?->status, [ElectionStatus::Berlangsung, ElectionStatus::Paused], true))
-            ->modalHeading(fn (array $arguments): string => 'Ajukan koreksi suara '.($this->voterFromArguments($arguments)?->name ?? ''))
-            ->modalDescription('Untuk suara bermasalah, mis. izin salah orang atau pemilih dipaksa. Super Admin yang memutuskan; bila disetujui, suara dibatalkan (tidak dihapus) dan pemilih bisa diizinkan memilih ulang. Pilihan calon tidak pernah ditampilkan.')
-            ->modalSubmitActionLabel('Ajukan ke Super Admin')
+            ->modalHeading(fn (array $arguments): string => 'Koreksi suara '.($this->voterFromArguments($arguments)?->name ?? ''))
+            ->modalDescription('Untuk suara bermasalah, mis. izin salah orang atau pemilih dipaksa. Suara surat suara yang dipilih langsung dibatalkan (tidak dihapus), orangnya kembali ke "Belum memilih" dan bisa diizinkan memilih ulang. Tercatat di berita acara; Super Admin diberi tahu. Pilihan calon tidak pernah ditampilkan.')
+            ->modalSubmitActionLabel('Batalkan suara ini')
             ->schema(fn (array $arguments): array => [
                 Select::make('ballot')
                     ->label('Surat suara')
@@ -366,7 +366,7 @@ class DeskPage extends Page
                 }
 
                 try {
-                    app(CorrectionService::class)->request(
+                    app(CorrectionService::class)->correctAtDesk(
                         $election,
                         $voter,
                         $ballot,
@@ -381,7 +381,7 @@ class DeskPage extends Page
                     return;
                 }
 
-                Notification::make()->title("Koreksi {$voter->name} ({$ballot->title}) diajukan. Menunggu keputusan Super Admin.")->success()->send();
+                Notification::make()->title("Suara {$ballot->title} {$voter->name} dibatalkan. Silakan izinkan memilih ulang.")->success()->send();
             });
     }
 

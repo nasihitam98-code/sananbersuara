@@ -25,9 +25,10 @@ use Illuminate\Support\Str;
 
 /**
  * Koreksi suara Mode Resmi (bagian 8, K16, K17):
- * - diajukan Admin RT (RT sendiri) atau Super Admin, diputuskan Super Admin
+ * - diajukan Admin RT (RT sendiri) atau Super Admin, diputuskan Super Admin; selama voting berjalan Admin RT boleh
+ *   langsung memutuskan di Meja Izin (correctAtDesk, keputusan pemilik 2026-10-23)
  * - akun yang memberi izin untuk suara itu boleh mengajukan (satu akun per RT memberi semua izin di TPS-nya; diubah
- *   pemilik 2026-10-23), tetapi tidak boleh menyetujui: keputusan tetap di orang kedua (Super Admin)
+ *   pemilik 2026-10-23); penyetuju Super Admin tidak boleh pemberi izin suara itu
  * - suara lama berstatus DIBATALKAN (tidak dihapus); pilihan tidak pernah ditampilkan
  * - selama berlangsung pemilih bisa diizinkan memilih ulang; setelah ditutup hanya pembatalan
  */
@@ -44,7 +45,7 @@ class CorrectionService
         private OfficialReportService $reports,
     ) {}
 
-    public function request(Election $election, Voter $voter, Ballot $ballot, CorrectionReason $reason, ?string $note, User $actor): VoteCorrection
+    public function request(Election $election, Voter $voter, Ballot $ballot, CorrectionReason $reason, ?string $note, User $actor, bool $notify = true): VoteCorrection
     {
         $this->assertStatus($election);
 
@@ -85,9 +86,36 @@ class CorrectionService
             'ballot' => $ballot->title,
         ], actor: $actor);
 
+        if ($notify) {
+            $this->notifier->notifySuperAdmins(
+                'Pengajuan koreksi suara',
+                "{$voter->unit->name}: pengajuan pembatalan suara {$ballot->title} untuk {$voter->voter_number} ({$reason->getLabel()}).",
+                $actor,
+            );
+        }
+
+        return $correction;
+    }
+
+    /**
+     * Koreksi langsung di RT (keputusan pemilik 2026-10-23, agar cepat): Admin RT RT itu mengajukan sekaligus memutuskan,
+     * hanya selama voting berjalan sehingga pemilih bisa langsung memilih ulang. Alasan wajib, tercatat di audit dan
+     * berita acara, dan Super Admin diberi tahu sesudahnya. Setelah TPS ditutup koreksi tetap lewat Super Admin.
+     */
+    public function correctAtDesk(Election $election, Voter $voter, Ballot $ballot, CorrectionReason $reason, ?string $note, User $actor): VoteCorrection
+    {
+        abort_unless($actor->isAdminRt() && $actor->unit_id === $voter->unit_id, 403);
+
+        if (! $election->status->isLive()) {
+            throw VotingException::invalidState('Koreksi langsung di RT hanya selama voting berjalan. Setelah ditutup, hubungi Super Admin.');
+        }
+
+        $correction = $this->request($election, $voter, $ballot, $reason, $note, $actor, notify: false);
+        $this->applyApproval($correction, $actor, 'Diputuskan langsung di RT');
+
         $this->notifier->notifySuperAdmins(
-            'Pengajuan koreksi suara',
-            "{$voter->unit->name}: pengajuan pembatalan suara {$ballot->title} untuk {$voter->voter_number} ({$reason->getLabel()}).",
+            'Koreksi suara di RT',
+            "{$voter->unit->name}: suara {$ballot->title} untuk {$voter->voter_number} dibatalkan oleh {$actor->name} ({$reason->getLabel()}); pemilih boleh memilih ulang.",
             $actor,
         );
 
@@ -98,10 +126,19 @@ class CorrectionService
     {
         abort_unless($actor->isSuperAdmin(), 403);
 
+        $this->applyApproval($correction, $actor, $decisionNote, checkGranter: true);
+    }
+
+    /**
+     * @param  bool  $checkGranter  Super Admin: penyetuju tidak boleh pemberi izin suara itu (K17). Koreksi langsung di
+     *                              RT sengaja melewati aturan ini (keputusan pemilik 2026-10-23).
+     */
+    private function applyApproval(VoteCorrection $correction, User $actor, ?string $decisionNote, bool $checkGranter = false): void
+    {
         $election = $correction->election;
         $this->assertStatus($election);
 
-        DB::transaction(function () use ($correction, $actor, $decisionNote): void {
+        DB::transaction(function () use ($correction, $actor, $decisionNote, $checkGranter): void {
             $locked = VoteCorrection::query()->whereKey($correction->id)->lockForUpdate()->firstOrFail();
 
             if ($locked->status !== CorrectionStatus::Diajukan) {
@@ -110,7 +147,7 @@ class CorrectionService
 
             $vote = Vote::query()->whereKey($locked->vote_id)->lockForUpdate()->firstOrFail();
 
-            if ($this->granterOf($vote) === $actor->id) {
+            if ($checkGranter && $this->granterOf($vote) === $actor->id) {
                 throw VotingException::invalidState('Penyetuju tidak boleh akun yang memberi izin untuk suara ini (K17).');
             }
 

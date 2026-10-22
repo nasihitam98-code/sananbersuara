@@ -35,6 +35,7 @@ use App\Services\Results\OfficialReportService;
 use App\Services\Results\ResultPublication;
 use App\Services\Voting\ElectionLifecycle;
 use App\Services\Voting\ResultsCalculator;
+use App\Services\Voting\VotingException;
 use Database\Seeders\DatabaseSeeder;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
@@ -212,11 +213,12 @@ class ResmiResultsTest extends TestCase
         $this->assertSame(1, Vote::query()->where('voter_id', $voter->id)->where('ballot_id', $this->rtBallot->id)->count(), 'Surat suara RT tidak diulang');
     }
 
-    public function test_correction_is_requested_from_the_voted_row_at_the_desk(): void
+    public function test_rt_corrects_a_vote_directly_at_the_desk_while_voting_runs(): void
     {
         $voter = Voter::query()->where('unit_id', $this->rt03->id)->first();
         $this->actingAs($this->deskRt03);
 
+        // Langsung diputuskan di RT (tanpa menunggu Super Admin); orangnya kembali ke Belum memilih.
         Livewire::test(DeskPage::class)
             ->set('voterTab', 'sudah')
             ->assertSee($voter->name)
@@ -224,12 +226,25 @@ class ResmiResultsTest extends TestCase
                 'ballot' => $this->rwBallot->id,
                 'reason' => CorrectionReason::SalahOrang->value,
             ])
-            ->assertNotified("Koreksi {$voter->name} ({$this->rwBallot->title}) diajukan. Menunggu keputusan Super Admin.")
-            ->assertSee('Koreksi menunggu Super Admin');
+            ->assertNotified("Suara {$this->rwBallot->title} {$voter->name} dibatalkan. Silakan izinkan memilih ulang.")
+            ->set('voterTab', 'belum')
+            ->assertSee($voter->name);
 
-        $this->assertSame(CorrectionStatus::Diajukan, VoteCorrection::query()->where('voter_id', $voter->id)->sole()->status);
+        $correction = VoteCorrection::query()->where('voter_id', $voter->id)->sole();
+        $this->assertSame(CorrectionStatus::Disetujui, $correction->status);
+        $this->assertSame($this->deskRt03->id, $correction->decided_by);
+        $this->assertSame(1, Vote::query()->where('voter_id', $voter->id)->where('ballot_id', $this->rwBallot->id)->where('status', VoteStatus::Dibatalkan)->count());
+        $this->assertTrue($this->superAdmin->notifications()->exists(), 'Super Admin diberi tahu sesudahnya');
+        $this->assertTrue(AuditLog::query()->where('action', 'correction.approved')->exists());
+
         // Menu Koreksi Suara tidak perlu untuk petugas meja: tombolnya ada di Meja Izin.
         $this->assertFalse(CorrectionsPage::shouldRegisterNavigation());
+
+        // Setelah TPS ditutup, koreksi tetap lewat Super Admin.
+        app(ElectionLifecycle::class)->close($this->election->fresh(), $this->superAdmin);
+        $other = Voter::query()->where('unit_id', $this->rt03->id)->whereKeyNot($voter->id)->first();
+        $this->expectException(VotingException::class);
+        app(CorrectionService::class)->correctAtDesk($this->election->fresh(), $other, $this->rtBallot, CorrectionReason::GangguanTeknis, null, $this->deskRt03);
     }
 
     public function test_admin_rt_cannot_request_correction_for_another_rt(): void
