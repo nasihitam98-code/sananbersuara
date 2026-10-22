@@ -4,7 +4,7 @@
     @if ($election === null)
         <x-filament::section>Koreksi suara tersedia untuk pemilihan Mode Resmi yang berlangsung atau belum dipublikasikan.</x-filament::section>
     @else
-        <x-filament::section heading="Ajukan pembatalan suara" description="Cari pemilih yang sudah memilih. Pilihannya tidak ditampilkan.">
+        <x-filament::section :heading="$this->user()->isSuperAdmin() ? 'Batalkan suara' : 'Ajukan pembatalan suara'" description="Cari pemilih yang sudah memilih. Pilihannya tidak ditampilkan. Selama voting, petugas Meja Izin bisa membatalkan langsung dari daftar pemilihnya.">
             <x-filament::input.wrapper>
                 <x-filament::input type="search" wire:model.live.debounce.400ms="search" placeholder="Ketik minimal 2 huruf nama" />
             </x-filament::input.wrapper>
@@ -14,7 +14,7 @@
                     <li class="flex flex-wrap items-center justify-between gap-3 py-2">
                         <div>
                             <p class="font-semibold">{{ $row['voter']->name }}</p>
-                            <p class="text-sm text-gray-500">{{ $row['voter']->unit->name }} · {{ $row['voter']->address }} · {{ $row['voter']->voter_number }}</p>
+                            <p class="text-sm text-gray-500">{{ collect([$row['voter']->unit->name, $row['voter']->address, $row['voter']->voter_number])->filter()->implode(' · ') }}</p>
                         </div>
                         <div class="flex flex-wrap gap-2">
                             @foreach ($row['ballots'] as $ballot)
@@ -27,11 +27,11 @@
             </ul>
         </x-filament::section>
 
-        <x-filament::section heading="Daftar pengajuan">
+        <x-filament::section heading="Riwayat koreksi" description="Semua koreksi suara, termasuk yang diputuskan langsung di RT.">
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead class="text-left text-gray-500">
-                        <tr><th class="py-1 pe-3">Waktu</th><th class="pe-3">Pemilih</th><th class="pe-3">Surat suara</th><th class="pe-3">Alasan</th><th class="pe-3">Pengaju</th><th class="pe-3">Status</th><th></th></tr>
+                        <tr><th class="py-1 pe-3">Waktu</th><th class="pe-3">Pemilih</th><th class="pe-3">Surat suara</th><th class="pe-3">Alasan</th><th class="pe-3">Diajukan</th><th class="pe-3">Status</th><th class="pe-3">Diputuskan oleh</th><th></th></tr>
                     </thead>
                     <tbody>
                         @forelse ($this->corrections() as $correction)
@@ -45,6 +45,7 @@
                                     <x-filament::badge :color="$correction->status->getColor()">{{ $correction->status->getLabel() }}</x-filament::badge>
                                     @if ($correction->decision_note)<br><span class="text-gray-500">{{ $correction->decision_note }}</span>@endif
                                 </td>
+                                <td class="pe-3">{{ $correction->decider?->name ?? '-' }}@if ($correction->decided_at)<br><span class="text-gray-500">{{ $correction->decided_at->format('d/m H:i') }}</span>@endif</td>
                                 <td class="flex flex-wrap gap-2 py-2">
                                     @if ($this->isPending($correction))
                                         @if (($this->approveAction)(['correction' => $correction->public_id])->isVisible()) {{ ($this->approveAction)(['correction' => $correction->public_id]) }} @endif
@@ -56,7 +57,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="7" class="py-2 text-gray-500">Belum ada pengajuan.</td></tr>
+                            <tr><td colspan="8" class="py-2 text-gray-500">Belum ada koreksi.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

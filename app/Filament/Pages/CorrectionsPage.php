@@ -129,15 +129,20 @@ class CorrectionsPage extends Page
     public function requestAction(): Action
     {
         return Action::make('request')
-            ->label('Ajukan pembatalan')
+            // Super Admin: sekali klik langsung dibatalkan (mengajukan sekaligus memutuskan). Admin RT tanpa meja: mengajukan.
+            ->label(fn (): string => $this->user()->isSuperAdmin() ? 'Batalkan suara' : 'Ajukan pembatalan')
             ->color('warning')
             ->size('sm')
-            ->modalHeading('Ajukan pembatalan suara')
-            ->modalDescription('Suara tidak dihapus, hanya berstatus dibatalkan setelah disetujui Super Admin. Selama pemilihan berlangsung, pemilih bisa diizinkan memilih ulang.')
-            ->schema([
+            ->modalHeading(fn (): string => $this->user()->isSuperAdmin() ? 'Batalkan suara ini?' : 'Ajukan pembatalan suara')
+            ->modalDescription(fn (): string => $this->user()->isSuperAdmin()
+                ? 'Suara tidak dihapus, hanya berstatus dibatalkan dan tercatat di berita acara. Selama pemilihan berlangsung, pemilih bisa diizinkan memilih ulang.'
+                : 'Suara tidak dihapus, hanya berstatus dibatalkan setelah disetujui Super Admin. Selama pemilihan berlangsung, pemilih bisa diizinkan memilih ulang.')
+            ->modalSubmitActionLabel(fn (): string => $this->user()->isSuperAdmin() ? 'Ya, batalkan' : 'Ajukan')
+            ->schema(fn (): array => array_values(array_filter([
                 Select::make('reason')->label('Alasan')->options(CorrectionReason::class)->required(),
-                Textarea::make('note')->label('Catatan')->maxLength(500),
-            ])
+                Textarea::make('note')->label('Catatan (wajib bila alasan "Lainnya")')->maxLength(500),
+                $this->user()->isSuperAdmin() ? Reauthenticate::field() : null,
+            ])))
             ->action(function (array $data, array $arguments): void {
                 $election = $this->election();
                 abort_if($election === null, 404);
@@ -148,6 +153,16 @@ class CorrectionsPage extends Page
                     ->firstOrFail();
                 $ballot = $election->ballots()->where('public_id', $arguments['ballot'] ?? '')->firstOrFail();
                 $reason = $data['reason'] instanceof CorrectionReason ? $data['reason'] : CorrectionReason::from($data['reason']);
+
+                if ($this->user()->isSuperAdmin()) {
+                    $this->run(function () use ($election, $voter, $ballot, $reason, $data): void {
+                        $service = app(CorrectionService::class);
+                        $correction = $service->request($election, $voter, $ballot, $reason, $data['note'] ?? null, $this->user(), notify: false);
+                        $service->approve($correction, $this->user(), 'Diputuskan langsung oleh Super Admin');
+                    }, 'Suara dibatalkan.');
+
+                    return;
+                }
 
                 $this->run(fn () => app(CorrectionService::class)->request($election, $voter, $ballot, $reason, $data['note'] ?? null, $this->user()), 'Pengajuan dikirim ke Super Admin.');
             });

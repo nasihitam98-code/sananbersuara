@@ -4,15 +4,11 @@ namespace App\Filament\Pages;
 
 use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
-use App\Enums\VoteStatus;
+use App\Filament\Pages\Concerns\ShowsVoterProgress;
 use App\Filament\Support\Workspace;
-use App\Models\Attendee;
-use App\Models\BallotVoter;
 use App\Models\Election;
 use App\Models\Unit;
 use App\Models\User;
-use App\Models\Vote;
-use App\Models\Voter;
 use App\Services\Voting\ResultsCalculator;
 use App\Services\Voting\RoundResolver;
 use BackedEnum;
@@ -28,6 +24,8 @@ use UnitEnum;
  */
 class ParticipationPage extends Page
 {
+    use ShowsVoterProgress;
+
     protected string $view = 'filament.pages.participation-page';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPresentationChartLine;
@@ -43,17 +41,15 @@ class ParticipationPage extends Page
     protected static ?int $navigationSort = 3;
 
     /**
-     * Petugas Meja Izin melihat belum/sudah memilih langsung di Meja Izin, jadi menu ini tidak ditampilkan untuk
-     * mereka (halamannya tetap bisa dibuka). Super Admin dan Admin RT tanpa izin meja tetap melihatnya.
+     * Super Admin melihat daftar nama di Monitoring (klik kartu RT); petugas Meja Izin di Meja Izin. Menu ini hanya
+     * untuk Admin RT tanpa izin meja. Halamannya tetap bisa dibuka lewat alamatnya.
      */
     public static function shouldRegisterNavigation(): bool
     {
-        return Workspace::shows(ElectionMode::Resmi) && ! DeskPage::canAccess();
+        $user = auth()->user();
+
+        return Workspace::shows(ElectionMode::Resmi) && ! DeskPage::canAccess() && ! ($user instanceof User && $user->isSuperAdmin());
     }
-
-    public ?int $unitFilter = null;
-
-    public string $notVotedSearch = '';
 
     public static function canAccess(): bool
     {
@@ -119,81 +115,5 @@ class ParticipationPage extends Page
                 'units' => $perUnit,
             ];
         })->all();
-    }
-
-    /** Batas nama yang ditampilkan sekaligus (Semua RT); saring per RT atau nama untuk melihat sisanya. */
-    public const NOT_VOTED_LIMIT = 1000;
-
-    /** Daftar nama: 'belum' (belum menyelesaikan semua surat suara) atau 'sudah' (sudah semua). */
-    public string $voterTab = 'belum';
-
-    /** Klik kartu RT (Super Admin): daftar nama langsung disaring ke RT itu. */
-    public function showUnit(?int $unitId): void
-    {
-        abort_unless($this->user()->isSuperAdmin(), 403);
-
-        $this->unitFilter = $unitId;
-    }
-
-    /**
-     * Jumlah pemilih per daftar (sesuai saringan RT, tanpa saringan nama).
-     *
-     * @return array{belum: int, sudah: int}
-     */
-    public function voterCounts(): array
-    {
-        $ids = $this->voterIdsByStatus();
-
-        return ['belum' => count($ids['belum']), 'sudah' => count($ids['sudah'])];
-    }
-
-    /**
-     * Nama pemilih pada tab yang dipilih (tanpa pilihan kandidat dan tanpa jam memilih). Super Admin tanpa
-     * saringan RT: semua RT.
-     *
-     * @return Collection<int, Voter>
-     */
-    public function voterList(): Collection
-    {
-        $ids = $this->voterIdsByStatus()[$this->voterTab === 'sudah' ? 'sudah' : 'belum'];
-
-        if ($ids === []) {
-            return collect();
-        }
-
-        return Voter::query()
-            ->with('unit')
-            ->whereIn('id', $ids)
-            ->when(mb_strlen(trim($this->notVotedSearch)) >= 2, fn ($query) => $query->where('name_search', 'like', '%'.addcslashes(Attendee::normalizeForSearch($this->notVotedSearch), '%_\\').'%'))
-            ->orderBy('name')
-            ->limit(self::NOT_VOTED_LIMIT)
-            ->get();
-    }
-
-    /**
-     * Pemilih berhak dibagi dua: belum menyelesaikan semua surat suara berhaknya, dan sudah.
-     *
-     * @return array{belum: array<int, int>, sudah: array<int, int>}
-     */
-    private function voterIdsByStatus(): array
-    {
-        $election = $this->election();
-        $unitId = $this->user()->isSuperAdmin() ? $this->unitFilter : $this->user()->unit_id;
-
-        if ($election === null || (! $this->user()->isSuperAdmin() && $unitId === null)) {
-            return ['belum' => [], 'sudah' => []];
-        }
-
-        $round = $election->currentRound();
-        $ballotIds = $election->ballots()->pluck('id');
-
-        $eligible = BallotVoter::query()->whereIn('ballot_id', $ballotIds)->when($unitId !== null, fn ($query) => $query->where('unit_id', $unitId))->whereNull('revoked_at')
-            ->get(['voter_id', 'ballot_id'])->groupBy('voter_id');
-        $voted = Vote::query()->whereIn('ballot_id', $ballotIds)->where('round_id', $round?->id)->where('status', VoteStatus::Sah)
-            ->whereIn('voter_id', $eligible->keys())->get(['voter_id', 'ballot_id'])->groupBy('voter_id');
-
-        [$pending, $done] = $eligible->partition(fn ($rows, $voterId): bool => $rows->count() > $voted->get($voterId, collect())->count());
-
-        return ['belum' => $pending->keys()->all(), 'sudah' => $done->keys()->all()];
     }
 }

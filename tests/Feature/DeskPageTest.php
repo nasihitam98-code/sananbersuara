@@ -218,6 +218,13 @@ class DeskPageTest extends TestCase
             ->assertSee('RT perlu dicek')
             ->assertSee('Bilik terputus: RT03-01');
 
+        // Daftar nama (dulu menu Partisipasi) ada di Monitoring: klik kartu RT.
+        Livewire::test(MonitoringPage::class)
+            ->call('showUnit', $this->voter->unit_id)
+            ->assertSee('Belum memilih (1 orang)')
+            ->assertSee('Budi Santoso');
+        $this->assertFalse(ParticipationPage::shouldRegisterNavigation(), 'Super Admin memakai Monitoring');
+
         $this->actingAs($this->deskOfficer)->get(MonitoringPage::getUrl())->assertForbidden();
     }
 

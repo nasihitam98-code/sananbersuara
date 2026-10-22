@@ -6,6 +6,7 @@ use App\Enums\DeviceKind;
 use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
 use App\Enums\VoteStatus;
+use App\Filament\Pages\Concerns\ShowsVoterProgress;
 use App\Filament\Support\Workspace;
 use App\Models\BallotVoter;
 use App\Models\Device;
@@ -29,6 +30,9 @@ use UnitEnum;
  */
 class MonitoringPage extends Page
 {
+    // Daftar nama belum/sudah memilih (dulu menu Partisipasi): klik kartu RT untuk menyaring.
+    use ShowsVoterProgress;
+
     protected string $view = 'filament.pages.monitoring-page';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPresentationChartLine;
@@ -53,6 +57,14 @@ class MonitoringPage extends Page
         $user = auth()->user();
 
         return $user instanceof User && $user->isSuperAdmin();
+    }
+
+    public function user(): User
+    {
+        /** @var User $user */
+        $user = auth()->user();
+
+        return $user;
     }
 
     public function election(): ?Election

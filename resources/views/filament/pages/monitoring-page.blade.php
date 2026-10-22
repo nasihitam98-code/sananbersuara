@@ -28,7 +28,9 @@
             <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 @foreach ($rows as $row)
                     @php($border = match ($row['tone']) { 'danger' => 'border-danger-500', 'warning' => 'border-warning-500', default => 'border-gray-200 dark:border-white/10' })
-                    <div class="rounded-xl border-2 {{ $border }} bg-white p-4 dark:bg-gray-900">
+                    {{-- Klik kartu: daftar nama belum/sudah memilih RT ini di bawah. --}}
+                    <div wire:click="showUnit({{ $row['unit']->id }})" role="button" title="Lihat nama belum/sudah memilih di {{ $row['unit']->name }}"
+                         class="cursor-pointer rounded-xl border-2 {{ $border }} bg-white p-4 hover:shadow-md dark:bg-gray-900 {{ $this->unitFilter === $row['unit']->id ? 'ring-2 ring-primary-500' : '' }}">
                         <div class="flex items-center justify-between gap-2">
                             <p class="text-lg font-bold">{{ $row['unit']->name }}</p>
                             @if ($row['problems'] !== [])
@@ -67,11 +69,13 @@
             </div>
 
             <p class="text-sm text-gray-500">
-                Tindakan: token &amp; lepas laptop atau jeda TPS di
-                <a class="text-primary-600 underline" href="{{ \App\Filament\Pages\DevicesPage::getUrl() }}">Perangkat</a>;
-                nama yang belum/sudah memilih di
-                <a class="text-primary-600 underline" href="{{ \App\Filament\Pages\ParticipationPage::getUrl() }}">Partisipasi</a>.
+                Klik kartu RT untuk melihat nama yang belum/sudah memilih di bawah. Token &amp; lepas laptop atau jeda TPS di
+                <a class="text-primary-600 underline" href="{{ \App\Filament\Pages\DevicesPage::getUrl() }}">Perangkat</a>.
             </p>
+
+            @if ($election->status !== \App\Enums\ElectionStatus::Ready)
+                @include('filament.pages.partials.voter-progress')
+            @endif
         </div>
     @endif
 </x-filament-panels::page>
