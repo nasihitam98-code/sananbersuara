@@ -42,9 +42,13 @@ class ParticipationPage extends Page
 
     protected static ?int $navigationSort = 3;
 
+    /**
+     * Petugas Meja Izin melihat belum/sudah memilih langsung di Meja Izin, jadi menu ini tidak ditampilkan untuk
+     * mereka (halamannya tetap bisa dibuka). Super Admin dan Admin RT tanpa izin meja tetap melihatnya.
+     */
     public static function shouldRegisterNavigation(): bool
     {
-        return Workspace::shows(ElectionMode::Resmi);
+        return Workspace::shows(ElectionMode::Resmi) && ! DeskPage::canAccess();
     }
 
     public ?int $unitFilter = null;

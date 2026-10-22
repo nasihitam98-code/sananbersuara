@@ -9,6 +9,7 @@ use App\Enums\PermitStatus;
 use App\Filament\Pages\DeskPage;
 use App\Filament\Pages\DevicesPage;
 use App\Filament\Pages\MonitoringPage;
+use App\Filament\Pages\ParticipationPage;
 use App\Filament\Support\ElectionChecklist;
 use App\Models\Ballot;
 use App\Models\Candidate;
@@ -98,6 +99,30 @@ class DeskPageTest extends TestCase
             ->assertSet('lastAssignment.booth', 'Bilik 1');
 
         $this->assertSame(1, Permit::query()->whereNotNull('active_voter_id')->count());
+    }
+
+    public function test_desk_lists_all_rt_voters_without_typing_with_counts_per_tab(): void
+    {
+        $this->actingAs($this->deskOfficer);
+        $rt03 = Unit::query()->where('code', '03')->firstOrFail();
+        Voter::factory()->for($rt03)->create(['name' => 'Ani Lestari']);
+        Voter::factory()->for(Unit::query()->where('code', '04')->firstOrFail())->create(['name' => 'Warga RT Empat']);
+
+        // Pemilih yang ditambah setelah Mulai tidak masuk daftar beku: tampil di Semua sebagai tidak berhak.
+        Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])
+            ->test(DeskPage::class)
+            ->assertSee('Budi Santoso')
+            ->assertSee('Belum memilih (1)')
+            ->assertSee('Sudah memilih (0)')
+            ->assertSee('Semua (2)')
+            ->assertDontSee('Warga RT Empat')
+            ->set('voterTab', 'semua')
+            ->assertSee('Ani Lestari')
+            ->set('search', 'ani')
+            ->assertDontSee('Budi Santoso');
+
+        // Menu Partisipasi tidak perlu untuk petugas meja: isinya sudah di Meja Izin.
+        $this->assertFalse(ParticipationPage::shouldRegisterNavigation());
     }
 
     public function test_go_to_booth_card_disappears_once_the_permit_ends(): void

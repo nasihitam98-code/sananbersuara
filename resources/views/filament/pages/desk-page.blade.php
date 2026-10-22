@@ -81,50 +81,70 @@
                 </div>
             </x-filament::section>
 
-            {{-- Cari pemilih --}}
-            <x-filament::section heading="Cari pemilih {{ $this->user()->unit?->name }}">
+            {{-- Daftar pemilih RT: langsung tampil, tab Belum/Sudah/Semua dengan jumlah; kotak cari hanya menyaring. --}}
+            @php($counts = $this->voterCounts())
+            @php($rows = $this->results())
+            @php($started = $election->status !== \App\Enums\ElectionStatus::Ready)
+            <x-filament::section heading="Pemilih {{ $this->user()->unit?->name }}">
+                <x-filament::tabs class="mb-3">
+                    <x-filament::tabs.item :active="$voterTab === 'belum'" wire:click="$set('voterTab', 'belum')">Belum memilih ({{ $counts['belum'] }})</x-filament::tabs.item>
+                    <x-filament::tabs.item :active="$voterTab === 'sudah'" wire:click="$set('voterTab', 'sudah')">Sudah memilih ({{ $counts['sudah'] }})</x-filament::tabs.item>
+                    <x-filament::tabs.item :active="$voterTab === 'semua'" wire:click="$set('voterTab', 'semua')">Semua ({{ $counts['semua'] }})</x-filament::tabs.item>
+                </x-filament::tabs>
+
                 <x-filament::input.wrapper>
-                    <x-filament::input type="search" wire:model.live.debounce.300ms="search" placeholder="Ketik minimal 2 huruf nama" class="text-lg" autofocus />
+                    <x-filament::input type="search" wire:model.live.debounce.300ms="search" placeholder="Saring nama…" class="text-lg" />
                 </x-filament::input.wrapper>
 
+                @if (! $started)
+                    <p class="mt-3 text-sm text-gray-500">Pemilihan belum dimulai. Tombol <strong>Izinkan Memilih</strong> muncul setelah Super Admin menekan Mulai.</p>
+                @endif
+
+                @if ($rows === [])
+                    <p class="mt-4 text-sm text-gray-500">{{ filled(trim($this->search)) ? 'Tidak ada nama yang cocok.' : match ($voterTab) { 'belum' => 'Semua pemilih sudah memilih.', 'sudah' => 'Belum ada yang memilih.', default => 'Belum ada pemilih di RT ini.' } }}</p>
+                @endif
+
                 <ul class="mt-4 divide-y divide-gray-200 dark:divide-white/10">
-                    @foreach ($this->results() as $row)
+                    @foreach ($rows as $row)
                         @php($voter = $row['voter'])
                         @php($status = $row['status'])
-                        @php($ballots = $election->ballots)
-                        @php($hasPending = in_array('BELUM', $status['ballots'], true))
-                        @php($eligibleAny = collect($status['ballots'])->contains(fn ($value) => $value !== 'TIDAK_BERHAK'))
                         <li class="flex flex-wrap items-center justify-between gap-3 py-3">
                             <div>
                                 <p class="text-lg font-bold">{{ $voter->name }}</p>
                                 <p class="text-sm text-gray-500">{{ collect([$voter->address, $voter->voter_number])->filter()->implode(' · ') }}</p>
-                                <p class="mt-1 flex flex-wrap gap-2 text-sm">
-                                    @foreach ($ballots as $ballot)
-                                        @php($value = $status['ballots'][$ballot->id] ?? 'TIDAK_BERHAK')
-                                        <x-filament::badge :color="match ($value) { 'SUDAH' => 'success', 'BELUM' => 'warning', default => 'gray' }">
-                                            {{ $ballot->title }}: {{ match ($value) { 'SUDAH' => '✓ Sudah', 'BELUM' => '○ Belum', default => '— Tidak berhak' } }}
-                                        </x-filament::badge>
-                                    @endforeach
-                                    @if (! $voter->is_active)
-                                        <x-filament::badge color="gray">Nonaktif</x-filament::badge>
-                                    @endif
-                                </p>
+                                @if ($started)
+                                    <p class="mt-1 flex flex-wrap gap-2 text-sm">
+                                        @foreach ($election->ballots as $ballot)
+                                            @php($value = $status['ballots'][$ballot->id] ?? 'TIDAK_BERHAK')
+                                            <x-filament::badge :color="match ($value) { 'SUDAH' => 'success', 'BELUM' => 'warning', default => 'gray' }">
+                                                {{ $ballot->title }}: {{ match ($value) { 'SUDAH' => '✓ Sudah', 'BELUM' => '○ Belum', default => '— Tidak berhak' } }}
+                                            </x-filament::badge>
+                                        @endforeach
+                                    </p>
+                                @endif
+                                @if (! $voter->is_active)
+                                    <x-filament::badge color="gray" class="mt-1">Nonaktif</x-filament::badge>
+                                @endif
                             </div>
                             <div class="flex items-center gap-2">
-                                @if ($status['permit'])
-                                    <x-filament::badge color="info" size="lg">Di {{ $status['permit']->device->name() }}</x-filament::badge>
-                                    @if ($desk)
-                                        @if (($this->cancelPermitAction)(['permit' => $status['permit']->public_id])->isVisible()) {{ ($this->cancelPermitAction)(['permit' => $status['permit']->public_id]) }} @endif
-                                    @endif
-                                @elseif (! $eligibleAny)
-                                    <x-filament::badge color="gray" size="lg">Tidak berhak di pemilihan ini</x-filament::badge>
-                                @elseif (! $hasPending)
-                                    <x-filament::badge color="success" size="lg">✓ Selesai memilih</x-filament::badge>
-                                @elseif ($desk && $election->status === \App\Enums\ElectionStatus::Berlangsung)
-                                    @if (($this->grantAction)(['voter' => $voter->public_id])->isVisible()) {{ ($this->grantAction)(['voter' => $voter->public_id]) }} @endif
-                                @else
-                                    <x-filament::badge color="gray">Izinkan tidak tersedia</x-filament::badge>
-                                @endif
+                                @switch ($row['state'])
+                                    @case ('di_bilik')
+                                        <x-filament::badge color="info" size="lg">Di {{ $status['permit']->device->name() }}</x-filament::badge>
+                                        @if ($desk && ($this->cancelPermitAction)(['permit' => $status['permit']->public_id])->isVisible()) {{ ($this->cancelPermitAction)(['permit' => $status['permit']->public_id]) }} @endif
+                                        @break
+                                    @case ('sudah')
+                                        <x-filament::badge color="success" size="lg">✓ Selesai memilih</x-filament::badge>
+                                        @break
+                                    @case ('tidak_berhak')
+                                        <x-filament::badge color="gray" size="lg">Tidak berhak di pemilihan ini</x-filament::badge>
+                                        @break
+                                    @default
+                                        @if ($desk && $election->status === \App\Enums\ElectionStatus::Berlangsung && ($this->grantAction)(['voter' => $voter->public_id])->isVisible())
+                                            {{ ($this->grantAction)(['voter' => $voter->public_id]) }}
+                                        @else
+                                            <x-filament::badge color="warning">○ Belum memilih</x-filament::badge>
+                                        @endif
+                                @endswitch
                             </div>
                         </li>
                     @endforeach

@@ -62,6 +62,12 @@ class DeskPage extends Page
 
     public string $search = '';
 
+    /** Tab daftar pemilih: belum (termasuk yang sedang di bilik), sudah, semua. */
+    public string $voterTab = 'belum';
+
+    /** @var array<int, array<string, mixed>>|null dihitung sekali per render */
+    private ?array $voterRowsCache = null;
+
     /**
      * Penugasan terakhir: "Silakan ke Bilik N".
      *
@@ -138,26 +144,79 @@ class DeskPage extends Page
     }
 
     /**
-     * @return array<int, array{voter: Voter, status: array{ballots: array<int, string>, permit: ?Permit}}>
+     * Pemilih RT pada tab yang dipilih, disaring nama bila kotak cari diisi.
+     *
+     * @return array<int, array{voter: Voter, status: array{ballots: array<int, string>, permit: ?Permit}, state: string}>
      */
     public function results(): array
     {
-        $election = $this->election();
+        $tab = in_array($this->voterTab, ['belum', 'sudah', 'semua'], true) ? $this->voterTab : 'belum';
 
-        if ($election === null || mb_strlen(trim($this->search)) < 2) {
-            return [];
+        return collect($this->voterRows())
+            ->filter(fn (array $row): bool => match ($tab) {
+                'belum' => in_array($row['state'], ['belum', 'di_bilik'], true),
+                'sudah' => $row['state'] === 'sudah',
+                default => true,
+            })
+            ->when(filled(trim($this->search)), fn ($rows) => $rows->filter(
+                fn (array $row): bool => str_contains($row['voter']->name_search, Attendee::normalizeForSearch($this->search)),
+            ))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Jumlah per tab (tanpa saringan nama).
+     *
+     * @return array{belum: int, sudah: int, semua: int}
+     */
+    public function voterCounts(): array
+    {
+        $rows = collect($this->voterRows());
+
+        return [
+            'belum' => $rows->whereIn('state', ['belum', 'di_bilik'])->count(),
+            'sudah' => $rows->where('state', 'sudah')->count(),
+            'semua' => $rows->count(),
+        ];
+    }
+
+    /**
+     * Semua pemilih RT sendiri dengan statusnya, langsung tampil tanpa harus mengetik (permintaan pemilik 2026-10-23).
+     * Sebelum dimulai daftar beku belum ada, jadi semua dianggap "belum".
+     *
+     * @return array<int, array{voter: Voter, status: array<string, mixed>, state: string}>
+     */
+    private function voterRows(): array
+    {
+        if ($this->voterRowsCache !== null) {
+            return $this->voterRowsCache;
         }
 
-        $voters = Voter::query()
-            ->where('unit_id', $this->user()->unit_id)
-            ->where('name_search', 'like', '%'.addcslashes(Attendee::normalizeForSearch($this->search), '%_\\').'%')
-            ->orderBy('name')
-            ->limit(20)
-            ->get();
+        $election = $this->election();
 
+        if ($election === null) {
+            return $this->voterRowsCache = [];
+        }
+
+        $voters = Voter::query()->where('unit_id', $this->user()->unit_id)->orderBy('name')->get();
         $statuses = app(PermitManager::class)->statuses($voters, $election);
+        $started = $election->status !== ElectionStatus::Ready;
 
-        return $voters->map(fn (Voter $voter): array => ['voter' => $voter, 'status' => $statuses[$voter->id]])->all();
+        return $this->voterRowsCache = $voters->map(function (Voter $voter) use ($statuses, $started): array {
+            $status = $statuses[$voter->id];
+            $ballots = collect($status['ballots']);
+
+            $state = match (true) {
+                $status['permit'] !== null => 'di_bilik',
+                ! $started => $voter->is_active ? 'belum' : 'tidak_berhak',
+                $ballots->every(fn (string $value): bool => $value === 'TIDAK_BERHAK') => 'tidak_berhak',
+                $ballots->contains('BELUM') => 'belum',
+                default => 'sudah',
+            };
+
+            return ['voter' => $voter, 'status' => $status, 'state' => $state];
+        })->all();
     }
 
     /**
