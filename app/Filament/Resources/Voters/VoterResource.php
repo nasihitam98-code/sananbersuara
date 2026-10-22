@@ -29,7 +29,6 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -86,6 +85,8 @@ class VoterResource extends Resource
                         Select::make('unit_id')
                             ->label('RT')
                             ->options(fn (): array => Unit::query()->orderBy('sort')->pluck('name', 'id')->all())
+                            // Dari tombol "Tambah pemilih RT 03" di tab RT: sudah terisi.
+                            ->default(fn (): ?int => filled(request()->query('rt')) ? Unit::query()->where('code', (string) request()->query('rt'))->value('id') : null)
                             ->required()
                             ->visible($user->isSuperAdmin())
                             ->disabledOn('edit')
@@ -147,9 +148,7 @@ class VoterResource extends Resource
                     ->tooltip(fn (Voter $record): ?string => $record->added_during_live ? 'Ditambah saat pemilihan berlangsung' : null),
             ])
             ->filters([
-                SelectFilter::make('unit_id')->label('RT')
-                    ->options(fn (): array => Unit::query()->orderBy('sort')->pluck('name', 'id')->all())
-                    ->visible($user->isSuperAdmin()),
+                // Saringan RT diganti tab per RT di atas tabel (ListVoters::getTabs).
                 TernaryFilter::make('is_active')->label('Status aktif'),
             ])
             ->recordActions([

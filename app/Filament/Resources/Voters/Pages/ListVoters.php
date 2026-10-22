@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Voters\Pages;
 use App\Filament\Resources\Voters\VoterResource;
 use App\Models\Unit;
 use App\Models\User;
+use App\Models\Voter;
 use App\Services\Voters\VoterImport;
 use App\Services\Voting\VotingException;
 use Filament\Actions\Action;
@@ -14,7 +15,9 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class ListVoters extends ListRecords
@@ -25,8 +28,49 @@ class ListVoters extends ListRecords
     {
         return [
             $this->bulkAddAction(),
-            CreateAction::make()->label('Tambah pemilih'),
+            // Tambah ke RT yang sedang dibuka (tab), agar tidak tercampur.
+            CreateAction::make()
+                ->label(fn (): string => ($unit = $this->activeUnit()) ? "Tambah pemilih {$unit->name}" : 'Tambah pemilih')
+                ->url(fn (): string => VoterResource::getUrl('create', array_filter(['rt' => $this->activeUnit()?->code]))),
         ];
+    }
+
+    /**
+     * Super Admin: satu tab per RT (dengan jumlah pemilih aktif) agar data tiap RT tidak tercampur; pilih RT dulu,
+     * lalu tambah/tempel nama untuk RT itu. Admin RT hanya melihat RT sendiri, jadi tanpa tab.
+     *
+     * @return array<string, Tab>
+     */
+    public function getTabs(): array
+    {
+        /** @var User $user */
+        $user = auth()->user();
+
+        if (! $user->isSuperAdmin()) {
+            return [];
+        }
+
+        $counts = Voter::query()->where('is_active', true)->selectRaw('unit_id, count(*) as total')->groupBy('unit_id')->pluck('total', 'unit_id');
+
+        return Unit::query()->orderBy('sort')->get()
+            ->mapWithKeys(fn (Unit $unit): array => [$unit->code => Tab::make($unit->name)
+                ->badge((int) ($counts[$unit->id] ?? 0))
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('unit_id', $unit->id))])
+            ->put('semua', Tab::make('Semua RT')->badge((int) $counts->sum()))
+            ->all();
+    }
+
+    public function getDefaultActiveTab(): string|int|null
+    {
+        return array_key_first($this->getCachedTabs());
+    }
+
+    /** RT dari tab yang sedang dibuka (null untuk "Semua RT" atau Admin RT). */
+    private function activeUnit(): ?Unit
+    {
+        return filled($this->activeTab) && $this->activeTab !== 'semua'
+            ? Unit::query()->where('code', $this->activeTab)->first()
+            : null;
     }
 
     /**
@@ -53,6 +97,8 @@ class ListVoters extends ListRecords
                     ->label('RT untuk baris tanpa RT (opsional)')
                     ->options(fn (): array => Unit::query()->orderBy('sort')->pluck('name', 'id')->all())
                     ->placeholder('Kosong (RT ditulis per baris)')
+                    // Bawaan: RT dari tab yang sedang dibuka, jadi cukup tempel nama.
+                    ->default(fn (): ?int => $this->activeUnit()?->id)
                     ->visible($user->isSuperAdmin()),
                 Textarea::make('names')
                     ->label('Daftar pemilih')

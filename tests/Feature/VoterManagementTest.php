@@ -81,6 +81,28 @@ class VoterManagementTest extends TestCase
         $this->assertSame('', Voter::query()->where('name', 'Ojan')->sole()->address);
     }
 
+    public function test_voters_are_listed_per_rt_and_new_ones_go_to_the_open_rt(): void
+    {
+        $this->actingAs($this->superAdmin);
+        Voter::factory()->for($this->rt03)->create(['name' => 'Warga Tiga']);
+        Voter::factory()->for($this->rt04)->create(['name' => 'Warga Empat']);
+
+        // Tab per RT (tidak tercampur); tombol Tambah mengikuti RT yang dibuka.
+        Livewire::test(ListVoters::class)
+            ->set('activeTab', '03')
+            ->assertSee('Warga Tiga')
+            ->assertDontSee('Warga Empat')
+            ->assertActionHasLabel('create', 'Tambah pemilih RT 03')
+            ->assertActionHasUrl('create', VoterResource::getUrl('create', ['rt' => '03']))
+            ->callAction('bulkAdd', ['names' => 'Tempel Satu'])
+            ->assertNotified('1 pemilih ditambahkan.');
+
+        $this->assertSame($this->rt03->id, Voter::query()->where('name', 'Tempel Satu')->sole()->unit_id);
+
+        $this->get(VoterResource::getUrl('create', ['rt' => '04']))->assertOk();
+        Livewire::withQueryParams(['rt' => '04'])->test(CreateVoter::class)->assertFormSet(['unit_id' => $this->rt04->id]);
+    }
+
     public function test_many_voters_can_be_pasted_with_their_rt(): void
     {
         $this->actingAs($this->superAdmin);
