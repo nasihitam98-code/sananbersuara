@@ -26,7 +26,8 @@ use Illuminate\Support\Str;
 /**
  * Koreksi suara Mode Resmi (bagian 8, K16, K17):
  * - diajukan Admin RT (RT sendiri) atau Super Admin, diputuskan Super Admin
- * - akun yang memberi izin untuk suara itu tidak boleh menjadi pengaju maupun penyetuju
+ * - akun yang memberi izin untuk suara itu boleh mengajukan (satu akun per RT memberi semua izin di TPS-nya; diubah
+ *   pemilik 2026-10-23), tetapi tidak boleh menyetujui: keputusan tetap di orang kedua (Super Admin)
  * - suara lama berstatus DIBATALKAN (tidak dihapus); pilihan tidak pernah ditampilkan
  * - selama berlangsung pemilih bisa diizinkan memilih ulang; setelah ditutup hanya pembatalan
  */
@@ -58,10 +59,6 @@ class CorrectionService
 
         if ($vote === null) {
             throw VotingException::invalidState('Pemilih ini tidak punya suara sah pada surat suara tersebut.');
-        }
-
-        if ($this->granterOf($vote) === $actor->id) {
-            throw VotingException::invalidState('Petugas yang memberi izin untuk suara ini tidak boleh mengajukan pembatalannya (K17). Minta Admin RT lain atau Super Admin.');
         }
 
         try {

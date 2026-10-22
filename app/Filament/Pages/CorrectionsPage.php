@@ -45,9 +45,13 @@ class CorrectionsPage extends Page
 
     protected static ?int $navigationSort = 4;
 
+    /**
+     * Petugas Meja Izin mengajukan koreksi langsung dari baris pemilih di Meja Izin, jadi menu ini tidak ditampilkan
+     * untuk mereka (halamannya tetap bisa dibuka). Super Admin memutuskan di sini.
+     */
     public static function shouldRegisterNavigation(): bool
     {
-        return Workspace::shows(ElectionMode::Resmi);
+        return Workspace::shows(ElectionMode::Resmi) && ! DeskPage::canAccess();
     }
 
     public string $search = '';

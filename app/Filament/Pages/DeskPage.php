@@ -2,6 +2,8 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\CorrectionReason;
+use App\Enums\CorrectionStatus;
 use App\Enums\DeviceKind;
 use App\Enums\DeviceReleaseReason;
 use App\Enums\ElectionMode;
@@ -20,7 +22,9 @@ use App\Models\Permit;
 use App\Models\TpsPause;
 use App\Models\User;
 use App\Models\Vote;
+use App\Models\VoteCorrection;
 use App\Models\Voter;
+use App\Services\Corrections\CorrectionService;
 use App\Services\Devices\DeviceManager;
 use App\Services\Permits\PermitManager;
 use App\Services\Permits\TpsPauseService;
@@ -190,7 +194,7 @@ class DeskPage extends Page
      * Semua pemilih RT sendiri dengan statusnya, langsung tampil tanpa harus mengetik (permintaan pemilik 2026-10-23).
      * Sebelum dimulai daftar beku belum ada, jadi semua dianggap "belum".
      *
-     * @return array<int, array{voter: Voter, status: array<string, mixed>, state: string}>
+     * @return array<int, array{voter: Voter, status: array<string, mixed>, state: string, correction_pending: bool}>
      */
     private function voterRows(): array
     {
@@ -207,8 +211,14 @@ class DeskPage extends Page
         $voters = Voter::query()->where('unit_id', $this->user()->unit_id)->orderBy('name')->get();
         $statuses = app(PermitManager::class)->statuses($voters, $election);
         $started = $election->status !== ElectionStatus::Ready;
+        $pendingCorrections = VoteCorrection::query()
+            ->where('election_id', $election->id)
+            ->where('status', CorrectionStatus::Diajukan)
+            ->whereIn('voter_id', $voters->modelKeys())
+            ->pluck('voter_id')
+            ->flip();
 
-        return $this->voterRowsCache = $voters->map(function (Voter $voter) use ($statuses, $started): array {
+        return $this->voterRowsCache = $voters->map(function (Voter $voter) use ($statuses, $started, $pendingCorrections): array {
             $status = $statuses[$voter->id];
             $ballots = collect($status['ballots']);
 
@@ -220,7 +230,7 @@ class DeskPage extends Page
                 default => 'sudah',
             };
 
-            return ['voter' => $voter, 'status' => $status, 'state' => $state];
+            return ['voter' => $voter, 'status' => $status, 'state' => $state, 'correction_pending' => $pendingCorrections->has($voter->id)];
         })->all();
     }
 
@@ -321,6 +331,81 @@ class DeskPage extends Page
                 $this->voterTab = 'belum';
                 Notification::make()->title("{$voter->name} ditambahkan. Silakan izinkan memilih.")->success()->send();
             });
+    }
+
+    /**
+     * Koreksi suara langsung dari baris pemilih (tab Sudah memilih): Admin RT mengajukan, Super Admin memutuskan
+     * (orang kedua). Setelah disetujui suara berstatus dibatalkan dan pemilih kembali ke "Belum memilih".
+     */
+    public function requestCorrectionAction(): Action
+    {
+        return Action::make('requestCorrection')
+            ->label('Ajukan koreksi')
+            ->color('gray')
+            ->size('sm')
+            ->visible(fn (): bool => in_array($this->election()?->status, [ElectionStatus::Berlangsung, ElectionStatus::Paused], true))
+            ->modalHeading(fn (array $arguments): string => 'Ajukan koreksi suara '.($this->voterFromArguments($arguments)?->name ?? ''))
+            ->modalDescription('Untuk suara bermasalah, mis. izin salah orang atau pemilih dipaksa. Super Admin yang memutuskan; bila disetujui, suara dibatalkan (tidak dihapus) dan pemilih bisa diizinkan memilih ulang. Pilihan calon tidak pernah ditampilkan.')
+            ->modalSubmitActionLabel('Ajukan ke Super Admin')
+            ->schema(fn (array $arguments): array => [
+                Select::make('ballot')
+                    ->label('Surat suara')
+                    ->options(fn (): array => $this->votedBallotOptions($arguments))
+                    ->default(fn (): ?int => count($this->votedBallotOptions($arguments)) === 1 ? array_key_first($this->votedBallotOptions($arguments)) : null)
+                    ->required(),
+                Select::make('reason')->label('Alasan')->options(CorrectionReason::class)->required(),
+                Textarea::make('note')->label('Catatan (wajib bila alasan "Lainnya")')->maxLength(500),
+            ])
+            ->action(function (array $data, array $arguments, Action $action): void {
+                $election = $this->election();
+                $voter = $this->voterFromArguments($arguments);
+                $ballot = $election?->ballots()->whereKey($data['ballot'] ?? 0)->first();
+
+                if ($election === null || $voter === null || $ballot === null) {
+                    return;
+                }
+
+                try {
+                    app(CorrectionService::class)->request(
+                        $election,
+                        $voter,
+                        $ballot,
+                        $data['reason'] instanceof CorrectionReason ? $data['reason'] : CorrectionReason::from((string) $data['reason']),
+                        $data['note'] ?? null,
+                        $this->user(),
+                    );
+                } catch (VotingException $exception) {
+                    Notification::make()->title($exception->getMessage())->danger()->send();
+                    $action->halt();
+
+                    return;
+                }
+
+                Notification::make()->title("Koreksi {$voter->name} ({$ballot->title}) diajukan. Menunggu keputusan Super Admin.")->success()->send();
+            });
+    }
+
+    /**
+     * Surat suara yang sudah dipilih orang ini (yang bisa dikoreksi).
+     *
+     * @param  array<string, mixed>  $arguments
+     * @return array<int, string>
+     */
+    private function votedBallotOptions(array $arguments): array
+    {
+        $election = $this->election();
+        $voter = $this->voterFromArguments($arguments);
+
+        if ($election === null || $voter === null) {
+            return [];
+        }
+
+        $status = app(PermitManager::class)->statuses($voter->newCollection([$voter]), $election)[$voter->id];
+
+        return $election->ballots()->get()
+            ->filter(fn ($ballot): bool => ($status['ballots'][$ballot->id] ?? null) === 'SUDAH')
+            ->mapWithKeys(fn ($ballot): array => [$ballot->id => $ballot->title])
+            ->all();
     }
 
     public function cancelPermitAction(): Action

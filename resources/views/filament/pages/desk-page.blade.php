@@ -148,6 +148,13 @@
                                             <x-filament::badge color="warning">○ Belum memilih</x-filament::badge>
                                         @endif
                                 @endswitch
+
+                                {{-- Koreksi suara: diajukan dari sini, diputuskan Super Admin. --}}
+                                @if ($row['correction_pending'])
+                                    <x-filament::badge color="warning" icon="heroicon-o-clock">Koreksi menunggu Super Admin</x-filament::badge>
+                                @elseif (in_array('SUDAH', $status['ballots'], true) && ($this->requestCorrectionAction)(['voter' => $voter->public_id])->isVisible())
+                                    {{ ($this->requestCorrectionAction)(['voter' => $voter->public_id]) }}
+                                @endif
                             </div>
                         </li>
                     @endforeach

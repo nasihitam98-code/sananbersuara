@@ -10,6 +10,7 @@ use App\Enums\ElectionMode;
 use App\Enums\OutcomeStatus;
 use App\Enums\VoteStatus;
 use App\Filament\Pages\CorrectionsPage;
+use App\Filament\Pages\DeskPage;
 use App\Filament\Pages\ParticipationPage;
 use App\Filament\Pages\ResultScreen;
 use App\Filament\Pages\VoteDetailPage;
@@ -23,6 +24,7 @@ use App\Models\Permit;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Vote;
+use App\Models\VoteCorrection;
 use App\Models\Voter;
 use App\Services\Corrections\CorrectionService;
 use App\Services\Devices\DeviceManager;
@@ -33,7 +35,6 @@ use App\Services\Results\OfficialReportService;
 use App\Services\Results\ResultPublication;
 use App\Services\Voting\ElectionLifecycle;
 use App\Services\Voting\ResultsCalculator;
-use App\Services\Voting\VotingException;
 use Database\Seeders\DatabaseSeeder;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
@@ -188,19 +189,13 @@ class ResmiResultsTest extends TestCase
         Livewire::test(ParticipationPage::class)->call('showUnit', $this->rt04->id)->assertForbidden();
     }
 
-    public function test_correction_flow_respects_k17_and_allows_revote_while_live(): void
+    public function test_desk_officer_requests_super_admin_decides_and_voter_may_revote_while_live(): void
     {
         $service = app(CorrectionService::class);
         $voter = Voter::query()->where('unit_id', $this->rt03->id)->first();
 
-        try {
-            $service->request($this->election, $voter, $this->rwBallot, CorrectionReason::SalahOrang, null, $this->deskRt03);
-            $this->fail('Pemberi izin tidak boleh mengajukan (K17).');
-        } catch (VotingException $exception) {
-            $this->assertStringContainsString('K17', $exception->getMessage());
-        }
-
-        $correction = $service->request($this->election, $voter, $this->rwBallot, CorrectionReason::SalahOrang, null, $this->adminRt03);
+        // Satu akun per RT memberi semua izin, jadi pemberi izin boleh mengajukan; yang memutuskan tetap Super Admin.
+        $correction = $service->request($this->election, $voter, $this->rwBallot, CorrectionReason::SalahOrang, null, $this->deskRt03);
         $this->assertSame(CorrectionStatus::Diajukan, $correction->status);
         $this->assertTrue($this->secondSuperAdmin->notifications()->exists() || $this->superAdmin->notifications()->exists());
 
@@ -215,6 +210,26 @@ class ResmiResultsTest extends TestCase
 
         $this->assertSame(1, Vote::query()->where('voter_id', $voter->id)->where('ballot_id', $this->rwBallot->id)->where('status', VoteStatus::Sah)->count());
         $this->assertSame(1, Vote::query()->where('voter_id', $voter->id)->where('ballot_id', $this->rtBallot->id)->count(), 'Surat suara RT tidak diulang');
+    }
+
+    public function test_correction_is_requested_from_the_voted_row_at_the_desk(): void
+    {
+        $voter = Voter::query()->where('unit_id', $this->rt03->id)->first();
+        $this->actingAs($this->deskRt03);
+
+        Livewire::test(DeskPage::class)
+            ->set('voterTab', 'sudah')
+            ->assertSee($voter->name)
+            ->callAction(TestAction::make('requestCorrection')->arguments(['voter' => $voter->public_id]), [
+                'ballot' => $this->rwBallot->id,
+                'reason' => CorrectionReason::SalahOrang->value,
+            ])
+            ->assertNotified("Koreksi {$voter->name} ({$this->rwBallot->title}) diajukan. Menunggu keputusan Super Admin.")
+            ->assertSee('Koreksi menunggu Super Admin');
+
+        $this->assertSame(CorrectionStatus::Diajukan, VoteCorrection::query()->where('voter_id', $voter->id)->sole()->status);
+        // Menu Koreksi Suara tidak perlu untuk petugas meja: tombolnya ada di Meja Izin.
+        $this->assertFalse(CorrectionsPage::shouldRegisterNavigation());
     }
 
     public function test_admin_rt_cannot_request_correction_for_another_rt(): void
