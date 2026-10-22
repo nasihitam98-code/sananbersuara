@@ -134,10 +134,17 @@ class VoterResource extends Resource
                 TextColumn::make('voter_number')->label('ID')->searchable()->fontFamily('mono'),
                 TextColumn::make('name')->label('Nama')->searchable(query: fn (Builder $query, string $search): Builder => $query->where('name_search', 'like', '%'.addcslashes(mb_strtolower($search), '%_\\').'%'))->weight('bold'),
                 TextColumn::make('unit.name')->label('RT')->sortable(),
-                TextColumn::make('address')->label('Alamat')->limit(30)->placeholder('-'),
-                TextColumn::make('nik_last4')->label('NIK')->formatStateUsing(fn (Voter $record): string => $record->maskedNik())->placeholder('-'),
+                // Form Buat cukup nama + RT, jadi alamat/NIK biasanya kosong: disembunyikan, bisa dimunculkan dari ikon kolom.
+                TextColumn::make('address')->label('Alamat')->limit(30)->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('nik_last4')->label('NIK')->formatStateUsing(fn (Voter $record): string => $record->maskedNik())->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('is_active')->label('Aktif')->boolean(),
-                IconColumn::make('added_during_live')->label('Darurat')->boolean()->trueColor('warning'),
+                // Hanya yang ditambah saat pemilihan berlangsung diberi label; lainnya kosong (bukan ❌ merah yang terlihat seperti galat).
+                TextColumn::make('emergency')
+                    ->label('Darurat')
+                    ->state(fn (Voter $record): ?string => $record->added_during_live ? 'Darurat' : null)
+                    ->badge()
+                    ->color('warning')
+                    ->tooltip(fn (Voter $record): ?string => $record->added_during_live ? 'Ditambah saat pemilihan berlangsung' : null),
             ])
             ->filters([
                 SelectFilter::make('unit_id')->label('RT')
