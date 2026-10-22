@@ -81,7 +81,11 @@ class CandidateBulkImporter
     }
 
     /**
-     * @param  ?int  $defaultOriginUnitId  asal RT untuk baris yang tidak menulis RT sendiri
+     * Surat suara per RT: RT calon diambil dari tiap baris ("Nama | RT 03"), atau dari RT yang dipilih untuk baris
+     * tanpa RT. Jadi calon Ketua RT semua RT bisa ditempel sekaligus; nomor urut dihitung per RT.
+     *
+     * @param  ?int  $unitId  RT calon untuk baris yang tidak menulis RT (surat suara per RT)
+     * @param  ?int  $defaultOriginUnitId  asal RT untuk baris yang tidak menulis RT sendiri (surat suara bukan per RT)
      * @return int jumlah calon yang ditambahkan
      */
     public function import(Ballot $ballot, ?int $unitId, string $text, User $actor, ?int $defaultOriginUnitId = null): int
@@ -90,73 +94,46 @@ class CandidateBulkImporter
         $this->assertEditable($ballot);
 
         $perUnit = $ballot->scope === BallotScope::PerRt;
-
-        if ($perUnit && $unitId === null) {
-            throw VotingException::invalidState('Pilih RT dulu: surat suara ini per RT.');
-        }
-
-        $unitId = $perUnit ? $unitId : null;
         $rows = $this->parse($text);
 
         if ($rows === []) {
             throw VotingException::invalidState('Belum ada nama. Tempel satu nama calon per baris.');
         }
 
-        $units = Unit::query()->get(['id', 'code']);
+        $units = Unit::query()->get(['id', 'code', 'name']);
+        $problems = [];
+        $groups = [];
 
-        return DB::transaction(function () use ($ballot, $unitId, $rows, $perUnit, $units, $defaultOriginUnitId): int {
-            $current = Candidate::query()
-                ->where('ballot_id', $ballot->id)
-                ->where('unit_id', $unitId)
-                ->lockForUpdate()
-                ->get(['number', 'name']);
+        foreach ($rows as $row) {
+            $rowUnitId = $perUnit ? $unitId : null;
 
-            $existing = $current->pluck('number')->all();
-            $used = array_flip($existing);
-            // Inti nama (tanpa sapaan/gelar) → keterangan untuk pesan kembar.
-            $names = $current->mapWithKeys(fn (Candidate $candidate): array => [
-                Candidate::coreName($candidate->name) => "sama/mirip dengan \"{$candidate->name}\" (nomor {$candidate->displayNumber()})",
-            ])->all();
-            $next = ($existing === [] ? 0 : max($existing)) + 1;
-            $problems = [];
-            $prepared = [];
+            if ($perUnit && $row['rt'] !== null) {
+                $rowUnitId = $this->resolveUnitId($row['rt'], $units);
 
-            foreach ($rows as $row) {
-                $number = $row['number'] ?? $next;
+                if ($rowUnitId === null) {
+                    $problems[] = "baris {$row['line']}: RT \"{$row['rt']}\" tidak dikenal";
 
-                while ($row['number'] === null && isset($used[$number])) {
-                    $number++;
+                    continue;
                 }
-
-                if ($row['name'] === '' || mb_strlen($row['name']) > 120) {
-                    $problems[] = "baris {$row['line']}: nama kosong atau lebih dari 120 huruf";
-                } elseif ($number < 1 || $number > 999) {
-                    $problems[] = "baris {$row['line']}: nomor {$number} tidak valid";
-                } elseif (isset($used[$number])) {
-                    $problems[] = "baris {$row['line']}: nomor {$number} sudah dipakai";
-                } elseif (isset($names[Candidate::coreName($row['name'])])) {
-                    $problems[] = "baris {$row['line']}: nama \"{$row['name']}\" ".$names[Candidate::coreName($row['name'])];
-                }
-
-                // Asal RT hanya untuk surat suara yang bukan per RT (mis. calon RW).
-                $originUnitId = $perUnit ? null : $defaultOriginUnitId;
-
-                if ($row['rt'] !== null && ! $perUnit) {
-                    $originUnitId = $this->resolveUnitId($row['rt'], $units);
-
-                    if ($originUnitId === null) {
-                        $problems[] = "baris {$row['line']}: RT \"{$row['rt']}\" tidak dikenal";
-                    }
-                }
-
-                $names[Candidate::coreName($row['name'])] ??= "sama/mirip dengan baris {$row['line']}";
-                $used[$number] = true;
-                $next = max($next, $number + 1);
-                $prepared[] = ['number' => $number, 'name' => $row['name'], 'origin_unit_id' => $originUnitId];
             }
 
-            if ($ballot->max_candidates !== null && count($existing) + count($prepared) > $ballot->max_candidates) {
-                $problems[] = "melebihi batas {$ballot->max_candidates} calon (sudah ada ".count($existing).', ditambah '.count($prepared).')';
+            if ($perUnit && $rowUnitId === null) {
+                $problems[] = "baris {$row['line']}: tulis RT-nya (mis. \"{$row['name']} | RT 03\") atau pilih RT calon di atas";
+
+                continue;
+            }
+
+            $groups[$rowUnitId ?? 0][] = $row;
+        }
+
+        return DB::transaction(function () use ($ballot, $groups, $perUnit, $units, $defaultOriginUnitId, $problems): int {
+            $prepared = [];
+
+            foreach ($groups as $groupUnitId => $groupRows) {
+                $unit = $perUnit ? $units->firstWhere('id', $groupUnitId) : null;
+                [$groupPrepared, $groupProblems] = $this->prepareGroup($ballot, $unit, $groupRows, $perUnit, $units, $defaultOriginUnitId);
+                $prepared = [...$prepared, ...$groupPrepared];
+                $problems = [...$problems, ...$groupProblems];
             }
 
             if ($problems !== []) {
@@ -168,17 +145,87 @@ class CandidateBulkImporter
                     'number' => $item['number'],
                     'name' => $item['name'],
                     'status' => CandidateStatus::Aktif,
-                    'unit_id' => $unitId,
+                    'unit_id' => $item['unit_id'],
                     'origin_unit_id' => $item['origin_unit_id'],
                 ]);
                 $candidate->ballot()->associate($ballot);
                 $candidate->save();
 
-                $this->audit->log('candidate.created', $candidate, $ballot->election, meta: $candidate->only(['number', 'name', 'status', 'origin_unit_id']) + ['via' => 'bulk']);
+                $this->audit->log('candidate.created', $candidate, $ballot->election, meta: $candidate->only(['number', 'name', 'status', 'unit_id', 'origin_unit_id']) + ['via' => 'bulk']);
             }
 
             return count($prepared);
         });
+    }
+
+    /**
+     * Periksa baris untuk satu kelompok (satu RT pada surat suara per RT, atau seluruh surat suara): nomor urut,
+     * nama kembar, dan batas calon.
+     *
+     * @param  array<int, array{line: int, number: ?int, name: string, rt: ?string}>  $rows
+     * @param  Collection<int, Unit>  $units
+     * @return array{0: array<int, array{number: int, name: string, unit_id: ?int, origin_unit_id: ?int}>, 1: array<int, string>}
+     */
+    private function prepareGroup(Ballot $ballot, ?Unit $unit, array $rows, bool $perUnit, Collection $units, ?int $defaultOriginUnitId): array
+    {
+        $unitId = $unit?->id;
+        $where = $unit !== null ? " ({$unit->name})" : '';
+
+        $current = Candidate::query()
+            ->where('ballot_id', $ballot->id)
+            ->where('unit_id', $unitId)
+            ->lockForUpdate()
+            ->get(['number', 'name']);
+
+        $existing = $current->pluck('number')->all();
+        $used = array_flip($existing);
+        // Inti nama (tanpa sapaan/gelar) → keterangan untuk pesan kembar.
+        $names = $current->mapWithKeys(fn (Candidate $candidate): array => [
+            Candidate::coreName($candidate->name) => "sama/mirip dengan \"{$candidate->name}\" (nomor {$candidate->displayNumber()})",
+        ])->all();
+        $next = ($existing === [] ? 0 : max($existing)) + 1;
+        $problems = [];
+        $prepared = [];
+
+        foreach ($rows as $row) {
+            $number = $row['number'] ?? $next;
+
+            while ($row['number'] === null && isset($used[$number])) {
+                $number++;
+            }
+
+            if ($row['name'] === '' || mb_strlen($row['name']) > 120) {
+                $problems[] = "baris {$row['line']}: nama kosong atau lebih dari 120 huruf";
+            } elseif ($number < 1 || $number > 999) {
+                $problems[] = "baris {$row['line']}: nomor {$number} tidak valid";
+            } elseif (isset($used[$number])) {
+                $problems[] = "baris {$row['line']}: nomor {$number} sudah dipakai{$where}";
+            } elseif (isset($names[Candidate::coreName($row['name'])])) {
+                $problems[] = "baris {$row['line']}: nama \"{$row['name']}\" ".$names[Candidate::coreName($row['name'])];
+            }
+
+            // Asal RT hanya untuk surat suara yang bukan per RT (mis. calon RW).
+            $originUnitId = $perUnit ? null : $defaultOriginUnitId;
+
+            if ($row['rt'] !== null && ! $perUnit) {
+                $originUnitId = $this->resolveUnitId($row['rt'], $units);
+
+                if ($originUnitId === null) {
+                    $problems[] = "baris {$row['line']}: RT \"{$row['rt']}\" tidak dikenal";
+                }
+            }
+
+            $names[Candidate::coreName($row['name'])] ??= "sama/mirip dengan baris {$row['line']}";
+            $used[$number] = true;
+            $next = max($next, $number + 1);
+            $prepared[] = ['number' => $number, 'name' => $row['name'], 'unit_id' => $unitId, 'origin_unit_id' => $originUnitId];
+        }
+
+        if ($ballot->max_candidates !== null && count($existing) + count($prepared) > $ballot->max_candidates) {
+            $problems[] = "melebihi batas {$ballot->max_candidates} calon{$where} (sudah ada ".count($existing).', ditambah '.count($prepared).')';
+        }
+
+        return [$prepared, $problems];
     }
 
     /**

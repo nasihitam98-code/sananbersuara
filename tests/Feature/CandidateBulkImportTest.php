@@ -120,9 +120,38 @@ class CandidateBulkImportTest extends TestCase
             $this->assertStringContainsString('RT "RT 77" tidak dikenal', $exception->getMessage());
         }
 
+        // Surat suara per RT: RT di baris menentukan RT calon (bukan asal RT), mengalahkan RT yang dipilih.
         $perRt = Ballot::factory()->for(Election::factory())->create(['scope' => BallotScope::PerRt]);
         $this->importer()->import($perRt, $rt03->id, 'Calon RT | RT 05', $this->superAdmin);
-        $this->assertNull($perRt->candidates()->firstOrFail()->origin_unit_id, 'Surat suara per RT tidak memakai asal RT');
+        $candidate = $perRt->candidates()->firstOrFail();
+        $this->assertNull($candidate->origin_unit_id, 'Surat suara per RT tidak memakai asal RT');
+        $this->assertSame('05', $candidate->unit->code);
+    }
+
+    public function test_rt_candidates_of_several_rts_can_be_pasted_at_once(): void
+    {
+        $perRt = Ballot::factory()->for(Election::factory())->create(['scope' => BallotScope::PerRt]);
+        $rt01 = Unit::query()->where('code', '01')->firstOrFail();
+
+        $count = $this->importer()->import($perRt, null, "Budi | RT 01\nSiti | RT 01\nAgus | RT 2\nDewi | 02", $this->superAdmin);
+
+        $this->assertSame(4, $count);
+        // Nomor urut dihitung per RT.
+        $this->assertSame(
+            ['01' => [1, 2], '02' => [1, 2]],
+            $perRt->candidates()->with('unit')->get()->groupBy(fn (Candidate $candidate): string => $candidate->unit->code)->map(fn ($group) => $group->pluck('number')->sort()->values()->all())->sortKeys()->all(),
+        );
+
+        // Baris tanpa RT memakai RT yang dipilih; tanpa pilihan RT ditolak dengan petunjuk.
+        $this->importer()->import($perRt, $rt01->id, 'Joko', $this->superAdmin);
+        $this->assertSame(3, $perRt->candidates()->where('unit_id', $rt01->id)->count());
+
+        try {
+            $this->importer()->import($perRt, null, 'Tanpa RT', $this->superAdmin);
+            $this->fail('Baris tanpa RT harus ditolak bila RT calon tidak dipilih.');
+        } catch (VotingException $exception) {
+            $this->assertStringContainsString('tulis RT-nya', $exception->getMessage());
+        }
     }
 
     public function test_names_with_or_without_honorifics_count_as_the_same_person(): void
@@ -194,7 +223,7 @@ class CandidateBulkImportTest extends TestCase
             $this->importer()->import($perRt, null, 'Calon RT', $this->superAdmin);
             $this->fail('Surat suara per RT butuh RT.');
         } catch (VotingException $exception) {
-            $this->assertStringContainsString('per RT', $exception->getMessage());
+            $this->assertStringContainsString('tulis RT-nya', $exception->getMessage());
         }
 
         $this->assertSame(1, $this->importer()->import($perRt, Unit::query()->firstOrFail()->id, 'Calon RT', $this->superAdmin));

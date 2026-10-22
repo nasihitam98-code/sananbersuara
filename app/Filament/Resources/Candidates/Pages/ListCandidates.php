@@ -35,7 +35,7 @@ class ListCandidates extends ListRecords
                 ->modalDescription('Tempel daftar calon, satu calon per baris (bisa disalin dari Excel, WhatsApp, atau Word). Nomor urut otomatis. Nama yang sama/mirip dengan calon lain ditolak.')
                 ->modalSubmitActionLabel('Simpan semua')
                 ->schema([
-                    ...$this->ballotFields(),
+                    ...$this->ballotFields(rtPerLine: true),
                     Select::make('default_origin_unit_id')
                         ->label('Semua calon dari RT yang sama? (opsional)')
                         ->helperText('Pilih RT hanya bila semua calon di daftar berasal dari RT yang sama. Bila RT-nya beda-beda, biarkan kosong dan tulis RT di tiap baris, mis. Budi Santoso | RT 03.')
@@ -124,8 +124,21 @@ class ListCandidates extends ListRecords
      *
      * @return array<int, Select>
      */
-    private function ballotFields(): array
+    private function ballotFields(bool $rtPerLine = false): array
     {
+        // Tambah banyak calon: RT boleh ditulis per baris, jadi pilihan RT hanya bawaan untuk baris tanpa RT.
+        if ($rtPerLine) {
+            return [
+                ...array_slice($this->ballotFields(), 0, 1),
+                Select::make('unit_id')
+                    ->label('RT calon (bila semua dari RT yang sama)')
+                    ->helperText('Boleh dikosongkan bila RT ditulis di tiap baris, mis. "Budi Santoso | RT 03". Dengan begitu calon Ketua RT semua RT bisa ditempel sekaligus.')
+                    ->placeholder('Kosong (RT ditulis per baris)')
+                    ->options(fn (): array => Unit::query()->orderBy('sort')->pluck('name', 'id')->all())
+                    ->visible(fn (Get $get): bool => CandidateResource::ballotIsPerUnit($get('ballot_id'))),
+            ];
+        }
+
         return [
             Select::make('ballot_id')
                 ->label('Surat suara')
