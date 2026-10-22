@@ -222,18 +222,19 @@ class ResmiResultsTest extends TestCase
         Livewire::test(DeskPage::class)
             ->set('voterTab', 'sudah')
             ->assertSee($voter->name)
-            ->callAction(TestAction::make('requestCorrection')->arguments(['voter' => $voter->public_id]), [
-                'ballot' => $this->rwBallot->id,
-                'reason' => CorrectionReason::SalahOrang->value,
-            ])
-            ->assertNotified("Suara {$this->rwBallot->title} {$voter->name} dibatalkan. Silakan izinkan memilih ulang.")
+            // Bawaan: semua surat suara yang sudah dipilih orang itu (RT dan RW) tercentang.
+            ->mountAction(TestAction::make('requestCorrection')->arguments(['voter' => $voter->public_id]))
+            ->assertActionDataSet(['ballots' => [$this->rtBallot->id, $this->rwBallot->id]])
+            ->setActionData(['reason' => CorrectionReason::SalahOrang->value])
+            ->callMountedAction()
+            ->assertHasNoActionErrors()
             ->set('voterTab', 'belum')
             ->assertSee($voter->name);
 
-        $correction = VoteCorrection::query()->where('voter_id', $voter->id)->sole();
-        $this->assertSame(CorrectionStatus::Disetujui, $correction->status);
-        $this->assertSame($this->deskRt03->id, $correction->decided_by);
-        $this->assertSame(1, Vote::query()->where('voter_id', $voter->id)->where('ballot_id', $this->rwBallot->id)->where('status', VoteStatus::Dibatalkan)->count());
+        $corrections = VoteCorrection::query()->where('voter_id', $voter->id)->get();
+        $this->assertCount(2, $corrections);
+        $this->assertTrue($corrections->every(fn (VoteCorrection $correction): bool => $correction->status === CorrectionStatus::Disetujui && $correction->decided_by === $this->deskRt03->id));
+        $this->assertSame(2, Vote::query()->where('voter_id', $voter->id)->where('status', VoteStatus::Dibatalkan)->count());
         $this->assertTrue($this->superAdmin->notifications()->exists(), 'Super Admin diberi tahu sesudahnya');
         $this->assertTrue(AuditLog::query()->where('action', 'correction.approved')->exists());
 

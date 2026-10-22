@@ -35,6 +35,7 @@ use App\Services\Voting\VotingException;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -267,7 +268,7 @@ class DeskPage extends Page
             ->size('lg')
             ->requiresConfirmation()
             ->modalHeading(fn (array $arguments): string => 'Izinkan '.($this->voterFromArguments($arguments)?->name ?? '').' memilih?')
-            ->modalDescription(fn (array $arguments): string => 'Pastikan orangnya sesuai (wajah/KTP). Alamat: '.(filled($this->voterFromArguments($arguments)?->address) ? $this->voterFromArguments($arguments)->address : '-'))
+            ->modalDescription(fn (array $arguments): string => 'Pastikan orangnya benar.'.(filled($this->voterFromArguments($arguments)?->address) ? ' Alamat: '.$this->voterFromArguments($arguments)->address.'.' : ''))
             ->modalSubmitActionLabel('Ya, izinkan')
             ->action(function (array $arguments): void {
                 $voter = $this->voterFromArguments($arguments);
@@ -348,40 +349,45 @@ class DeskPage extends Page
             ->modalDescription('Untuk suara bermasalah, mis. izin salah orang atau pemilih dipaksa. Suara surat suara yang dipilih langsung dibatalkan (tidak dihapus), orangnya kembali ke "Belum memilih" dan bisa diizinkan memilih ulang. Tercatat di berita acara; Super Admin diberi tahu. Pilihan calon tidak pernah ditampilkan.')
             ->modalSubmitActionLabel('Batalkan suara ini')
             ->schema(fn (array $arguments): array => [
-                Select::make('ballot')
-                    ->label('Surat suara')
+                // Bawaan semua surat suara yang sudah dipilih: biasanya orangnya mengulang semuanya (RT dan RW).
+                CheckboxList::make('ballots')
+                    ->label('Surat suara yang dibatalkan')
                     ->options(fn (): array => $this->votedBallotOptions($arguments))
-                    ->default(fn (): ?int => count($this->votedBallotOptions($arguments)) === 1 ? array_key_first($this->votedBallotOptions($arguments)) : null)
-                    ->required(),
+                    ->default(fn (): array => array_keys($this->votedBallotOptions($arguments)))
+                    ->helperText('Lepas centang bila hanya satu surat suara yang bermasalah.')
+                    ->required()
+                    ->validationMessages(['required' => 'Centang minimal satu surat suara.']),
                 Select::make('reason')->label('Alasan')->options(CorrectionReason::class)->required(),
                 Textarea::make('note')->label('Catatan (wajib bila alasan "Lainnya")')->maxLength(500),
             ])
             ->action(function (array $data, array $arguments, Action $action): void {
                 $election = $this->election();
                 $voter = $this->voterFromArguments($arguments);
-                $ballot = $election?->ballots()->whereKey($data['ballot'] ?? 0)->first();
+                $ballots = $election?->ballots()->whereIn('id', (array) ($data['ballots'] ?? []))->orderBy('sort')->get() ?? collect();
 
-                if ($election === null || $voter === null || $ballot === null) {
+                if ($election === null || $voter === null || $ballots->isEmpty()) {
                     return;
                 }
 
-                try {
-                    app(CorrectionService::class)->correctAtDesk(
-                        $election,
-                        $voter,
-                        $ballot,
-                        $data['reason'] instanceof CorrectionReason ? $data['reason'] : CorrectionReason::from((string) $data['reason']),
-                        $data['note'] ?? null,
-                        $this->user(),
-                    );
-                } catch (VotingException $exception) {
-                    Notification::make()->title($exception->getMessage())->danger()->send();
+                $reason = $data['reason'] instanceof CorrectionReason ? $data['reason'] : CorrectionReason::from((string) $data['reason']);
+                $cancelled = [];
+
+                foreach ($ballots as $ballot) {
+                    try {
+                        app(CorrectionService::class)->correctAtDesk($election, $voter, $ballot, $reason, $data['note'] ?? null, $this->user());
+                        $cancelled[] = $ballot->title;
+                    } catch (VotingException $exception) {
+                        Notification::make()->title("{$ballot->title}: {$exception->getMessage()}")->danger()->send();
+                    }
+                }
+
+                if ($cancelled === []) {
                     $action->halt();
 
                     return;
                 }
 
-                Notification::make()->title("Suara {$ballot->title} {$voter->name} dibatalkan. Silakan izinkan memilih ulang.")->success()->send();
+                Notification::make()->title('Suara '.implode(' dan ', $cancelled)." {$voter->name} dibatalkan. Silakan izinkan memilih ulang.")->success()->send();
             });
     }
 
