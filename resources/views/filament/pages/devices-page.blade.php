@@ -44,7 +44,8 @@
                                     @php($color = match ($state) { 'Menunggu' => 'success', 'Dipesan', 'Sedang dipakai' => 'info', 'Terputus' => 'danger', default => 'gray' })
                                     <tr class="border-t border-gray-100 dark:border-white/5">
                                         <td class="py-2 pe-3 font-mono">{{ $device->code() }}</td>
-                                        <td class="pe-3"><x-filament::badge :color="$color">{{ $state }}</x-filament::badge></td>
+                                        {{-- Meja yang aktif tidak "menunggu" apa pun: tampil "Tersambung" (sama seperti Monitoring). --}}
+                                        <td class="pe-3"><x-filament::badge :color="$color">{{ $device->kind === \App\Enums\DeviceKind::Meja && $state === 'Menunggu' ? 'Tersambung' : $state }}</x-filament::badge></td>
                                         <td class="pe-3">{{ $device->label ?? '-' }}</td>
                                         <td class="pe-3">{{ $device->last_seen_at?->diffForHumans() ?? '-' }}</td>
                                         <td class="pe-3">{{ $device->paired_at?->format('d/m H:i') ?? '-' }}</td>
