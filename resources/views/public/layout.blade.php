@@ -63,6 +63,13 @@
                     <a class="portal-nav__tab {{ $active ? 'is-active' : '' }}" href="{{ $onHome ? '#'.$section : route('public.index').'#'.$section }}" data-section="{{ $section }}" @if ($active) aria-current="page" @endif>{{ $label }}</a>
                 @endforeach
             </div>
+            {{-- Layar penuh untuk laptop/TV di TPS (portal.js); tersembunyi bila browser tidak mendukung. --}}
+            <button type="button" class="portal-nav__login portal-nav__fullscreen" data-fullscreen hidden aria-label="Layar penuh" title="Layar penuh (tekan Esc untuk keluar)">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M4 9V4h5"></path><path d="M20 9V4h-5"></path><path d="M4 15v5h5"></path><path d="M20 15v5h-5"></path>
+                </svg>
+                <span data-fullscreen-label>Layar penuh</span>
+            </button>
             <a class="portal-nav__login" href="{{ url('/admin') }}" aria-label="Masuk panitia dan pengurus" title="Masuk panitia dan pengurus">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <rect x="4" y="10" width="16" height="11" rx="2"></rect>

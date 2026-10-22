@@ -166,7 +166,8 @@ function initCarousel(root) {
 
     if (!reduceMotion && pages() > 1) {
         setInterval(() => {
-            if (!paused && !document.hidden) {
+            // Isi halaman bisa diganti di tempat (layar penuh): carousel lama yang sudah dilepas tidak digeser lagi.
+            if (root.isConnected && !paused && !document.hidden) {
                 goTo(current() >= pages() - 1 ? 0 : current() + 1);
             }
         }, 6000);
@@ -343,6 +344,13 @@ function initAutoRefresh() {
             const html = await response.text();
 
             if (baseline !== null && html !== baseline) {
+                // Muat ulang mengeluarkan browser dari layar penuh: saat layar penuh (laptop/TV TPS), isi diganti di tempat.
+                if (document.fullscreenElement && swapMain(html)) {
+                    baseline = html;
+
+                    return;
+                }
+
                 window.location.reload();
 
                 return;
@@ -358,7 +366,69 @@ function initAutoRefresh() {
     setInterval(check, intervalMs);
 }
 
+/* Ganti isi utama dengan versi terbaru tanpa memuat ulang halaman, lalu hidupkan lagi carousel dan sematan RT. */
+function swapMain(html) {
+    const current = document.querySelector('.portal-main');
+    const next = new DOMParser().parseFromString(html, 'text/html').querySelector('.portal-main');
+
+    if (!current || !next) {
+        return false;
+    }
+
+    next.querySelectorAll('.reveal').forEach((item) => item.classList.add('is-visible'));
+    current.replaceWith(next);
+    next.querySelectorAll('[data-carousel]').forEach(initCarousel);
+
+    return true;
+}
+
 initAutoRefresh();
+
+/*
+ * Tombol Layar penuh (laptop/TV di TPS): selama layar penuh, layar dijaga tetap menyala dan isi diperbarui di tempat.
+ * Tombol tersembunyi bila browser tidak mendukung layar penuh (mis. Safari di iPhone).
+ */
+function initFullscreen() {
+    const button = document.querySelector('[data-fullscreen]');
+
+    if (!button || !document.fullscreenEnabled) {
+        return;
+    }
+
+    const label = button.querySelector('[data-fullscreen-label]');
+    let wakeLock = null;
+
+    button.hidden = false;
+    button.addEventListener('click', () => {
+        if (document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {});
+        } else {
+            document.documentElement.requestFullscreen().catch(() => {});
+        }
+    });
+
+    const keepAwake = async () => {
+        if (document.fullscreenElement && document.visibilityState === 'visible' && 'wakeLock' in navigator) {
+            try { wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+        }
+    };
+
+    document.addEventListener('fullscreenchange', () => {
+        const active = Boolean(document.fullscreenElement);
+        label.textContent = active ? 'Keluar layar penuh' : 'Layar penuh';
+        button.setAttribute('aria-label', label.textContent);
+
+        if (active) {
+            keepAwake();
+        } else {
+            wakeLock?.release().catch(() => {});
+            wakeLock = null;
+        }
+    });
+    document.addEventListener('visibilitychange', keepAwake);
+}
+
+initFullscreen();
 
 /*
  * Jendela visi & misi: tombol "Detail" di kartu calon/quick count. Lewat delegasi agar kartu RT yang disematkan

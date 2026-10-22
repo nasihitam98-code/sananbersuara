@@ -141,7 +141,10 @@ class QuickCountTest extends TestCase
             ->assertSee('data-rt-code="01"', false)
             ->assertSee('data-rt-code="02"', false)
             ->assertSee('data-rt-pinned', false)
-            ->assertSee('carousel__page--2', false);
+            ->assertSee('carousel__page--2', false)
+            // Tombol Layar penuh untuk laptop/TV di TPS.
+            ->assertSee('data-fullscreen', false)
+            ->assertSee('Layar penuh');
     }
 
     public function test_vision_and_mission_show_on_the_public_page_only_when_switched_on(): void

@@ -329,6 +329,23 @@ h4 {
     background: rgba(255, 255, 255, 0.2);
 }
 
+/* Tombol Layar penuh (gaya sama dengan tombol Panitia). */
+.portal-nav__fullscreen {
+    border: 0;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.portal-nav__fullscreen[hidden] {
+    display: none;
+}
+
+@media (max-width: 640px) {
+    .portal-nav__fullscreen span {
+        display: none;
+    }
+}
+
 /* ---------- Isi ---------- */
 .portal-main {
     flex: 1;
