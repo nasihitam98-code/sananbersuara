@@ -79,6 +79,7 @@ class VoterResource extends Resource
             ->components([
                 // Yang wajib hanya nama (dan RT untuk Super Admin; Admin RT otomatis RT sendiri).
                 Section::make('Data pemilih')
+                    ->columnSpanFull()
                     ->columns(2)
                     ->schema([
                         TextInput::make('name')->label('Nama lengkap')->required()->minLength(3)->maxLength(120),
@@ -93,8 +94,10 @@ class VoterResource extends Resource
                             ->label('Saya sudah memastikan ini orang yang berbeda (jika muncul peringatan nama sama)')
                             ->columnSpanFull(),
                     ]),
+                // Di bawah (selebar form), terlipat saat membuat: yang ditulis menyebut isinya agar jelas kolomnya ada di sini.
                 Section::make('Data tambahan (opsional)')
-                    ->description('Boleh dikosongkan. Alamat membantu membedakan nama kembar di Meja Izin; NIK atau tanggal lahir mencegah orang yang sama terdaftar dua kali.')
+                    ->description('Alamat, jenis kelamin, tanggal lahir, NIK, No. HP. Klik untuk membuka; boleh dikosongkan. Alamat membantu membedakan nama kembar di Meja Izin.')
+                    ->columnSpanFull()
                     ->columns(2)
                     ->collapsible()
                     ->collapsed(fn (string $operation): bool => $operation === 'create')
@@ -112,6 +115,7 @@ class VoterResource extends Resource
                     ]),
                 // Hanya saat membuat DAN ada pemilihan Resmi berlangsung (visibleOn() sendirian menimpa syarat ini).
                 Section::make('Tambah darurat saat pemilihan berlangsung')
+                    ->columnSpanFull()
                     ->description('Daftar pemilih sedang dibekukan karena pemilihan berlangsung. Penambahan dicatat khusus di laporan dan dilaporkan ke Super Admin.')
                     ->visible(fn (string $operation): bool => $operation === 'create' && $liveElection !== null)
                     ->schema([
