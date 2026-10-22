@@ -74,7 +74,10 @@ class GalleryPhoto extends Model
     public function usageLabels(): array
     {
         return collect($this->isLogo() ? ['Logo'] : [])
-            ->merge($this->candidates->map(fn (Candidate $candidate): string => "Calon {$candidate->displayNumber()} {$candidate->name}"))
+            // Mis. "Calon RW Satu (Ketua RW no. 01)", "Budi (Ketua RT RT 02 no. 01)": jelas calon yang mana.
+            ->merge($this->candidates->map(fn (Candidate $candidate): string => "{$candidate->name} ("
+                .trim(($candidate->ballot?->title ?? 'Calon').' '.($candidate->unit?->name ?? ''))
+                ." no. {$candidate->displayNumber()})"))
             ->all();
     }
 

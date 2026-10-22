@@ -16,7 +16,7 @@ class MediaPicker
         return ViewField::make($name)
             ->label($label)
             ->view('filament.forms.gallery-picker')
-            ->viewData(fn (): array => ['photos' => GalleryPhoto::query()->with('candidates')->latest()->limit(300)->get()])
+            ->viewData(fn (): array => ['photos' => GalleryPhoto::query()->with(['candidates.ballot', 'candidates.unit'])->latest()->limit(300)->get()])
             ->rule('exists:gallery_photos,id');
     }
 }

@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Candidates\Pages;
 use App\Enums\BallotScope;
 use App\Enums\CandidateStatus;
 use App\Filament\Resources\Candidates\CandidateResource;
+use App\Filament\Resources\Concerns\RedirectsToIndex;
 use App\Models\Ballot;
 use App\Models\Candidate;
 use App\Models\GalleryPhoto;
@@ -20,6 +21,8 @@ use RuntimeException;
 
 class CreateCandidate extends CreateRecord
 {
+    use RedirectsToIndex;
+
     protected static string $resource = CandidateResource::class;
 
     protected bool $createAnother = true;

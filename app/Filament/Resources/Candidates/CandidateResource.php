@@ -354,7 +354,7 @@ class CandidateResource extends Resource
                 ->orderBy(Ballot::query()->select('sort')->whereColumn('ballots.id', 'candidates.ballot_id'))
                 ->orderBy(Unit::query()->select('sort')->whereColumn('units.id', 'candidates.unit_id'))
                 ->orderBy('number'))
-            ->modifyQueryUsing(fn (Builder $query) => $query->with('ballot.election')
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['ballot.election', 'unit', 'originUnit'])
                 // Calon dari pemilihan yang dibatalkan/diarsipkan tidak ikut ditampilkan.
                 ->whereHas('ballot.election', fn (Builder $election): Builder => $election->whereNotIn('status', [ElectionStatus::Cancelled, ElectionStatus::Archived]))
                 ->when(Workspace::current(), fn (Builder $query, ElectionMode $mode): Builder => $query->whereHas('ballot.election', fn (Builder $election): Builder => $election->where('mode', $mode)))
@@ -402,9 +402,11 @@ class CandidateResource extends Resource
                 // Bila pemilihan hanya punya satu surat suara, kolom ini isinya sama di semua baris: sembunyikan agar tabel muat.
                 TextColumn::make('ballot.title')->label('Surat suara')
                     ->visible(fn (): bool => ($election = Workspace::election()) === null || $election->ballots()->count() > 1),
-                // RT calon hanya bermakna untuk surat suara per RT (Mode Resmi).
-                TextColumn::make('unit.name')->label('RT')->placeholder('-')
-                    ->visible(fn (): bool => Workspace::current() !== ElectionMode::Dadakan),
+                // Calon Ketua RT: RT-nya. Calon lain (mis. Ketua RW): asal RT bila diisi, agar hasil Ubah langsung terlihat.
+                TextColumn::make('rt_label')
+                    ->label('RT')
+                    ->state(fn (Candidate $record): ?string => $record->unit?->name ?? ($record->originUnit ? 'Asal '.$record->originUnit->name : null))
+                    ->placeholder('-'),
                 SelectColumn::make('origin_unit_id')
                     ->label('Asal RT')
                     ->options(fn (): array => Unit::query()->orderBy('sort')->pluck('name', 'id')->all())

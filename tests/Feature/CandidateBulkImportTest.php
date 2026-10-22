@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Enums\BallotScope;
 use App\Enums\ElectionStatus;
+use App\Filament\Resources\Candidates\CandidateResource;
 use App\Filament\Resources\Candidates\Pages\CreateCandidate;
+use App\Filament\Resources\Candidates\Pages\EditCandidate;
 use App\Filament\Resources\Candidates\Pages\ListCandidates;
 use App\Models\AuditLog;
 use App\Models\Ballot;
@@ -126,6 +128,21 @@ class CandidateBulkImportTest extends TestCase
         $candidate = $perRt->candidates()->firstOrFail();
         $this->assertNull($candidate->origin_unit_id, 'Surat suara per RT tidak memakai asal RT');
         $this->assertSame('05', $candidate->unit->code);
+    }
+
+    public function test_saving_a_candidate_returns_to_the_table_which_shows_the_origin_rt(): void
+    {
+        $this->actingAs($this->superAdmin);
+        $candidate = Candidate::factory()->for($this->ballot)->create(['number' => 1, 'name' => 'Calon RW Satu']);
+        $rt02 = Unit::query()->where('code', '02')->firstOrFail();
+
+        Livewire::test(EditCandidate::class, ['record' => $candidate->getRouteKey()])
+            ->fillForm(['origin_unit_id' => $rt02->id])
+            ->call('save')
+            ->assertHasNoFormErrors()
+            ->assertRedirect(CandidateResource::getUrl('index'));
+
+        Livewire::test(ListCandidates::class)->assertSee('Asal RT 02');
     }
 
     public function test_rt_candidates_of_several_rts_can_be_pasted_at_once(): void

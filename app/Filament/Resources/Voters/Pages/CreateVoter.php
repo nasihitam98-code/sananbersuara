@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Voters\Pages;
 
 use App\Enums\EmergencyAddReason;
+use App\Filament\Resources\Concerns\RedirectsToIndex;
 use App\Filament\Resources\Voters\VoterResource;
 use App\Models\User;
 use App\Services\Voters\DuplicateNameWarning;
@@ -15,6 +16,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class CreateVoter extends CreateRecord
 {
+    use RedirectsToIndex;
+
     protected static string $resource = VoterResource::class;
 
     protected bool $createAnother = true;

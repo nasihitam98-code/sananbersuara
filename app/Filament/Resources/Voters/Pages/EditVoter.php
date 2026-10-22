@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Voters\Pages;
 
+use App\Filament\Resources\Concerns\RedirectsToIndex;
 use App\Filament\Resources\Voters\VoterResource;
 use App\Models\Voter;
 use App\Services\Voters\VoterRegistry;
@@ -13,6 +14,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class EditVoter extends EditRecord
 {
+    use RedirectsToIndex;
+
     protected static string $resource = VoterResource::class;
 
     /**

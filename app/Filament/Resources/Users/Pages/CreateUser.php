@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Users\Pages;
 
+use App\Filament\Resources\Concerns\RedirectsToIndex;
 use App\Filament\Resources\Users\UserResource;
 use App\Models\User;
 use App\Services\AuditLogger;
@@ -10,6 +11,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class CreateUser extends CreateRecord
 {
+    use RedirectsToIndex;
+
     protected static string $resource = UserResource::class;
 
     /**

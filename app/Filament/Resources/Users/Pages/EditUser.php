@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Users\Pages;
 
+use App\Filament\Resources\Concerns\RedirectsToIndex;
 use App\Filament\Resources\Users\UserResource;
 use App\Filament\Support\PasswordHint;
 use App\Filament\Support\Reauthenticate;
@@ -21,6 +22,8 @@ use Illuminate\Validation\Rules\Password;
  */
 class EditUser extends EditRecord
 {
+    use RedirectsToIndex;
+
     protected static string $resource = UserResource::class;
 
     protected function getHeaderActions(): array

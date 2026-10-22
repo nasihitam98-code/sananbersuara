@@ -47,6 +47,21 @@ class GalleryPage extends Page
 
     public bool $onlyUnused = false;
 
+    /** Gambar yang diklik di grid; rincian dan tindakannya tampil di panel samping (seperti WordPress). */
+    public ?string $selectedPhoto = null;
+
+    public function selectPhoto(?string $publicId): void
+    {
+        $this->selectedPhoto = $this->selectedPhoto === $publicId ? null : $publicId;
+    }
+
+    public function selected(): ?GalleryPhoto
+    {
+        return $this->selectedPhoto === null
+            ? null
+            : GalleryPhoto::query()->with(['candidates.ballot', 'candidates.unit'])->where('public_id', $this->selectedPhoto)->first();
+    }
+
     public static function canAccess(): bool
     {
         $user = auth()->user();
@@ -60,7 +75,7 @@ class GalleryPage extends Page
     public function photos(): Collection
     {
         return GalleryPhoto::query()
-            ->with('candidates.ballot')
+            ->with(['candidates.ballot', 'candidates.unit'])
             ->when($this->onlyUnused, fn ($query) => $query->unused())
             ->latest()
             ->limit(300)
@@ -223,7 +238,8 @@ class GalleryPage extends Page
     {
         return Action::make('useAsLogo')
             ->label('Jadikan logo')
-            ->iconButton()
+            ->button()
+            ->size('sm')
             ->icon(Heroicon::OutlinedSparkles)
             ->tooltip('Jadikan logo')
             ->color('gray')
@@ -253,10 +269,11 @@ class GalleryPage extends Page
     {
         return Action::make('delete')
             ->label('Hapus gambar')
-            ->iconButton()
+            ->button()
+            ->size('sm')
             ->icon(Heroicon::OutlinedTrash)
             ->tooltip('Hapus gambar')
-            ->color('gray')
+            ->color('danger')
             ->requiresConfirmation()
             ->modalHeading('Hapus gambar ini dari Media?')
             ->modalDescription('Calon atau logo yang sudah memakai gambar ini tetap memakainya. Tindakan ini tidak bisa dibatalkan.')

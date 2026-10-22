@@ -107,8 +107,9 @@ class GalleryTest extends TestCase
         Livewire::test(CreateCandidate::class)
             ->assertSee('Cari nama file')
             ->assertSee('a.jpg')
-            ->assertSee('dipakai 01')
-            ->assertSee('belum dipakai');
+            // Jelas calon yang mana: nama, surat suara, dan nomor (bukan hanya "01").
+            ->assertSee("Dipakai: {$first->name} ({$this->ballot->title} no. 01)")
+            ->assertSee('Belum dipakai (1)');
 
         Livewire::test(ListCandidates::class)
             ->callAction(TestAction::make('galleryPhoto')->table($second), ['gallery_photo_id' => $photoB->id])
@@ -170,7 +171,12 @@ class GalleryTest extends TestCase
         $this->assertModelExists($logo);
         $this->assertModelMissing($other);
 
-        $this->get(GalleryPage::getUrl())->assertOk()->assertSee('Dipakai: Logo');
+        // Seperti WordPress: klik gambar, rincian dan tindakannya tampil di panel samping.
+        $this->get(GalleryPage::getUrl())->assertOk()->assertSee('Klik salah satu gambar');
+        Livewire::test(GalleryPage::class)
+            ->call('selectPhoto', $logo->public_id)
+            ->assertSee('Dipakai: Logo')
+            ->assertSee('logo-rw.png');
     }
 
     public function test_logo_upload_goes_into_media_and_logo_can_be_chosen_from_media(): void
