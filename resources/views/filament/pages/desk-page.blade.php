@@ -92,9 +92,12 @@
                     <x-filament::tabs.item :active="$voterTab === 'semua'" wire:click="$set('voterTab', 'semua')">Semua ({{ $counts['semua'] }})</x-filament::tabs.item>
                 </x-filament::tabs>
 
-                <x-filament::input.wrapper>
-                    <x-filament::input type="search" wire:model.live.debounce.300ms="search" placeholder="Saring nama…" class="text-lg" />
-                </x-filament::input.wrapper>
+                <div class="flex flex-wrap items-center gap-2">
+                    <x-filament::input.wrapper class="min-w-[12rem] grow">
+                        <x-filament::input type="search" wire:model.live.debounce.300ms="search" placeholder="Saring nama…" class="text-lg" />
+                    </x-filament::input.wrapper>
+                    @if ($this->emergencyAddAction->isVisible()) {{ $this->emergencyAddAction }} @endif
+                </div>
 
                 @if (! $started)
                     <p class="mt-3 text-sm text-gray-500">Pemilihan belum dimulai. Tombol <strong>Izinkan Memilih</strong> muncul setelah Super Admin menekan Mulai.</p>

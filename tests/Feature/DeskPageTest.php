@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\BallotScope;
 use App\Enums\DeviceKind;
 use App\Enums\ElectionMode;
+use App\Enums\EmergencyAddReason;
 use App\Enums\PermitStatus;
 use App\Filament\Pages\DeskPage;
 use App\Filament\Pages\DevicesPage;
@@ -123,6 +124,30 @@ class DeskPageTest extends TestCase
 
         // Menu Partisipasi tidak perlu untuk petugas meja: isinya sudah di Meja Izin.
         $this->assertFalse(ParticipationPage::shouldRegisterNavigation());
+    }
+
+    public function test_unregistered_resident_can_be_added_at_the_desk_and_allowed_to_vote(): void
+    {
+        // Petugas meja tanpa izin kelola pemilih: tombolnya tidak ada.
+        $this->actingAs($this->deskOfficer);
+        Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])
+            ->test(DeskPage::class)
+            ->assertActionHidden('emergencyAdd');
+
+        $this->deskOfficer->givePermissionTo(User::PERMISSION_MANAGE_VOTERS);
+
+        $page = Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])
+            ->test(DeskPage::class)
+            ->callAction('emergencyAdd', ['name' => 'Warga Baru Datang', 'reason' => EmergencyAddReason::BelumAdaDiDataAwal->value])
+            ->assertNotified('Warga Baru Datang ditambahkan. Silakan izinkan memilih.')
+            ->assertSee('Warga Baru Datang');
+
+        $voter = Voter::query()->where('name', 'Warga Baru Datang')->sole();
+        $this->assertTrue($voter->added_during_live);
+        $this->assertSame($this->deskOfficer->unit_id, $voter->unit_id);
+
+        $page->callAction(TestAction::make('grant')->arguments(['voter' => $voter->public_id]))
+            ->assertSet('lastAssignment.booth', 'Bilik 1');
     }
 
     public function test_go_to_booth_card_disappears_once_the_permit_ends(): void

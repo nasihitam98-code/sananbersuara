@@ -6,6 +6,7 @@ use App\Enums\DeviceKind;
 use App\Enums\DeviceReleaseReason;
 use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
+use App\Enums\EmergencyAddReason;
 use App\Enums\PermitCancelReason;
 use App\Enums\PermitStatus;
 use App\Enums\TpsPauseReason;
@@ -23,12 +24,16 @@ use App\Models\Voter;
 use App\Services\Devices\DeviceManager;
 use App\Services\Permits\PermitManager;
 use App\Services\Permits\TpsPauseService;
+use App\Services\Voters\DuplicateNameWarning;
+use App\Services\Voters\VoterRegistry;
 use App\Services\Voting\RoundResolver;
 use App\Services\Voting\VotingException;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -268,6 +273,53 @@ class DeskPage extends Page
                 }
 
                 $this->lastAssignment = ['name' => $voter->name, 'booth' => $permit->device->name(), 'permit' => $permit->id];
+            });
+    }
+
+    /**
+     * Warga datang tapi belum terdaftar: tambah darurat langsung dari meja (tanpa pindah ke Data Pemilih). Dicatat
+     * khusus di laporan dan dilaporkan ke Super Admin; hanya saat voting berjalan dan bagi yang boleh mengelola pemilih.
+     */
+    public function emergencyAddAction(): Action
+    {
+        return Action::make('emergencyAdd')
+            ->label('+ Tambah pemilih darurat')
+            ->color('gray')
+            ->visible(fn (): bool => in_array($this->election()?->status, [ElectionStatus::Berlangsung, ElectionStatus::Paused], true)
+                && $this->user()->can('create', Voter::class))
+            ->modalHeading(fn (): string => 'Tambah pemilih darurat '.$this->user()->unit?->name)
+            ->modalDescription('Untuk warga yang berhak tapi belum ada di daftar. Dicatat khusus di laporan dan dilaporkan ke Super Admin. Setelah ditambah, namanya langsung muncul di daftar dan bisa diizinkan memilih.')
+            ->modalSubmitActionLabel('Tambahkan')
+            ->schema([
+                TextInput::make('name')->label('Nama lengkap')->required()->minLength(3)->maxLength(120),
+                Select::make('reason')->label('Alasan')->options(EmergencyAddReason::class)->required(),
+                Checkbox::make('confirm_different_person')->label('Orang berbeda (jika muncul peringatan nama sama)'),
+            ])
+            ->action(function (array $data, Action $action): void {
+                try {
+                    $voter = app(VoterRegistry::class)->create(
+                        ['name' => $data['name']],
+                        (int) $this->user()->unit_id,
+                        $this->user(),
+                        null,
+                        (bool) ($data['confirm_different_person'] ?? false),
+                        $data['reason'] instanceof EmergencyAddReason ? $data['reason']->value : (string) $data['reason'],
+                    );
+                } catch (DuplicateNameWarning $warning) {
+                    Notification::make()->title('Nama yang sama sudah terdaftar')->body(implode("\n", $warning->similar)."\n\nBila orang berbeda, centang kotaknya lalu Tambahkan lagi.")->warning()->persistent()->send();
+                    $action->halt();
+
+                    return;
+                } catch (VotingException $exception) {
+                    Notification::make()->title($exception->getMessage())->danger()->send();
+                    $action->halt();
+
+                    return;
+                }
+
+                $this->search = $voter->name;
+                $this->voterTab = 'belum';
+                Notification::make()->title("{$voter->name} ditambahkan. Silakan izinkan memilih.")->success()->send();
             });
     }
 
