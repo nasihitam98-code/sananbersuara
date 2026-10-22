@@ -94,13 +94,12 @@ class VoterResource extends Resource
                             ->label('Saya sudah memastikan ini orang yang berbeda (jika muncul peringatan nama sama)')
                             ->columnSpanFull(),
                     ]),
-                // Di bawah (selebar form), terlipat saat membuat: yang ditulis menyebut isinya agar jelas kolomnya ada di sini.
+                // Hanya di Ubah: form Buat cukup nama + RT (keputusan pemilik 2026-10-22). Dilengkapi bila perlu, mis. nama kembar.
                 Section::make('Data tambahan (opsional)')
-                    ->description('Alamat, jenis kelamin, tanggal lahir, NIK, No. HP. Klik untuk membuka; boleh dikosongkan. Alamat membantu membedakan nama kembar di Meja Izin.')
+                    ->description('Boleh dikosongkan. Alamat membantu membedakan nama kembar di Meja Izin.')
                     ->columnSpanFull()
                     ->columns(2)
-                    ->collapsible()
-                    ->collapsed(fn (string $operation): bool => $operation === 'create')
+                    ->visible(fn (string $operation): bool => $operation === 'edit')
                     ->schema([
                         TextInput::make('address')->label('Alamat singkat / no. rumah')->maxLength(190),
                         Select::make('gender')->label('Jenis kelamin')->options(['L' => 'Laki-laki', 'P' => 'Perempuan']),

@@ -72,6 +72,7 @@ class VoterManagementTest extends TestCase
 
         Livewire::test(CreateVoter::class)
             ->assertDontSee('Tambah darurat saat pemilihan berlangsung')
+            ->assertDontSee('Data tambahan')
             ->fillForm(['name' => 'Ojan', 'unit_id' => $this->rt03->id])
             ->call('create')
             ->assertHasNoFormErrors()
