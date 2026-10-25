@@ -271,14 +271,18 @@ class ElectionLifecycle
         $this->transition($election, [ElectionStatus::Unpublished], ElectionStatus::Verifikasi, $actor);
     }
 
-    /** Status yang boleh "Ulang dari awal": sudah ditutup/dibatalkan tetapi hasilnya belum pernah diumumkan. */
-    public const RESETTABLE = [ElectionStatus::Ditutup, ElectionStatus::Verifikasi, ElectionStatus::Cancelled];
+    /**
+     * Status yang boleh "Ulang dari awal": sedang berjalan (gladi malam sebelum hari H, tanpa perlu Tutup), atau sudah
+     * ditutup/dibatalkan; selalu hanya bila hasilnya belum pernah diumumkan.
+     */
+    public const RESETTABLE = [ElectionStatus::Berlangsung, ElectionStatus::Paused, ElectionStatus::Ditutup, ElectionStatus::Verifikasi, ElectionStatus::Cancelled];
 
     /**
-     * Ulang dari awal (untuk gladi, permintaan pemilik 2026-10-23): hapus semua jejak voting pemilihan ini (suara, izin,
-     * koreksi, jeda TPS, peserta hadir, daftar beku, hasil, berita acara, putaran, pasangan laptop) lalu kembali ke Draf.
-     * Calon, surat suara, data pemilih, dan akun tetap. Hanya Super Admin, hanya sebelum hasil pernah diumumkan; jejaknya
-     * tetap tercatat di audit log (yang tidak ikut dihapus).
+     * Ulang dari awal (untuk gladi, permintaan pemilik 2026-10-23/25): hapus semua jejak voting pemilihan ini (suara, izin,
+     * koreksi, jeda TPS, peserta hadir, daftar beku, hasil, berita acara, putaran) lalu kembali ke Draf. Calon, surat
+     * suara, data pemilih, akun, dan pasangan laptop meja/bilik tetap: laptop yang dipasang untuk gladi langsung siap
+     * lagi setelah Tandai Siap (laptop yang sudah dilepas saat Tutup tetap harus dipasang ulang). Hanya Super Admin,
+     * hanya sebelum hasil pernah diumumkan; jejaknya tetap tercatat di audit log (yang tidak ikut dihapus).
      *
      * @return array<string, int> jumlah yang dihapus per jenis
      */
@@ -290,7 +294,7 @@ class ElectionLifecycle
             $locked = Election::query()->whereKey($election->id)->lockForUpdate()->firstOrFail();
 
             if (! in_array($locked->status, self::RESETTABLE, true) || $locked->published_at !== null) {
-                throw VotingException::invalidState('Hanya pemilihan yang sudah ditutup atau dibatalkan dan hasilnya belum pernah diumumkan yang bisa diulang dari awal.');
+                throw VotingException::invalidState('Hanya pemilihan yang sudah dimulai dan hasilnya belum pernah diumumkan yang bisa diulang dari awal.');
             }
 
             $ballotIds = $locked->ballots()->pluck('id');
@@ -307,7 +311,8 @@ class ElectionLifecycle
             DB::table('outcomes')->where('election_id', $locked->id)->delete();
             DB::table('official_reports')->where('election_id', $locked->id)->delete();
             DB::table('rounds')->where('election_id', $locked->id)->delete();
-            $counts['laptop'] = DB::table('devices')->where('election_id', $locked->id)->delete();
+            // Pasangan laptop tetap (hanya catatan "terakhir aktif" yang dikosongkan).
+            DB::table('devices')->where('election_id', $locked->id)->update(['last_seen_at' => null]);
 
             $locked->forceFill([
                 'status' => ElectionStatus::Draft,
