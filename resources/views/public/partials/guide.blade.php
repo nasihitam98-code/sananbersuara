@@ -1,5 +1,6 @@
 {{-- Cara memilih: alur di lokasi (HP) dan di TPS (bilik), plus kerahasiaan pilihan. --}}
-<div class="grid grid--2">
+@php($dadakanOn = \App\Models\AppSetting::dadakanEnabled())
+<div class="grid {{ $dadakanOn ? 'grid--2' : 'grid--1' }}">
     @foreach ([
         [
             'icon' => 'phone',
@@ -26,6 +27,8 @@
             ],
         ],
     ] as $way)
+        {{-- Mode Dadakan disembunyikan di Pengaturan Tampilan: hanya cara memilih di TPS. --}}
+        @continue($way['icon'] === 'phone' && ! $dadakanOn)
         <section class="way reveal">
             <div class="way__head">
                 <span class="way__icon" aria-hidden="true">

@@ -4,7 +4,7 @@
         {{ $this->form }}
 
         <div>
-            <x-filament::button type="submit">Simpan teks</x-filament::button>
+            <x-filament::button type="submit">Simpan</x-filament::button>
         </div>
     </form>
 

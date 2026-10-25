@@ -14,6 +14,7 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
@@ -63,6 +64,7 @@ class SiteSettings extends Page
             AppSetting::SITE_NAME => AppSetting::get(AppSetting::SITE_NAME, config('app.name')),
             AppSetting::AREA_NAME => AppSetting::get(AppSetting::AREA_NAME),
             AppSetting::PUBLIC_NOTICE => AppSetting::get(AppSetting::PUBLIC_NOTICE),
+            AppSetting::DADAKAN_ENABLED => AppSetting::dadakanEnabled(),
         ]);
     }
 
@@ -91,6 +93,12 @@ class SiteSettings extends Page
                             ->rows(3)
                             ->maxLength(500),
                     ]),
+                Section::make('Mode pemilihan')
+                    ->schema([
+                        Toggle::make(AppSetting::DADAKAN_ENABLED)
+                            ->label('Mode Dadakan (QR + PIN) aktif')
+                            ->helperText('Matikan bila hanya memakai Mode Resmi (meja + bilik): pilihan mode dan tombol Ganti mode hilang, panel langsung Mode Resmi, dan halaman publik hanya menampilkan cara memilih di TPS. Pemilihan dan hasil Dadakan yang lama tetap tersimpan; nyalakan lagi bila ada rapat atau penjaringan.'),
+                    ]),
             ]);
     }
 
@@ -103,6 +111,7 @@ class SiteSettings extends Page
             AppSetting::SITE_NAME => $data[AppSetting::SITE_NAME] ?? null,
             AppSetting::AREA_NAME => $data[AppSetting::AREA_NAME] ?? null,
             AppSetting::PUBLIC_NOTICE => $data[AppSetting::PUBLIC_NOTICE] ?? null,
+            AppSetting::DADAKAN_ENABLED => ($data[AppSetting::DADAKAN_ENABLED] ?? true) ? '1' : '0',
         ]);
 
         app(AuditLogger::class)->log('settings.display_updated', meta: ['before' => $before, 'after' => AppSetting::allValues()]);

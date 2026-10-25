@@ -27,6 +27,9 @@ class AppSetting extends Model
     /** ID gambar di Media yang menjadi sumber logo (untuk keterangan "Dipakai: Logo"). */
     public const LOGO_MEDIA_ID = 'logo_media_id';
 
+    /** "0" = Mode Dadakan disembunyikan (hanya Mode Resmi); kosong/"1" = aktif. Keputusan pemilik 2026-10-25. */
+    public const DADAKAN_ENABLED = 'dadakan_enabled';
+
     /** Ikon tab browser bawaan (kotak merah bercentang) bila belum ada logo. */
     public const DEFAULT_FAVICON = 'favicon.svg';
 
@@ -59,6 +62,15 @@ class AppSetting extends Model
         $path = static::get(self::LOGO_PATH);
 
         return $path === null ? null : Storage::disk('public')->url($path);
+    }
+
+    /**
+     * Mode Dadakan (QR + PIN) tampil di panel. Saat dimatikan aplikasi hanya Mode Resmi; data dan hasil Dadakan
+     * lama tetap ada dan bisa dimunculkan lagi kapan saja.
+     */
+    public static function dadakanEnabled(): bool
+    {
+        return static::get(self::DADAKAN_ENABLED) !== '0';
     }
 
     public static function logoMediaId(): ?int

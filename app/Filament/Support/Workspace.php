@@ -4,6 +4,7 @@ namespace App\Filament\Support;
 
 use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
+use App\Models\AppSetting;
 use App\Models\Election;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -36,13 +37,16 @@ class Workspace
             return [];
         }
 
+        // Mode Dadakan bisa disembunyikan di Pengaturan Tampilan: panel langsung Mode Resmi tanpa pilihan mode.
+        $dadakan = AppSetting::dadakanEnabled();
+
         if ($user->isSuperAdmin()) {
-            return [ElectionMode::Dadakan, ElectionMode::Resmi];
+            return $dadakan ? [ElectionMode::Dadakan, ElectionMode::Resmi] : [ElectionMode::Resmi];
         }
 
         $modes = [];
 
-        if ($user->activeElectionAssignments()->exists()) {
+        if ($dadakan && $user->activeElectionAssignments()->exists()) {
             $modes[] = ElectionMode::Dadakan;
         }
 

@@ -171,6 +171,29 @@ class HomeGuideTest extends TestCase
             ->assertCookieExpired(Workspace::SESSION_KEY);
     }
 
+    public function test_dadakan_mode_can_be_hidden_leaving_only_resmi(): void
+    {
+        $this->actingAs($this->superAdmin);
+        $this->assertSame([ElectionMode::Dadakan, ElectionMode::Resmi], Workspace::allowedModes($this->superAdmin));
+        $this->view('public.partials.guide')->assertSee('Di lokasi acara, lewat HP');
+
+        Livewire::test(SiteSettings::class)
+            ->assertFormSet([AppSetting::DADAKAN_ENABLED => true])
+            ->fillForm([AppSetting::DADAKAN_ENABLED => false])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        // Hanya Mode Resmi: tanpa pilihan mode dan tanpa Ganti mode; panduan publik hanya cara di TPS.
+        $this->assertSame([ElectionMode::Resmi], Workspace::allowedModes($this->superAdmin));
+        $this->assertSame(ElectionMode::Resmi, Workspace::current());
+        $this->assertFalse(Workspace::canSwitch());
+        $this->view('public.partials.guide')->assertDontSee('Di lokasi acara, lewat HP')->assertSee('Di TPS RT, di bilik suara');
+
+        // Bisa dinyalakan lagi.
+        Livewire::test(SiteSettings::class)->fillForm([AppSetting::DADAKAN_ENABLED => true])->call('save');
+        $this->assertTrue(AppSetting::dadakanEnabled());
+    }
+
     public function test_display_settings_change_texts_and_are_super_admin_only(): void
     {
         $this->actingAs($this->superAdmin);
