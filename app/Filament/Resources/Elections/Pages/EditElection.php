@@ -302,10 +302,12 @@ class EditElection extends EditRecord
                 ->icon('heroicon-o-arrow-path')
                 ->color('warning')
                 ->visible(fn (): bool => (auth()->user()?->isSuperAdmin() ?? false)
-                    && in_array($this->record->status, ElectionLifecycle::RESETTABLE, true)
-                    && $this->record->published_at === null)
+                    && in_array($this->record->status, ElectionLifecycle::RESETTABLE, true))
                 ->modalHeading('Ulang pemilihan ini dari awal?')
-                ->modalDescription('Untuk membersihkan gladi/uji coba, boleh langsung tanpa Tutup. Semua suara, izin, koreksi, peserta hadir, quick count, hasil, dan berita acara pemilihan ini DIHAPUS, lalu pemilihan kembali ke Draf dan semua warga kembali "belum memilih". Calon, surat suara, data pemilih, akun, dan laptop meja/bilik yang terpasang TETAP: tekan Tandai Siap lagi, laptop langsung siap. Tidak bisa dibatalkan; tercatat di audit log.')
+                ->modalDescription(fn (): string => ($this->record->published_at !== null
+                    ? 'PERHATIAN: hasil pemilihan ini SUDAH DIUMUMKAN dan akan ikut dihapus dari halaman publik. Lakukan hanya untuk gladi; jangan untuk pemilihan sungguhan. '
+                    : '')
+                    .'Untuk membersihkan gladi/uji coba, boleh langsung tanpa Tutup. Semua suara, izin, koreksi, peserta hadir, quick count, hasil, dan berita acara pemilihan ini DIHAPUS, lalu pemilihan kembali ke Draf dan semua warga kembali "belum memilih". Calon, surat suara, data pemilih, akun, dan laptop meja/bilik yang terpasang TETAP: tekan Tandai Siap lagi, laptop langsung siap. Tidak bisa dibatalkan; tercatat di audit log dan semua Super Admin diberi tahu.')
                 ->modalSubmitActionLabel('Ya, ulang dari awal')
                 ->modalSubmitAction(fn (Action $action): Action => $action->color('danger'))
                 ->schema([

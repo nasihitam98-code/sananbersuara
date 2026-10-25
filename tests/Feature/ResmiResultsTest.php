@@ -293,9 +293,20 @@ class ResmiResultsTest extends TestCase
         $permit = app(PermitManager::class)->grant($voter, $this->deskRt03, $this->desks['03']->fresh());
         $this->assertSame($this->booths['03']->id, $permit->device_id);
 
-        // Setelah hasil diumumkan tombolnya tidak ada lagi (hasil resmi tidak bisa dihapus).
-        $election->forceFill(['status' => ElectionStatus::Published, 'published_at' => now()])->save();
-        Livewire::test(EditElection::class, ['record' => $election->public_id])->assertActionHidden('resetToDraft');
+        // Gladi sampai pengumuman: tetap bisa diulang, dengan peringatan; hasil hilang dari halaman publik.
+        $election->forceFill(['status' => ElectionStatus::Published, 'published_at' => now(), 'settings' => ['show_public' => true]])->save();
+        Livewire::test(EditElection::class, ['record' => $election->public_id])
+            ->mountAction('resetToDraft')
+            ->assertMountedActionModalSee('SUDAH DIUMUMKAN')
+            ->setActionData(['confirm_name' => $election->name, 'current_password' => 'password'])
+            ->callMountedAction()
+            ->assertHasNoActionErrors();
+
+        $this->assertSame(ElectionStatus::Draft, $election->fresh()->status);
+        $this->assertNull($election->fresh()->published_at);
+        $this->assertSame(0, Vote::query()->where('election_id', $election->id)->count());
+        $this->get(route('public.index'))->assertOk()->assertSee('Belum ada hasil yang diumumkan');
+        $this->assertTrue($this->secondSuperAdmin->notifications()->where('data', 'like', '%diulang dari awal%')->exists());
     }
 
     public function test_admin_rt_cannot_request_correction_for_another_rt(): void

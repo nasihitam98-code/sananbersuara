@@ -272,17 +272,18 @@ class ElectionLifecycle
     }
 
     /**
-     * Status yang boleh "Ulang dari awal": sedang berjalan (gladi malam sebelum hari H, tanpa perlu Tutup), atau sudah
-     * ditutup/dibatalkan; selalu hanya bila hasilnya belum pernah diumumkan.
+     * Status yang boleh "Ulang dari awal": sedang berjalan (gladi malam sebelum hari H, tanpa perlu Tutup), ditutup,
+     * dibatalkan, atau sudah diumumkan (gladi sampai pengumuman untuk mencocokkan hasil dengan quick count; keputusan
+     * pemilik 2026-10-25). Pengumuman yang terhapus diberitahukan ke semua Super Admin dan tercatat di audit log.
      */
-    public const RESETTABLE = [ElectionStatus::Berlangsung, ElectionStatus::Paused, ElectionStatus::Ditutup, ElectionStatus::Verifikasi, ElectionStatus::Cancelled];
+    public const RESETTABLE = [ElectionStatus::Berlangsung, ElectionStatus::Paused, ElectionStatus::Ditutup, ElectionStatus::Verifikasi, ElectionStatus::Published, ElectionStatus::Unpublished, ElectionStatus::Cancelled];
 
     /**
      * Ulang dari awal (untuk gladi, permintaan pemilik 2026-10-23/25): hapus semua jejak voting pemilihan ini (suara, izin,
      * koreksi, jeda TPS, peserta hadir, daftar beku, hasil, berita acara, putaran) lalu kembali ke Draf. Calon, surat
      * suara, data pemilih, akun, dan pasangan laptop meja/bilik tetap: laptop yang dipasang untuk gladi langsung siap
-     * lagi setelah Tandai Siap (laptop yang sudah dilepas saat Tutup tetap harus dipasang ulang). Hanya Super Admin,
-     * hanya sebelum hasil pernah diumumkan; jejaknya tetap tercatat di audit log (yang tidak ikut dihapus).
+     * lagi setelah Tandai Siap (laptop yang sudah dilepas saat Tutup tetap harus dipasang ulang). Hanya Super Admin;
+     * jejaknya tetap tercatat di audit log (yang tidak ikut dihapus) dan semua Super Admin diberi tahu.
      *
      * @return array<string, int> jumlah yang dihapus per jenis
      */
@@ -293,12 +294,13 @@ class ElectionLifecycle
         $counts = DB::transaction(function () use ($election): array {
             $locked = Election::query()->whereKey($election->id)->lockForUpdate()->firstOrFail();
 
-            if (! in_array($locked->status, self::RESETTABLE, true) || $locked->published_at !== null) {
-                throw VotingException::invalidState('Hanya pemilihan yang sudah dimulai dan hasilnya belum pernah diumumkan yang bisa diulang dari awal.');
+            if (! in_array($locked->status, self::RESETTABLE, true)) {
+                throw VotingException::invalidState('Hanya pemilihan yang sudah dimulai yang bisa diulang dari awal.');
             }
 
             $ballotIds = $locked->ballots()->pluck('id');
-            $counts = ['suara' => DB::table('votes')->where('election_id', $locked->id)->count()];
+            $wasPublished = $locked->published_at !== null;
+            $counts = ['suara' => DB::table('votes')->where('election_id', $locked->id)->count(), 'sudah_diumumkan' => (int) $wasPublished];
 
             // Urutan mengikuti kunci asing: yang merujuk dihapus lebih dulu.
             DB::table('vote_corrections')->where('election_id', $locked->id)->delete();
@@ -331,6 +333,13 @@ class ElectionLifecycle
 
         $this->audit->log('election.reset', $election, $election, meta: $counts, actor: $actor);
         $this->waves->publishStatus($election);
+
+        app(InternalNotifier::class)->notifySuperAdmins(
+            'Pemilihan diulang dari awal',
+            "{$actor->name} mengulang \"{$election->name}\" dari awal: {$counts['suara']} suara dihapus"
+                .($counts['sudah_diumumkan'] ? ', hasil yang sudah diumumkan ikut dihapus dari halaman publik.' : '.'),
+            $actor,
+        );
 
         return $counts;
     }
