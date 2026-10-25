@@ -17,6 +17,7 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Components\View;
@@ -294,6 +295,31 @@ class EditElection extends EditRecord
                     ])
                     ->action(fn (array $data) => $this->runLifecycle(fn (ElectionLifecycle $lifecycle) => $lifecycle->cancel($this->record, auth()->user(), $data['note']), 'Pemilihan dibatalkan.')),
             ])->label('Status')->icon('heroicon-o-adjustments-horizontal')->button()->color('gray'),
+
+            // Setelah gladi: hapus jejak voting, kembali ke Draf (calon, surat suara, pemilih, akun tetap).
+            Action::make('resetToDraft')
+                ->label('Ulang dari awal')
+                ->icon('heroicon-o-arrow-path')
+                ->color('warning')
+                ->visible(fn (): bool => (auth()->user()?->isSuperAdmin() ?? false)
+                    && in_array($this->record->status, ElectionLifecycle::RESETTABLE, true)
+                    && $this->record->published_at === null)
+                ->modalHeading('Ulang pemilihan ini dari awal?')
+                ->modalDescription('Untuk membersihkan gladi/uji coba. Semua suara, izin, koreksi, peserta hadir, quick count, hasil, berita acara, dan pasangan laptop pemilihan ini DIHAPUS, lalu pemilihan kembali ke Draf dan semua warga kembali "belum memilih". Calon, surat suara, data pemilih, dan akun TETAP. Tidak bisa dibatalkan; tercatat di audit log.')
+                ->modalSubmitActionLabel('Ya, ulang dari awal')
+                ->modalSubmitAction(fn (Action $action): Action => $action->color('danger'))
+                ->schema([
+                    TextInput::make('confirm_name')
+                        ->label(fn (): string => 'Ketik nama pemilihan untuk memastikan: '.$this->record->name)
+                        ->required()
+                        ->in(fn (): array => [$this->record->name])
+                        ->validationMessages(['in' => 'Nama tidak sama persis.']),
+                    Reauthenticate::field(),
+                ])
+                ->action(fn () => $this->runLifecycle(
+                    fn (ElectionLifecycle $lifecycle) => $lifecycle->resetToDraft($this->record, auth()->user()),
+                    'Pemilihan kembali ke Draf. Semua jejak voting gladi sudah dihapus.',
+                )),
 
             // Tidak menonjol (abu-abu, garis tepi) agar tidak tertukar dengan tombol utama; konfirmasinya tetap merah.
             DeleteAction::make()

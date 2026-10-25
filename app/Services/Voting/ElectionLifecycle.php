@@ -271,6 +271,65 @@ class ElectionLifecycle
         $this->transition($election, [ElectionStatus::Unpublished], ElectionStatus::Verifikasi, $actor);
     }
 
+    /** Status yang boleh "Ulang dari awal": sudah ditutup/dibatalkan tetapi hasilnya belum pernah diumumkan. */
+    public const RESETTABLE = [ElectionStatus::Ditutup, ElectionStatus::Verifikasi, ElectionStatus::Cancelled];
+
+    /**
+     * Ulang dari awal (untuk gladi, permintaan pemilik 2026-10-23): hapus semua jejak voting pemilihan ini (suara, izin,
+     * koreksi, jeda TPS, peserta hadir, daftar beku, hasil, berita acara, putaran, pasangan laptop) lalu kembali ke Draf.
+     * Calon, surat suara, data pemilih, dan akun tetap. Hanya Super Admin, hanya sebelum hasil pernah diumumkan; jejaknya
+     * tetap tercatat di audit log (yang tidak ikut dihapus).
+     *
+     * @return array<string, int> jumlah yang dihapus per jenis
+     */
+    public function resetToDraft(Election $election, User $actor): array
+    {
+        abort_unless($actor->isSuperAdmin(), 403);
+
+        $counts = DB::transaction(function () use ($election): array {
+            $locked = Election::query()->whereKey($election->id)->lockForUpdate()->firstOrFail();
+
+            if (! in_array($locked->status, self::RESETTABLE, true) || $locked->published_at !== null) {
+                throw VotingException::invalidState('Hanya pemilihan yang sudah ditutup atau dibatalkan dan hasilnya belum pernah diumumkan yang bisa diulang dari awal.');
+            }
+
+            $ballotIds = $locked->ballots()->pluck('id');
+            $counts = ['suara' => DB::table('votes')->where('election_id', $locked->id)->count()];
+
+            // Urutan mengikuti kunci asing: yang merujuk dihapus lebih dulu.
+            DB::table('vote_corrections')->where('election_id', $locked->id)->delete();
+            DB::table('vote_cancellations')->where('election_id', $locked->id)->delete();
+            DB::table('votes')->where('election_id', $locked->id)->delete();
+            $counts['izin'] = DB::table('permits')->where('election_id', $locked->id)->delete();
+            DB::table('tps_pauses')->where('election_id', $locked->id)->delete();
+            $counts['peserta_hadir'] = DB::table('attendees')->where('election_id', $locked->id)->delete();
+            DB::table('ballot_voters')->whereIn('ballot_id', $ballotIds)->delete();
+            DB::table('outcomes')->where('election_id', $locked->id)->delete();
+            DB::table('official_reports')->where('election_id', $locked->id)->delete();
+            DB::table('rounds')->where('election_id', $locked->id)->delete();
+            $counts['laptop'] = DB::table('devices')->where('election_id', $locked->id)->delete();
+
+            $locked->forceFill([
+                'status' => ElectionStatus::Draft,
+                'started_at' => null,
+                'closed_at' => null,
+                'published_at' => null,
+                'results_revealed_at' => null,
+                'vote_links_destroyed_at' => null,
+                'personal_data_purged_at' => null,
+            ])->save();
+
+            $election->setRawAttributes($locked->getAttributes(), true);
+
+            return $counts;
+        });
+
+        $this->audit->log('election.reset', $election, $election, meta: $counts, actor: $actor);
+        $this->waves->publishStatus($election);
+
+        return $counts;
+    }
+
     public function cancel(Election $election, User $actor, string $note): void
     {
         $allowed = [ElectionStatus::Draft, ElectionStatus::Ready, ElectionStatus::Berlangsung, ElectionStatus::Paused, ElectionStatus::Ditutup, ElectionStatus::Verifikasi];

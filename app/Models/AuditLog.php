@@ -67,6 +67,7 @@ class AuditLog extends Model
         'election.public_listing' => 'Tampil di halaman publik diubah',
         'election.quick_count' => 'Quick count publik diubah',
         'election.public_profiles' => 'Visi & misi publik diubah',
+        'election.reset' => 'Pemilihan diulang dari awal (jejak voting dihapus)',
         'election.staff_assigned' => 'Panitia ditugaskan',
         'election.staff_removed' => 'Penugasan panitia dicabut',
         'election.staff_role_changed' => 'Peran panitia diubah',

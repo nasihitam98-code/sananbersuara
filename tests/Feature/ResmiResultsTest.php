@@ -7,6 +7,7 @@ use App\Enums\CorrectionReason;
 use App\Enums\CorrectionStatus;
 use App\Enums\DeviceKind;
 use App\Enums\ElectionMode;
+use App\Enums\ElectionStatus;
 use App\Enums\OutcomeStatus;
 use App\Enums\VoteStatus;
 use App\Filament\Pages\CorrectionsPage;
@@ -14,6 +15,7 @@ use App\Filament\Pages\DeskPage;
 use App\Filament\Pages\ParticipationPage;
 use App\Filament\Pages\ResultScreen;
 use App\Filament\Pages\VoteDetailPage;
+use App\Filament\Resources\Elections\Pages\EditElection;
 use App\Models\AuditLog;
 use App\Models\Ballot;
 use App\Models\BallotVoter;
@@ -246,6 +248,48 @@ class ResmiResultsTest extends TestCase
         $other = Voter::query()->where('unit_id', $this->rt03->id)->whereKeyNot($voter->id)->first();
         $this->expectException(VotingException::class);
         app(CorrectionService::class)->correctAtDesk($this->election->fresh(), $other, $this->rtBallot, CorrectionReason::GangguanTeknis, null, $this->deskRt03);
+    }
+
+    public function test_rehearsal_can_be_restarted_from_scratch_keeping_candidates_and_voters(): void
+    {
+        $this->actingAs($this->superAdmin);
+        $voter = Voter::query()->where('unit_id', $this->rt03->id)->first();
+        app(CorrectionService::class)->correctAtDesk($this->election, $voter, $this->rwBallot, CorrectionReason::GangguanTeknis, null, $this->deskRt03);
+
+        // Selama berlangsung tombolnya belum ada.
+        Livewire::test(EditElection::class, ['record' => $this->election->public_id])->assertActionHidden('resetToDraft');
+
+        app(ElectionLifecycle::class)->close($this->election->fresh(), $this->superAdmin);
+        $candidates = Candidate::query()->count();
+        $voters = Voter::query()->count();
+
+        Livewire::test(EditElection::class, ['record' => $this->election->public_id])
+            ->callAction('resetToDraft', ['confirm_name' => 'salah ketik', 'current_password' => 'password'])
+            ->assertHasActionErrors(['confirm_name' => 'in']);
+        $this->assertSame(ElectionStatus::Ditutup, $this->election->fresh()->status);
+
+        Livewire::test(EditElection::class, ['record' => $this->election->public_id])
+            ->callAction('resetToDraft', ['confirm_name' => $this->election->name, 'current_password' => 'password'])
+            ->assertHasNoActionErrors()
+            ->assertNotified('Pemilihan kembali ke Draf. Semua jejak voting gladi sudah dihapus.');
+
+        $election = $this->election->fresh();
+        $this->assertSame(ElectionStatus::Draft, $election->status);
+        $this->assertNull($election->started_at);
+        $this->assertSame(0, Vote::query()->where('election_id', $election->id)->count());
+        $this->assertSame(0, Permit::query()->where('election_id', $election->id)->count());
+        $this->assertSame(0, Device::query()->where('election_id', $election->id)->count());
+        $this->assertSame(0, BallotVoter::query()->whereIn('ballot_id', $election->ballots()->pluck('id'))->count());
+        $this->assertSame(0, VoteCorrection::query()->where('election_id', $election->id)->count());
+        $this->assertSame($candidates, Candidate::query()->count(), 'Calon tetap');
+        $this->assertSame($voters, Voter::query()->count(), 'Data pemilih tetap');
+        $this->assertTrue($this->superAdmin->can('delete', $voter->fresh()), 'Pemilih tes bisa dihapus lagi');
+        $this->assertTrue(AuditLog::query()->where('action', 'election.reset')->exists());
+
+        // Bisa langsung disiapkan dan dimulai lagi.
+        app(ElectionLifecycle::class)->markReady($election, $this->superAdmin);
+        app(ElectionLifecycle::class)->start($election->fresh(), $this->superAdmin);
+        $this->assertSame(ElectionStatus::Berlangsung, $election->fresh()->status);
     }
 
     public function test_admin_rt_cannot_request_correction_for_another_rt(): void

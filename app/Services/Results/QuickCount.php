@@ -61,7 +61,8 @@ class QuickCount
         $bucket = intdiv(now()->timestamp, self::INTERVAL_MINUTES * 60);
         // Status ikut kunci: begitu voting ditutup, angka akhir langsung tampil tanpa menunggu potret berikutnya.
         $data = Cache::remember(
-            "quick-count:{$election->id}:{$election->status->value}:{$bucket}",
+            // Waktu Mulai ikut kunci: setelah "Ulang dari awal" lalu dimulai lagi, angka gladi lama tidak ikut terpakai.
+            "quick-count:{$election->id}:{$election->started_at?->timestamp}:{$election->status->value}:{$bucket}",
             now()->addMinutes(self::INTERVAL_MINUTES + 5),
             fn (): array => $this->capture($election),
         );
