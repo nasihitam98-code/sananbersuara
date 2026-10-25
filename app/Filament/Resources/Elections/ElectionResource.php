@@ -133,7 +133,8 @@ class ElectionResource extends Resource
                 ->visible(fn (Get $get): bool => in_array($get('mode') ?? Workspace::current(), [ElectionMode::Resmi, ElectionMode::Resmi->value], true))
                 ->schema([
                     TextInput::make('settings.max_booths_per_unit')
-                        ->label('Jumlah bilik per RT')
+                        ->label('Jumlah bilik awal per RT')
+                        ->helperText('Tiap RT bisa menambah atau menghapus biliknya sendiri di Meja Izin.')
                         ->numeric()->minValue(1)->maxValue(10)
                         ->placeholder('Bawaan: '.config('voting.defaults.max_booths_per_unit')),
                     TextInput::make('settings.permit_expiry_minutes')

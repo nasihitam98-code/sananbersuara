@@ -12,6 +12,7 @@ use App\Filament\Pages\DevicesPage;
 use App\Filament\Pages\MonitoringPage;
 use App\Filament\Pages\ParticipationPage;
 use App\Filament\Support\ElectionChecklist;
+use App\Models\AuditLog;
 use App\Models\Ballot;
 use App\Models\Candidate;
 use App\Models\Device;
@@ -148,6 +149,33 @@ class DeskPageTest extends TestCase
 
         $page->callAction(TestAction::make('grant')->arguments(['voter' => $voter->public_id]))
             ->assertSet('lastAssignment.booth', 'Bilik 1');
+    }
+
+    public function test_each_rt_adds_and_removes_its_own_booths(): void
+    {
+        $this->actingAs($this->deskOfficer);
+        $rt03 = $this->deskOfficer->unit_id;
+        $booths = fn (): int => Device::query()->where('unit_id', $rt03)->where('kind', DeviceKind::Bilik)->count();
+
+        $page = Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])
+            ->test(DeskPage::class)
+            ->callAction('addBooth')
+            ->assertNotified('Bilik 2 ditambahkan. Klik Buat Token untuk memasang laptopnya.')
+            ->assertSee('Bilik 2');
+        $this->assertSame(2, $booths());
+
+        // Bilik baru yang belum dipakai bisa dihapus; bilik 1 (terpasang) tidak.
+        $new = Device::query()->where('unit_id', $rt03)->where('kind', DeviceKind::Bilik)->where('number', 2)->sole();
+        $old = Device::query()->where('unit_id', $rt03)->where('kind', DeviceKind::Bilik)->where('number', 1)->sole();
+        $page->assertActionHidden(TestAction::make('removeBooth')->arguments(['booth' => $old->public_id]))
+            ->callAction(TestAction::make('removeBooth')->arguments(['booth' => $new->public_id]))
+            ->assertNotified('Bilik dihapus.');
+        $this->assertSame(1, $booths());
+
+        // Bilik yang dihapus tidak dibuat ulang otomatis.
+        app(DeviceManager::class)->ensureSlots($this->election->fresh());
+        $this->assertSame(1, $booths());
+        $this->assertTrue(AuditLog::query()->where('action', 'device.booth_removed')->exists());
     }
 
     public function test_go_to_booth_card_disappears_once_the_permit_ends(): void

@@ -8,6 +8,7 @@ use App\Enums\ElectionStatus;
 use App\Enums\PermitStatus;
 use App\Models\Device;
 use App\Models\Election;
+use App\Models\Permit;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\Permits\PermitManager;
@@ -37,8 +38,13 @@ class DeviceManager
         private EligibilitySnapshot $eligibility,
     ) {}
 
+    /** Batas bilik per RT yang bisa ditambah dari Meja Izin. */
+    public const MAX_BOOTHS_PER_UNIT = 10;
+
     /**
-     * Membuat slot Meja (nomor 0) dan Bilik 1..N untuk setiap RT yang punya pemilih berhak.
+     * Membuat slot Meja (nomor 0) untuk setiap RT yang punya pemilih berhak, dan Bilik 1..N (bawaan pengaturan) hanya
+     * bila RT itu belum punya bilik sama sekali. Setelah itu jumlah bilik diatur tiap RT sendiri (tambah/hapus di
+     * Meja Izin, keputusan pemilik 2026-10-25), jadi bilik yang dihapus tidak dibuat ulang.
      */
     public function ensureSlots(Election $election): void
     {
@@ -47,19 +53,80 @@ class DeviceManager
             ->unique()
             ->values();
 
-        $booths = (int) $election->setting('max_booths_per_unit');
+        $booths = max(1, (int) $election->setting('max_booths_per_unit'));
 
         foreach ($unitIds as $unitId) {
-            foreach ([[DeviceKind::Meja, 0], ...array_map(fn (int $number): array => [DeviceKind::Bilik, $number], range(1, max(1, $booths)))] as [$kind, $number]) {
-                $attributes = ['election_id' => $election->id, 'unit_id' => $unitId, 'kind' => $kind, 'number' => $number];
+            $existing = Device::query()->where('election_id', $election->id)->where('unit_id', $unitId)->get(['kind', 'number']);
+            $slots = $existing->contains('kind', DeviceKind::Meja) ? [] : [[DeviceKind::Meja, 0]];
 
-                if (Device::query()->where($attributes)->exists()) {
-                    continue;
-                }
+            if (! $existing->contains('kind', DeviceKind::Bilik)) {
+                $slots = [...$slots, ...array_map(fn (int $number): array => [DeviceKind::Bilik, $number], range(1, $booths))];
+            }
 
-                (new Device)->forceFill($attributes + ['public_id' => (string) Str::ulid()])->save();
+            foreach ($slots as [$kind, $number]) {
+                (new Device)->forceFill([
+                    'election_id' => $election->id,
+                    'unit_id' => $unitId,
+                    'kind' => $kind,
+                    'number' => $number,
+                    'public_id' => (string) Str::ulid(),
+                ])->save();
             }
         }
+    }
+
+    /**
+     * Tambah satu bilik untuk RT ini (nomor berikutnya). Mengembalikan slot baru.
+     */
+    public function addBooth(Election $election, int $unitId, User $actor): Device
+    {
+        $current = Device::query()->where('election_id', $election->id)->where('unit_id', $unitId)->where('kind', DeviceKind::Bilik);
+
+        if ((clone $current)->count() >= self::MAX_BOOTHS_PER_UNIT) {
+            throw VotingException::invalidState('Maksimal '.self::MAX_BOOTHS_PER_UNIT.' bilik per RT.');
+        }
+
+        $device = new Device;
+        $device->forceFill([
+            'election_id' => $election->id,
+            'unit_id' => $unitId,
+            'kind' => DeviceKind::Bilik,
+            'number' => ((int) (clone $current)->max('number')) + 1,
+            'public_id' => (string) Str::ulid(),
+        ])->save();
+
+        $this->audit->log('device.booth_added', $device, $election, meta: ['booth' => $device->code()], actor: $actor);
+
+        return $device;
+    }
+
+    /**
+     * Hapus bilik yang belum pernah dipakai dan sedang tidak terpasang. Bilik yang sudah pernah dipakai tetap ada
+     * (riwayat izin merujuk ke sana); cukup dilepas.
+     */
+    public function removeBooth(Device $device, User $actor): void
+    {
+        if ($device->kind !== DeviceKind::Bilik || $device->isPaired() || Permit::query()->where('device_id', $device->id)->exists()) {
+            throw VotingException::invalidState('Hanya bilik yang belum terpasang dan belum pernah dipakai yang bisa dihapus.');
+        }
+
+        if (Device::query()->where('election_id', $device->election_id)->where('unit_id', $device->unit_id)->where('kind', DeviceKind::Bilik)->count() <= 1) {
+            throw VotingException::invalidState('Minimal satu bilik per RT.');
+        }
+
+        $this->audit->log('device.booth_removed', $device, $device->election, meta: ['booth' => $device->code()], actor: $actor);
+        $device->delete();
+    }
+
+    /**
+     * Bilik ini boleh dihapus (untuk menampilkan tombolnya).
+     */
+    public function canRemoveBooth(Device $device): bool
+    {
+        return $device->kind === DeviceKind::Bilik
+            && ! $device->isPaired()
+            && ! Permit::query()->where('device_id', $device->id)->exists()
+            && Device::query()->where('election_id', $device->election_id)->where('unit_id', $device->unit_id)->where('kind', DeviceKind::Bilik)->count() > 1;
     }
 
     /**

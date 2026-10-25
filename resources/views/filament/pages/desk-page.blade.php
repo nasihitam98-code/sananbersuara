@@ -52,6 +52,9 @@
 
             {{-- Bilik --}}
             <x-filament::section heading="Bilik">
+                @if ($desk && $this->addBoothAction->isVisible())
+                    <x-slot name="afterHeader">{{ $this->addBoothAction }}</x-slot>
+                @endif
                 <div class="grid gap-3 md:grid-cols-3">
                     @foreach ($this->booths() as $booth)
                         @php($state = $booth->connectionState())
@@ -73,6 +76,8 @@
                                     @if (($this->issueBoothTokenAction)(['booth' => $booth->public_id])->isVisible()) {{ ($this->issueBoothTokenAction)(['booth' => $booth->public_id]) }} @endif
                                     @if ($booth->isPaired())
                                         @if (($this->releaseBoothAction)(['booth' => $booth->public_id])->isVisible()) {{ ($this->releaseBoothAction)(['booth' => $booth->public_id]) }} @endif
+                                    @elseif (($this->removeBoothAction)(['booth' => $booth->public_id])->isVisible())
+                                        {{ ($this->removeBoothAction)(['booth' => $booth->public_id]) }}
                                     @endif
                                 </div>
                             @endif

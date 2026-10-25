@@ -452,6 +452,57 @@ class DeskPage extends Page
             });
     }
 
+    /**
+     * Jumlah bilik diatur tiap RT sendiri (keputusan pemilik 2026-10-25): tambah satu bilik lagi.
+     */
+    public function addBoothAction(): Action
+    {
+        return Action::make('addBooth')
+            ->visible(fn (): bool => $this->desk() !== null)
+            ->label('+ Tambah bilik')
+            ->color('gray')
+            ->size('sm')
+            ->action(function (): void {
+                $desk = $this->requireDesk();
+                app(PermitManager::class)->assertDesk($desk, $this->user(), $desk->unit_id);
+
+                try {
+                    $booth = app(DeviceManager::class)->addBooth($desk->election, $desk->unit_id, $this->user());
+                } catch (VotingException $exception) {
+                    Notification::make()->title($exception->getMessage())->danger()->send();
+
+                    return;
+                }
+
+                Notification::make()->title("{$booth->name()} ditambahkan. Klik Buat Token untuk memasang laptopnya.")->success()->send();
+            });
+    }
+
+    /**
+     * Hapus bilik yang belum terpasang dan belum pernah dipakai (mis. RT ini hanya punya 2 laptop bilik).
+     */
+    public function removeBoothAction(): Action
+    {
+        return Action::make('removeBooth')
+            ->visible(fn (array $arguments): bool => $this->desk() !== null
+                && ($booth = $this->boothFromArguments($arguments)) !== null
+                && app(DeviceManager::class)->canRemoveBooth($booth))
+            ->label('Hapus')
+            ->color('gray')
+            ->size('sm')
+            ->requiresConfirmation()
+            ->modalHeading(fn (array $arguments): string => 'Hapus '.($this->boothFromArguments($arguments)?->name() ?? 'bilik').'?')
+            ->modalDescription('Bilik ini belum terpasang dan belum pernah dipakai. Bisa ditambah lagi kapan saja.')
+            ->action(function (array $arguments): void {
+                $booth = $this->boothFromArguments($arguments);
+                $desk = $this->requireDesk();
+                abort_if($booth === null, 404);
+                app(PermitManager::class)->assertDesk($desk, $this->user(), $booth->unit_id);
+
+                $this->run(fn () => app(DeviceManager::class)->removeBooth($booth, $this->user()), 'Bilik dihapus.');
+            });
+    }
+
     public function releaseBoothAction(): Action
     {
         return Action::make('releaseBooth')

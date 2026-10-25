@@ -58,6 +58,8 @@ class AuditLog extends Model
         'correction.requested' => 'Koreksi diajukan',
         'correction.withdrawn' => 'Koreksi ditarik',
         'device.paired' => 'Laptop dipasang',
+        'device.booth_added' => 'Bilik ditambah',
+        'device.booth_removed' => 'Bilik dihapus',
         'device.released' => 'Laptop dilepas',
         'device.token_issued' => 'Token laptop dibuat',
         'device.token_rejected' => 'Token laptop ditolak',
