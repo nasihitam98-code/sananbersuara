@@ -99,7 +99,7 @@
 
                 <div class="flex flex-wrap items-center gap-2">
                     <x-filament::input.wrapper class="min-w-[12rem] grow">
-                        <x-filament::input type="search" wire:model.live.debounce.300ms="search" placeholder="Saring nama…" class="text-lg" />
+                        <x-filament::input type="search" wire:model.live.debounce.300ms="search" placeholder="Saring nama atau No. …" class="text-lg" />
                     </x-filament::input.wrapper>
                     @if ($this->emergencyAddAction->isVisible()) {{ $this->emergencyAddAction }} @endif
                 </div>
@@ -118,7 +118,7 @@
                         @php($status = $row['status'])
                         <li class="flex flex-wrap items-center justify-between gap-3 py-3">
                             <div>
-                                <p class="text-lg font-bold">{{ $voter->name }}</p>
+                                <p class="text-lg font-bold">@if ($voter->rt_number)<span class="me-1 tabular-nums text-gray-500">{{ $voter->rt_number }}.</span>@endif{{ $voter->name }}</p>
                                 <p class="text-sm text-gray-500">{{ collect([$voter->address, $voter->voter_number])->filter()->implode(' · ') }}</p>
                                 @if ($started)
                                     <p class="mt-1 flex flex-wrap gap-2 text-sm">

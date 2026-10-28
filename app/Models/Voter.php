@@ -32,9 +32,27 @@ class Voter extends Model
             $voter->address = Str::of((string) $voter->address)->squish()->limit(190, '')->toString();
         });
 
+        // No. urut per RT: pemilih baru (atau yang dipindah RT) mendapat nomor berikutnya di RT-nya.
+        static::creating(function (Voter $voter): void {
+            if ($voter->rt_number === null && $voter->unit_id !== null) {
+                $voter->rt_number = static::nextRtNumber($voter->unit_id);
+            }
+        });
+
+        static::updating(function (Voter $voter): void {
+            if ($voter->isDirty('unit_id') && ! $voter->isDirty('rt_number')) {
+                $voter->rt_number = static::nextRtNumber($voter->unit_id);
+            }
+        });
+
         static::created(function (Voter $voter): void {
             $voter->forceFill(['voter_number' => 'VTR-'.str_pad((string) $voter->id, 6, '0', STR_PAD_LEFT)])->saveQuietly();
         });
+    }
+
+    public static function nextRtNumber(int $unitId): int
+    {
+        return ((int) static::query()->where('unit_id', $unitId)->max('rt_number')) + 1;
     }
 
     /**
@@ -52,6 +70,7 @@ class Voter extends Model
     {
         return [
             'birth_date' => 'date',
+            'rt_number' => 'integer',
             'phone' => 'encrypted',
             'is_active' => 'boolean',
             'added_during_live' => 'boolean',

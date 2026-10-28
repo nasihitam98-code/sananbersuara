@@ -132,9 +132,22 @@ class VoterResource extends Resource
         $user = auth()->user();
 
         return $table
-            ->defaultSort('name')
+            // Urut per RT lalu No. urut (seperti daftar absen RT), agar tabel rapi.
+            ->defaultSort(fn (Builder $query): Builder => $query
+                ->orderBy(Unit::query()->select('sort')->whereColumn('units.id', 'voters.unit_id'))
+                ->orderBy('rt_number')
+                ->orderBy('name'))
             ->columns([
-                TextColumn::make('voter_number')->label('ID')->searchable()->fontFamily('mono'),
+                // No. urut per RT; kotak Cari menerima nomor (mis. "75").
+                TextColumn::make('rt_number')
+                    ->label('No.')
+                    ->sortable()
+                    ->searchable(query: fn (Builder $query, string $search): Builder => ctype_digit(trim($search))
+                        ? $query->where('rt_number', (int) trim($search))
+                        : $query->whereRaw('1 = 0'))
+                    ->alignEnd()
+                    ->width('4rem'),
+                TextColumn::make('voter_number')->label('ID')->searchable()->fontFamily('mono')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('name')->label('Nama')->searchable(query: fn (Builder $query, string $search): Builder => $query->where('name_search', 'like', '%'.addcslashes(mb_strtolower($search), '%_\\').'%'))->weight('bold'),
                 TextColumn::make('unit.name')->label('RT')->sortable(),
                 // Form Buat cukup nama + RT, jadi alamat/NIK biasanya kosong: disembunyikan, bisa dimunculkan dari ikon kolom.

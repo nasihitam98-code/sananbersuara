@@ -68,7 +68,7 @@ trait ShowsVoterProgress
             ->with('unit')
             ->whereIn('id', $ids)
             ->when(mb_strlen(trim($this->notVotedSearch)) >= 2, fn ($query) => $query->where('name_search', 'like', '%'.addcslashes(Attendee::normalizeForSearch($this->notVotedSearch), '%_\\').'%'))
-            ->orderBy('name')
+            ->orderBy('unit_id')->orderBy('rt_number')->orderBy('name')
             ->limit(self::NOT_VOTED_LIMIT)
             ->get();
     }

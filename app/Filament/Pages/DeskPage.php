@@ -168,8 +168,11 @@ class DeskPage extends Page
                 'sudah' => $row['state'] === 'sudah',
                 default => true,
             })
+            // Saring nama, atau No. urut RT bila yang diketik angka (mis. "75").
             ->when(filled(trim($this->search)), fn ($rows) => $rows->filter(
-                fn (array $row): bool => str_contains($row['voter']->name_search, Attendee::normalizeForSearch($this->search)),
+                fn (array $row): bool => ctype_digit(trim($this->search))
+                    ? $row['voter']->rt_number === (int) trim($this->search)
+                    : str_contains($row['voter']->name_search, Attendee::normalizeForSearch($this->search)),
             ))
             ->values()
             ->all();
@@ -209,7 +212,7 @@ class DeskPage extends Page
             return $this->voterRowsCache = [];
         }
 
-        $voters = Voter::query()->where('unit_id', $this->user()->unit_id)->orderBy('name')->get();
+        $voters = Voter::query()->where('unit_id', $this->user()->unit_id)->orderBy('rt_number')->orderBy('name')->get();
         $statuses = app(PermitManager::class)->statuses($voters, $election);
         $started = $election->status !== ElectionStatus::Ready;
         $pendingCorrections = VoteCorrection::query()

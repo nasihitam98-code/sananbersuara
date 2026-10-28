@@ -104,6 +104,30 @@ class VoterManagementTest extends TestCase
         Livewire::withQueryParams(['rt' => '04'])->test(CreateVoter::class)->assertFormSet(['unit_id' => $this->rt04->id]);
     }
 
+    public function test_voters_get_a_running_number_per_rt_and_can_be_found_by_it(): void
+    {
+        $this->actingAs($this->superAdmin);
+
+        Livewire::test(ListVoters::class)
+            ->callAction('bulkAdd', ['unit_id' => $this->rt03->id, 'names' => "Satu\nDua\nTiga | RT 04\nEmpat"])
+            ->assertNotified('4 pemilih ditambahkan.');
+
+        $numbers = Voter::query()->with('unit')->get()->mapWithKeys(fn (Voter $voter): array => [$voter->name => $voter->unit->code.'-'.$voter->rt_number]);
+        $this->assertSame(['Satu' => '03-1', 'Dua' => '03-2', 'Tiga' => '04-1', 'Empat' => '03-3'], $numbers->all());
+
+        // Pindah RT: nomor berikutnya di RT baru.
+        app(VoterRegistry::class)->moveUnit(Voter::query()->where('name', 'Dua')->sole(), $this->rt04->id, 'Salah RT', $this->superAdmin);
+        $this->assertSame(2, Voter::query()->where('name', 'Dua')->sole()->rt_number);
+
+        // Tabel: diurutkan per RT lalu No.; kotak Cari menerima nomor.
+        Livewire::test(ListVoters::class)
+            ->set('activeTab', '03')
+            ->assertSeeInOrder(['Satu', 'Empat'])
+            ->searchTable('3')
+            ->assertSee('Empat')
+            ->assertDontSee('Satu');
+    }
+
     public function test_checked_voters_are_deleted_at_once(): void
     {
         $this->actingAs($this->superAdmin);

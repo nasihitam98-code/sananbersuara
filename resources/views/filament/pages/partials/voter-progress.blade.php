@@ -36,14 +36,14 @@
                     <h3 class="mt-4 text-sm font-semibold">{{ $voters->first()->unit?->name }} <span class="font-normal text-gray-500">· {{ $voters->count() }} orang</span></h3>
                     <ul class="grid gap-x-6 md:grid-cols-2 xl:grid-cols-3">
                         @foreach ($voters as $voter)
-                            <li class="py-1">{{ $voter->name }} @if (filled($voter->address))<span class="text-sm text-gray-500">· {{ $voter->address }}</span>@endif</li>
+                            <li class="py-1">@if ($voter->rt_number)<span class="me-1 tabular-nums text-gray-500">{{ $voter->rt_number }}.</span>@endif{{ $voter->name }} @if (filled($voter->address))<span class="text-sm text-gray-500">· {{ $voter->address }}</span>@endif</li>
                         @endforeach
                     </ul>
                 @endforeach
             @else
                 <ul class="mt-3 grid gap-x-6 md:grid-cols-2 xl:grid-cols-3">
                     @foreach ($notVoted as $voter)
-                        <li class="py-1">{{ $voter->name }} @if (filled($voter->address))<span class="text-sm text-gray-500">· {{ $voter->address }}</span>@endif</li>
+                        <li class="py-1">@if ($voter->rt_number)<span class="me-1 tabular-nums text-gray-500">{{ $voter->rt_number }}.</span>@endif{{ $voter->name }} @if (filled($voter->address))<span class="text-sm text-gray-500">· {{ $voter->address }}</span>@endif</li>
                     @endforeach
                 </ul>
             @endif
