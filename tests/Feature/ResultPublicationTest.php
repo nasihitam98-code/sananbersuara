@@ -19,6 +19,7 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Services\Results\OfficialReportService;
 use App\Services\Results\ResultPublication;
+use App\Services\Results\ResultSlots;
 use App\Services\Voting\AttendeeRegistrar;
 use App\Services\Voting\BallotBox;
 use App\Services\Voting\ElectionLifecycle;
@@ -95,6 +96,29 @@ class ResultPublicationTest extends TestCase
         $reports->ratify($reports->createDraft($this->election, null, $this->admin), $this->admin);
 
         $lifecycle->publish($this->election, $this->admin);
+    }
+
+    public function test_one_click_decides_every_open_ballot_from_the_most_votes_and_marks_the_top_row(): void
+    {
+        app(ElectionLifecycle::class)->startVerification($this->election, $this->admin);
+        $this->actingAs($this->admin);
+        Filament::setCurrentPanel('admin');
+
+        Livewire::test(VerificationDesk::class)
+            ->assertSee('Suara terbanyak')
+            ->assertActionVisible('decideAllTop')
+            ->callAction('decideAllTop')
+            ->assertNotified('1 surat suara ditetapkan dari suara terbanyak.')
+            ->assertActionHidden('decideAllTop');
+
+        $outcome = app(ResultPublication::class)->outcome($this->ballot, null);
+        $this->assertSame([$this->candidates[0]->id], $outcome->candidates->modelKeys());
+        $this->assertSame('Terpilih', $outcome->label());
+
+        // Per kartu tetap bisa diubah manual; jendelanya sudah mencentang penetapan yang ada.
+        Livewire::test(VerificationDesk::class)
+            ->mountAction(TestAction::make('decide')->arguments(['slot' => app(ResultSlots::class)->slots($this->election)->first()['key']]))
+            ->assertSchemaStateSet(['candidates' => [$this->candidates[0]->id]]);
     }
 
     public function test_publish_is_blocked_until_outcome_and_ratified_report_exist(): void

@@ -7,11 +7,13 @@ use App\Enums\ElectionStatus;
 use App\Enums\OutcomeStatus;
 use App\Enums\ReportStatus;
 use App\Models\Ballot;
+use App\Models\Candidate;
 use App\Models\Election;
 use App\Models\Outcome;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\Voting\ResultsCalculator;
 use App\Services\Voting\RoundResolver;
 use App\Services\Voting\VotingException;
 use Illuminate\Support\Carbon;
@@ -102,6 +104,49 @@ class ResultPublication
         ], actor: $actor);
 
         return $outcome;
+    }
+
+    /**
+     * Calon dengan suara terbanyak di satu surat suara/RT, atau null bila seri di urutan teratas atau belum ada suara.
+     */
+    public function topVoted(Election $election, Ballot $ballot, ?Unit $unit): ?Candidate
+    {
+        $round = app(RoundResolver::class)->roundFor($election, $ballot, $unit?->id) ?? $election->currentRound();
+        $leaders = collect(app(ResultsCalculator::class)->tally($ballot, $round, $unit)['candidates'])
+            ->filter(fn (array $row): bool => $row['rank'] === 1 && $row['votes'] > 0);
+
+        return $leaders->count() === 1 ? $leaders->first()['candidate'] : null;
+    }
+
+    /**
+     * Tetapkan sekaligus: setiap surat suara/RT yang belum ditetapkan diisi calon dengan suara terbanyak. Yang sudah
+     * ditetapkan tidak diubah; yang seri atau belum ada suara dilewati untuk ditetapkan manual.
+     *
+     * @return array{decided: int, skipped: array<int, string>}
+     */
+    public function decideTopVoted(Election $election, User $actor): array
+    {
+        $decided = 0;
+        $skipped = [];
+
+        foreach ($this->slots->slots($election) as $slot) {
+            if ($this->outcome($slot['ballot'], $slot['unit']) !== null) {
+                continue;
+            }
+
+            $winner = $this->topVoted($election, $slot['ballot'], $slot['unit']);
+
+            if ($winner === null) {
+                $skipped[] = $slot['ballot']->title.($slot['unit'] !== null ? ' '.$slot['unit']->name : '');
+
+                continue;
+            }
+
+            $this->decide($election, $slot['ballot'], $slot['unit'], OutcomeStatus::Ditetapkan, [$winner->id], null, $actor);
+            $decided++;
+        }
+
+        return ['decided' => $decided, 'skipped' => $skipped];
     }
 
     /**

@@ -301,12 +301,13 @@ class VerificationDesk extends Page
             ->icon('heroicon-o-check-badge')
             ->visible(fn (): bool => in_array($this->election()?->status, [ElectionStatus::Verifikasi, ElectionStatus::Unpublished], true))
             ->modalHeading(fn (array $arguments): string => 'Penetapan: '.($this->slotFromArguments($arguments)['title'] ?? ''))
-            ->modalDescription('Sistem tidak menentukan pemenang. Pilih calon yang ditetapkan panitia. Satu calon = "Terpilih", beberapa calon = "Lolos".')
+            ->modalDescription('Calon dengan suara terbanyak sudah dicentang. Ubah bila panitia memutuskan lain. Satu calon = "Terpilih", beberapa calon = "Lolos".')
             ->schema(fn (array $arguments): array => [
                 Select::make('status')->label('Status')->options(OutcomeStatus::class)->default(OutcomeStatus::Ditetapkan)->required()->live(),
                 CheckboxList::make('candidates')
                     ->label('Calon yang ditetapkan')
                     ->options(fn (): array => $this->candidateOptions($arguments))
+                    ->default(fn (): array => $this->defaultCandidateIds($arguments))
                     ->visible(fn (Get $get): bool => in_array($get('status'), [OutcomeStatus::Ditetapkan, OutcomeStatus::Ditetapkan->value], true)),
                 Textarea::make('note')->label('Catatan (wajib jika belum ditetapkan)')->maxLength(500),
             ])
@@ -325,6 +326,42 @@ class VerificationDesk extends Page
                     $data['note'] ?? null,
                     auth()->user(),
                 ), 'Penetapan disimpan. Berita acara lingkup ini perlu dibuat ulang.');
+            });
+    }
+
+    /**
+     * Sekali klik: semua surat suara/RT yang belum ditetapkan diisi calon dengan suara terbanyak (yang seri dilewati).
+     * Tombol Tetapkan/Ubah penetapan per kartu tetap ada untuk keputusan lain.
+     */
+    public function decideAllTopAction(): Action
+    {
+        return Action::make('decideAllTop')
+            ->label('Tetapkan semua dari suara terbanyak')
+            ->icon('heroicon-o-bolt')
+            ->visible(fn (): bool => in_array($this->election()?->status, [ElectionStatus::Verifikasi, ElectionStatus::Unpublished], true)
+                && collect($this->slotRows())->contains(fn (array $row): bool => $row['outcome'] === null))
+            ->requiresConfirmation()
+            ->modalHeading('Tetapkan semua dari suara terbanyak?')
+            ->modalDescription('Setiap surat suara yang belum ditetapkan diisi calon dengan suara terbanyak. Yang sudah ditetapkan tidak diubah. Yang seri dilewati untuk ditetapkan manual. Setelah itu tiap kartu tetap bisa diubah lewat "Ubah penetapan".')
+            ->modalSubmitActionLabel('Tetapkan semua')
+            ->action(function (): void {
+                try {
+                    $result = app(ResultPublication::class)->decideTopVoted($this->authorizedElection(), auth()->user());
+                } catch (VotingException $exception) {
+                    Notification::make()->title($exception->getMessage())->danger()->send();
+
+                    return;
+                }
+
+                $notification = Notification::make()->title("{$result['decided']} surat suara ditetapkan dari suara terbanyak.");
+
+                if ($result['skipped'] === []) {
+                    $notification->success()->send();
+
+                    return;
+                }
+
+                $notification->body('Seri atau belum ada suara, tetapkan manual: '.implode(', ', $result['skipped']).'.')->warning()->send();
             });
     }
 
@@ -399,6 +436,32 @@ class VerificationDesk extends Page
                     .(isset($results[$candidate->id]) ? ' — '.implode(' · ', $results[$candidate->id]) : ''),
             ])
             ->all();
+    }
+
+    /**
+     * Centang bawaan di jendela penetapan: penetapan yang sudah ada, atau calon dengan suara terbanyak (bila tidak seri).
+     *
+     * @param  array<string, mixed>  $arguments
+     * @return array<int, int>
+     */
+    private function defaultCandidateIds(array $arguments): array
+    {
+        $slot = $this->slotFromArguments($arguments);
+
+        if ($slot === null) {
+            return [];
+        }
+
+        $publication = app(ResultPublication::class);
+        $existing = $publication->outcome($slot['ballot'], $slot['unit']);
+
+        if ($existing !== null) {
+            return $existing->candidates->modelKeys();
+        }
+
+        $winner = $publication->topVoted($this->authorizedElection(), $slot['ballot'], $slot['unit']);
+
+        return $winner === null ? [] : [$winner->id];
     }
 
     /**

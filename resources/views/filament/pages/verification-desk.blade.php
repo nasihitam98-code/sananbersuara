@@ -104,7 +104,10 @@
         </x-filament::section>
 
         {{-- 1. Penetapan --}}
-        <x-filament::section id="penetapan" heading="② Penetapan hasil oleh panitia" description="Klik Tetapkan di setiap surat suara. Sistem hanya menampilkan angka; yang terpilih/lolos ditetapkan panitia.">
+        <x-filament::section id="penetapan" heading="② Penetapan hasil oleh panitia" description="Klik Tetapkan semua dari suara terbanyak, atau Tetapkan per surat suara. Tiap kartu tetap bisa diubah lewat Ubah penetapan.">
+            @if ($this->decideAllTopAction->isVisible())
+                <x-slot name="afterHeader">{{ $this->decideAllTopAction }}</x-slot>
+            @endif
             <div class="space-y-6">
                 @foreach ($this->slotRows() as $row)
                     @php($tally = $row['tally'])
@@ -128,11 +131,21 @@
                             </thead>
                             <tbody>
                                 @foreach ($tally['candidates'] as $line)
-                                    <tr class="border-t border-gray-100 dark:border-white/5">
-                                        <td class="py-1">{{ $line['rank'] }}</td>
-                                        <td>{{ $line['candidate']->displayNumber() }} · {{ $line['candidate']->nameWithOrigin() }}</td>
+                                    {{-- Suara tertinggi disorot hijau tebal agar mudah dibaca panitia; seri teratas ikut disorot semua. --}}
+                                    @php($isTop = $line['rank'] === 1 && $line['votes'] > 0)
+                                    <tr @class([
+                                        'border-t border-gray-100 dark:border-white/5',
+                                        'bg-success-50 font-bold text-success-700 dark:bg-success-500/10 dark:text-success-400' => $isTop,
+                                    ])>
+                                        <td class="py-1.5 pl-2">{{ $line['rank'] }}</td>
+                                        <td>
+                                            {{ $line['candidate']->displayNumber() }} · {{ $line['candidate']->nameWithOrigin() }}
+                                            @if ($isTop)
+                                                <x-filament::badge :color="$tally['tie_at_top'] ? 'warning' : 'success'" size="sm" class="ms-2 inline-flex" icon="heroicon-m-trophy">{{ $tally['tie_at_top'] ? 'Seri teratas' : 'Suara terbanyak' }}</x-filament::badge>
+                                            @endif
+                                        </td>
                                         <td class="text-right tabular-nums">{{ $line['votes'] }}</td>
-                                        <td class="text-right tabular-nums">{{ \Illuminate\Support\Number::format($line['percent'], maxPrecision: 1) }}</td>
+                                        <td class="pr-2 text-right tabular-nums">{{ \Illuminate\Support\Number::format($line['percent'], maxPrecision: 1) }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
