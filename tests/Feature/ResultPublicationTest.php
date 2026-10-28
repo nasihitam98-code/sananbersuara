@@ -105,7 +105,7 @@ class ResultPublicationTest extends TestCase
         Filament::setCurrentPanel('admin');
 
         Livewire::test(VerificationDesk::class)
-            ->assertSee('Suara terbanyak')
+            ->assertSee('Suara terbanyak: 01 · Calon Nomor 1')
             ->assertActionVisible('decideAllTop')
             ->callAction('decideAllTop')
             ->assertNotified('1 surat suara ditetapkan dari suara terbanyak.')

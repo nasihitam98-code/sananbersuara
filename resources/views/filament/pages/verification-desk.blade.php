@@ -121,6 +121,13 @@
                                         · <strong class="text-warning-600">SERI di peringkat teratas</strong>
                                     @endif
                                 </p>
+                                @php($leaders = collect($tally['candidates'])->filter(fn ($line) => $line['rank'] === 1 && $line['votes'] > 0))
+                                @if ($leaders->isNotEmpty())
+                                    <p class="mt-1 text-base font-bold text-success-700 dark:text-success-400">
+                                        Suara terbanyak: {{ $leaders->map(fn ($line) => $line['candidate']->displayNumber().' · '.$line['candidate']->name)->implode(' dan ') }}
+                                        — {{ $leaders->first()['votes'] }} suara ({{ \Illuminate\Support\Number::format($leaders->first()['percent'], maxPrecision: 1) }}%)
+                                    </p>
+                                @endif
                             </div>
                             @if (($this->decideAction)(['slot' => $row['key']])->isVisible()) {{ ($this->decideAction)(['slot' => $row['key']]) }} @endif
                         </div>
