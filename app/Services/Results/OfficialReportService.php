@@ -129,6 +129,30 @@ class OfficialReportService
     }
 
     /**
+     * Buat draf untuk setiap lingkup yang belum punya berita acara (atau yang lama digantikan karena penetapan berubah).
+     * Yang sudah draf atau disahkan tidak disentuh. Mengembalikan jumlah draf yang dibuat.
+     */
+    public function createMissingDrafts(Election $election, User $actor): int
+    {
+        return $this->slots->reportScopes($election)
+            ->filter(fn (?Unit $scope): bool => $this->current($election, $scope) === null)
+            ->each(fn (?Unit $scope) => $this->createDraft($election, $scope, $actor))
+            ->count();
+    }
+
+    /**
+     * Sahkan semua draf terbaru (setelah lembarnya dicetak dan ditandatangani panitia). Mengembalikan jumlahnya.
+     */
+    public function ratifyAllDrafts(Election $election, User $actor): int
+    {
+        return $this->slots->reportScopes($election)
+            ->map(fn (?Unit $scope): ?OfficialReport => $this->current($election, $scope))
+            ->filter(fn (?OfficialReport $report): bool => $report?->status === ReportStatus::Draft)
+            ->each(fn (OfficialReport $report) => $this->ratify($report, $actor))
+            ->count();
+    }
+
+    /**
      * Penetapan berubah: berita acara lingkup itu harus dibuat ulang dan disahkan ulang.
      */
     public function invalidate(Election $election, ?Unit $scope, User $actor): void

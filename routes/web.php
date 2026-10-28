@@ -88,6 +88,7 @@ Route::middleware('auth')->prefix('layar')->name('screens.')->group(function ():
     Route::get('/hasil/{election:public_id}', [ScreenController::class, 'results'])->name('results');
 });
 
+Route::middleware('auth')->get('/berita-acara/semua/{election:public_id}', [OfficialReportController::class, 'all'])->name('reports.all');
 Route::middleware('auth')->get('/berita-acara/{report:public_id}', [OfficialReportController::class, 'show'])->name('reports.show');
 Route::middleware('auth')->get('/pemilih/template', VoterTemplateController::class)->name('voters.template');
 Route::middleware('auth')->get('/rekap/{election:public_id}', RecapExportController::class)->name('recap.export');

@@ -175,7 +175,14 @@
         </x-filament::section>
 
         {{-- 2. Berita acara --}}
-        <x-filament::section id="berita-acara" heading="③ Berita acara" description="Urutan: Buat draf → Lihat / Cetak (Simpan sebagai PDF) → tanda tangani panitia → Sahkan. Bila penetapan diubah, berita acara dibuat ulang.">
+        <x-filament::section id="berita-acara" heading="③ Berita acara" description="Urutan: Buat draf → Cetak (Simpan sebagai PDF) → tanda tangani panitia → Sahkan. Bisa sekaligus semua lewat tombol di kanan, atau per lingkup. Bila penetapan diubah, berita acara dibuat ulang.">
+            <x-slot name="afterHeader">
+                <div class="flex flex-wrap gap-2">
+                    @if ($this->draftAllReportsAction->isVisible()) {{ $this->draftAllReportsAction }} @endif
+                    @if ($this->printAllReportsAction->isVisible()) {{ $this->printAllReportsAction }} @endif
+                    @if ($this->ratifyAllReportsAction->isVisible()) {{ $this->ratifyAllReportsAction }} @endif
+                </div>
+            </x-slot>
             <div class="space-y-4">
                 @foreach ($this->reportRows() as $row)
                     @php($current = $row['current'])

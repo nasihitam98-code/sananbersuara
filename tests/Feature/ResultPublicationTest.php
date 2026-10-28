@@ -121,6 +121,36 @@ class ResultPublicationTest extends TestCase
             ->assertSchemaStateSet(['candidates' => [$this->candidates[0]->id]]);
     }
 
+    public function test_reports_are_drafted_printed_and_ratified_all_at_once(): void
+    {
+        app(ElectionLifecycle::class)->startVerification($this->election, $this->admin);
+        $this->actingAs($this->admin);
+        Filament::setCurrentPanel('admin');
+
+        Livewire::test(VerificationDesk::class)
+            ->callAction('decideAllTop')
+            ->assertActionHidden('printAllReports')
+            ->callAction('draftAllReports')
+            ->assertNotified('1 draf berita acara dibuat. Klik Cetak semua untuk mencetak sekaligus.')
+            ->assertActionHidden('draftAllReports')
+            ->assertActionVisible('printAllReports');
+
+        $report = app(OfficialReportService::class)->current($this->election, null);
+        $this->get(route('reports.all', $this->election->public_id))
+            ->assertOk()
+            ->assertSee('Cetak semua / Simpan sebagai PDF')
+            ->assertSee($report->number)
+            ->assertSee('1 masih draf');
+
+        Livewire::test(VerificationDesk::class)
+            ->callAction('ratifyAllReports', ['current_password' => 'password'])
+            ->assertNotified('1 berita acara disahkan.')
+            ->assertActionHidden('ratifyAllReports');
+
+        $this->assertSame(ReportStatus::Disahkan, $report->fresh()->status);
+        $this->assertSame([], app(ResultPublication::class)->publishProblems($this->election));
+    }
+
     public function test_publish_is_blocked_until_outcome_and_ratified_report_exist(): void
     {
         $lifecycle = app(ElectionLifecycle::class);

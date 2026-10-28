@@ -178,3 +178,15 @@ table {
         break-inside: avoid;
     }
 }
+
+/* Cetak semua: tiap berita acara mulai di lembar baru. */
+.paper-stack .paper + .paper {
+    margin-top: 24px;
+}
+
+@media print {
+    .paper-stack .paper + .paper {
+        margin-top: 0;
+        break-before: page;
+    }
+}

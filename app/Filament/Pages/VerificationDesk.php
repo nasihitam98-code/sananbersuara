@@ -365,6 +365,52 @@ class VerificationDesk extends Page
             });
     }
 
+    public function draftAllReportsAction(): Action
+    {
+        return Action::make('draftAllReports')
+            ->label('Buat draf semua')
+            ->icon('heroicon-o-document-duplicate')
+            ->visible(fn (): bool => in_array($this->election()?->status, [ElectionStatus::Ditutup, ElectionStatus::Verifikasi, ElectionStatus::Unpublished], true)
+                && collect($this->reportRows())->contains(fn (array $row): bool => $row['current'] === null))
+            ->requiresConfirmation()
+            ->modalHeading('Buat draf semua berita acara?')
+            ->modalDescription('Draf dibuat untuk setiap lingkup yang belum punya berita acara. Yang sudah draf atau disahkan tidak diubah. Sebaiknya tetapkan semua hasil dulu (bagian ②).')
+            ->modalSubmitActionLabel('Buat draf semua')
+            ->action(fn () => $this->guardCount(
+                fn (): int => app(OfficialReportService::class)->createMissingDrafts($this->authorizedElection(), auth()->user()),
+                ':count draf berita acara dibuat. Klik Cetak semua untuk mencetak sekaligus.',
+            ));
+    }
+
+    public function printAllReportsAction(): Action
+    {
+        return Action::make('printAllReports')
+            ->label('Cetak semua')
+            ->icon('heroicon-o-printer')
+            ->color('gray')
+            ->visible(fn (): bool => collect($this->reportRows())->contains(fn (array $row): bool => $row['current'] !== null))
+            ->url(fn (): string => route('reports.all', $this->election()->public_id))
+            ->openUrlInNewTab();
+    }
+
+    public function ratifyAllReportsAction(): Action
+    {
+        return Action::make('ratifyAllReports')
+            ->label('Sahkan semua')
+            ->icon('heroicon-o-lock-closed')
+            ->color('success')
+            ->visible(fn (): bool => in_array($this->election()?->status, [ElectionStatus::Ditutup, ElectionStatus::Verifikasi, ElectionStatus::Unpublished], true)
+                && collect($this->reportRows())->contains(fn (array $row): bool => $row['current']?->status === ReportStatus::Draft))
+            ->modalHeading('Sahkan semua draf berita acara?')
+            ->modalDescription('Pastikan semua lembar sudah dicetak dan ditandatangani panitia. Setelah disahkan, isinya terkunci; perubahan hanya lewat versi baru dengan alasan.')
+            ->modalSubmitActionLabel('Sahkan semua')
+            ->schema([Reauthenticate::field()])
+            ->action(fn () => $this->guardCount(
+                fn (): int => app(OfficialReportService::class)->ratifyAllDrafts($this->authorizedElection(), auth()->user()),
+                ':count berita acara disahkan.',
+            ));
+    }
+
     public function draftReportAction(): Action
     {
         return Action::make('draftReport')
@@ -521,6 +567,22 @@ class VerificationDesk extends Page
         if ($this->election()?->fresh()?->status !== $statusBefore) {
             ReloadPage::now($this);
         }
+    }
+
+    /**
+     * Seperti guard(), dengan jumlah hasil di pesan sukses (":count").
+     */
+    private function guardCount(callable $callback, string $success): void
+    {
+        try {
+            $count = $callback();
+        } catch (VotingException $exception) {
+            Notification::make()->title($exception->getMessage())->danger()->send();
+
+            return;
+        }
+
+        Notification::make()->title(str_replace(':count', (string) $count, $success))->success()->send();
     }
 
     public function reportStatusColor(?ReportStatus $status): string
