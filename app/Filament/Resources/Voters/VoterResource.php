@@ -16,6 +16,7 @@ use App\Services\Voters\VoterRegistry;
 use App\Services\Voting\VotingException;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
@@ -32,6 +33,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use UnitEnum;
 
 /**
@@ -183,6 +185,40 @@ class VoterResource extends Resource
                     ->modalDescription('Data pemilih ini dihapus permanen dan tercatat di audit. Bila hanya pindah/meninggal/tidak memenuhi syarat, lebih baik "Nonaktifkan".')
                     ->modalSubmitActionLabel('Ya, hapus')
                     ->action(fn (Voter $record) => static::run(fn () => app(VoterRegistry::class)->delete($record, auth()->user()), 'Pemilih dihapus.')),
+            ])
+            // Centang beberapa (atau semua) baris lalu hapus sekaligus; aturan hapus tetap diperiksa per pemilih.
+            ->toolbarActions([
+                BulkAction::make('deleteSelected')
+                    ->label('Hapus yang dicentang')
+                    ->icon(Heroicon::OutlinedTrash)
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading(fn (Collection $records): string => "Hapus {$records->count()} pemilih?")
+                    ->modalDescription('Data pemilih yang dicentang dihapus permanen dan tercatat di audit. Pemilih yang sudah pernah ikut memilih tidak bisa dihapus (dilewati); nonaktifkan saja.')
+                    ->modalSubmitActionLabel('Ya, hapus')
+                    ->action(function (Collection $records): void {
+                        $deleted = 0;
+
+                        foreach ($records as $record) {
+                            if (! auth()->user()->can('delete', $record)) {
+                                continue;
+                            }
+
+                            try {
+                                app(VoterRegistry::class)->delete($record, auth()->user());
+                                $deleted++;
+                            } catch (VotingException) {
+                                // Dilewati: punya riwayat pemilihan.
+                            }
+                        }
+
+                        $skipped = $records->count() - $deleted;
+                        Notification::make()
+                            ->title("{$deleted} pemilih dihapus.".($skipped > 0 ? " {$skipped} dilewati (sudah pernah ikut memilih atau bukan RT Anda)." : ''))
+                            ->status($skipped > 0 ? 'warning' : 'success')
+                            ->send();
+                    })
+                    ->deselectRecordsAfterCompletion(),
             ])
             ->headerActions([
                 Action::make('import')

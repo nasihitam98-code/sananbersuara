@@ -20,6 +20,7 @@ use App\Services\Voters\VoterRegistry;
 use App\Services\Voting\ElectionLifecycle;
 use App\Services\Voting\VotingException;
 use Database\Seeders\DatabaseSeeder;
+use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -101,6 +102,20 @@ class VoterManagementTest extends TestCase
 
         $this->get(VoterResource::getUrl('create', ['rt' => '04']))->assertOk();
         Livewire::withQueryParams(['rt' => '04'])->test(CreateVoter::class)->assertFormSet(['unit_id' => $this->rt04->id]);
+    }
+
+    public function test_checked_voters_are_deleted_at_once(): void
+    {
+        $this->actingAs($this->superAdmin);
+        $voters = Voter::factory()->count(3)->for($this->rt03)->create();
+
+        Livewire::test(ListVoters::class)
+            ->set('activeTab', '03')
+            ->selectTableRecords($voters->take(2)->pluck('id')->all())
+            ->callAction(TestAction::make('deleteSelected')->table()->bulk())
+            ->assertNotified('2 pemilih dihapus.');
+
+        $this->assertSame([$voters->last()->id], Voter::query()->pluck('id')->all());
     }
 
     public function test_many_voters_can_be_pasted_with_their_rt(): void

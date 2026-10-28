@@ -145,6 +145,30 @@ class CandidateBulkImportTest extends TestCase
         Livewire::test(ListCandidates::class)->assertSee('Asal RT 02');
     }
 
+    public function test_checked_candidates_are_deleted_at_once_only_while_editable(): void
+    {
+        $this->actingAs($this->superAdmin);
+        $candidates = collect([1, 2, 3])->map(fn (int $number) => Candidate::factory()->for($this->ballot)->create(['number' => $number]));
+
+        Livewire::test(ListCandidates::class)
+            ->selectTableRecords($candidates->take(2)->pluck('id')->all())
+            ->callAction(TestAction::make('deleteSelected')->table()->bulk())
+            ->assertNotified('2 calon dihapus.');
+
+        $this->assertSame([3], Candidate::query()->where('ballot_id', $this->ballot->id)->pluck('number')->all());
+        $this->assertSame(2, AuditLog::query()->where('action', 'candidate.deleted')->count());
+
+        // Setelah pemilihan dimulai: tidak ada yang terhapus.
+        app(ElectionLifecycle::class)->markReady($this->ballot->election, $this->superAdmin);
+        app(ElectionLifecycle::class)->start($this->ballot->election, $this->superAdmin);
+
+        Livewire::test(ListCandidates::class)
+            ->selectTableRecords([$candidates->last()->id])
+            ->callAction(TestAction::make('deleteSelected')->table()->bulk())
+            ->assertNotified('0 calon dihapus. 1 dilewati (pemilihan sudah dimulai).');
+        $this->assertModelExists($candidates->last());
+    }
+
     public function test_rt_candidates_of_several_rts_can_be_pasted_at_once(): void
     {
         $perRt = Ballot::factory()->for(Election::factory())->create(['scope' => BallotScope::PerRt]);

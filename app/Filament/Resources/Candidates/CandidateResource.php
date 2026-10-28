@@ -24,6 +24,7 @@ use App\Services\Candidates\CandidateGallery;
 use BackedEnum;
 use Closure;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
@@ -458,7 +459,53 @@ class CandidateResource extends Resource
                 static::galleryPhotoAction()->iconButton()->tooltip('Foto: unggah atau pilih dari Media'),
                 EditAction::make()->iconButton()->tooltip('Ubah (visi & misi, foto, dll.)'),
                 static::deleteAction()->iconButton()->tooltip('Hapus calon'),
+            ])
+            // Centang beberapa (atau semua) baris lalu hapus sekaligus; aturan hapus tetap diperiksa per calon.
+            ->toolbarActions([
+                static::deleteSelectedAction(),
             ]);
+    }
+
+    /**
+     * Hapus calon yang dicentang. Calon yang tidak boleh dihapus (pemilihan sudah dimulai) dilewati.
+     */
+    public static function deleteSelectedAction(): BulkAction
+    {
+        return BulkAction::make('deleteSelected')
+            ->label('Hapus yang dicentang')
+            ->icon(Heroicon::OutlinedTrash)
+            ->color('danger')
+            ->visible(fn (): bool => auth()->user()?->isSuperAdmin() ?? false)
+            ->requiresConfirmation()
+            ->modalHeading(fn (Collection $records): string => "Hapus {$records->count()} calon?")
+            ->modalDescription('Calon yang dicentang beserta fotonya dihapus dari surat suara. Tindakan ini tidak bisa dibatalkan.')
+            ->modalSubmitActionLabel('Ya, hapus')
+            ->action(function (Collection $records): void {
+                $deleted = 0;
+
+                foreach ($records as $record) {
+                    if (! auth()->user()->can('delete', $record)) {
+                        continue;
+                    }
+
+                    if ($record->photo_key !== null) {
+                        app(CandidatePhotoProcessor::class)->remove($record);
+                    }
+
+                    $election = $record->ballot->election;
+                    $snapshot = $record->only(['number', 'name']);
+                    $record->delete();
+                    app(AuditLogger::class)->log('candidate.deleted', null, $election, meta: $snapshot + ['via' => 'bulk']);
+                    $deleted++;
+                }
+
+                $skipped = $records->count() - $deleted;
+                Notification::make()
+                    ->title("{$deleted} calon dihapus.".($skipped > 0 ? " {$skipped} dilewati (pemilihan sudah dimulai)." : ''))
+                    ->status($skipped > 0 ? 'warning' : 'success')
+                    ->send();
+            })
+            ->deselectRecordsAfterCompletion();
     }
 
     /**
