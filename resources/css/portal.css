@@ -1940,6 +1940,32 @@ h4 {
     color: var(--p-amber);
 }
 
+/* Jam digital di kepala quick count (WIB, jam server). */
+.quick-clock {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin: 0;
+    padding: 6px 14px;
+    border-radius: 10px;
+    background: var(--p-indigo-950);
+    color: #fff;
+    line-height: 1.1;
+}
+
+.quick-clock__time {
+    font-size: 28px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+}
+
+.quick-clock__zone {
+    font-size: 12px;
+    font-weight: 700;
+    opacity: 0.75;
+}
+
 .quick-note {
     display: flex;
     flex-wrap: wrap;

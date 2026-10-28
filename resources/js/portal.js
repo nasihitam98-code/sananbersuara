@@ -316,6 +316,9 @@ function initScrollSpy() {
 initCountUp();
 initScrollSpy();
 
+/* Selisih jam perangkat dengan jam server (dari header Date), agar jam digital dan pembaruan serentak tidak meleset. */
+let serverOffsetMs = 0;
+
 /*
  * Data terbaru tanpa menekan refresh: tiap 60 detik halaman ini diambil ulang di latar belakang; bila isinya berubah
  * (mis. pemilihan dimulai atau hasil diumumkan), halaman dimuat ulang. Dilewati saat tab tidak sedang dilihat.
@@ -327,6 +330,7 @@ function initAutoRefresh() {
 
     const intervalMs = 60000;
     let baseline = null;
+    let boundaryTimer = null;
 
     const check = async () => {
         // Jangan muat ulang saat warga sedang membaca jendela visi & misi.
@@ -340,6 +344,8 @@ function initAutoRefresh() {
             if (!response.ok) {
                 return;
             }
+
+            syncServerClock(response.headers.get('Date'));
 
             const html = await response.text();
 
@@ -362,9 +368,70 @@ function initAutoRefresh() {
         }
     };
 
-    check();
+    /*
+     * Quick count: angka semua RT berganti serentak di tiap batas N menit (jam server). Selain pemeriksaan tiap 60 detik,
+     * halaman diperiksa beberapa detik setelah batas itu agar semua layar TPS berganti hampir bersamaan.
+     */
+    const scheduleBoundaryCheck = () => {
+        clearTimeout(boundaryTimer);
+        const minutes = Number(document.querySelector('[data-quick-interval]')?.dataset.quickInterval || 0);
+
+        if (minutes <= 0) {
+            return;
+        }
+
+        const periodMs = minutes * 60000;
+        const now = serverNow();
+        const waitMs = periodMs - (now % periodMs) + 2000 + Math.random() * 3000;
+
+        boundaryTimer = setTimeout(async () => {
+            await check();
+            scheduleBoundaryCheck();
+        }, waitMs);
+    };
+
+    check().then(scheduleBoundaryCheck);
     setInterval(check, intervalMs);
 }
+
+function syncServerClock(dateHeader) {
+    const serverMs = Date.parse(dateHeader || '');
+
+    if (!Number.isNaN(serverMs)) {
+        serverOffsetMs = serverMs - Date.now();
+    }
+}
+
+function serverNow() {
+    return Date.now() + serverOffsetMs;
+}
+
+/* Jam digital quick count (zona waktu aplikasi, mis. WIB), diperbarui tiap detik; ikut elemen baru setelah isi diganti. */
+function initClock() {
+    const formatters = new Map();
+    const formatter = (timeZone) => {
+        if (!formatters.has(timeZone)) {
+            formatters.set(timeZone, new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
+        }
+
+        return formatters.get(timeZone);
+    };
+
+    const tick = () => {
+        document.querySelectorAll('[data-clock]').forEach((clock) => {
+            try {
+                clock.textContent = formatter(clock.dataset.clockTimezone || 'Asia/Jakarta').format(new Date(serverNow()));
+            } catch {
+                clock.textContent = new Date(serverNow()).toTimeString().slice(0, 8);
+            }
+        });
+    };
+
+    tick();
+    setInterval(tick, 1000);
+}
+
+initClock();
 
 /* Ganti isi utama dengan versi terbaru tanpa memuat ulang halaman, lalu hidupkan lagi carousel dan sematan RT. */
 function swapMain(html) {

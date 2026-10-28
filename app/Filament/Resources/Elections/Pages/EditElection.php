@@ -16,6 +16,7 @@ use App\Services\Voting\VotingException;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -161,7 +162,7 @@ class EditElection extends EditRecord
             ->modalHeading(fn (): string => $on() ? 'Matikan quick count?' : 'Nyalakan quick count di halaman publik?')
             ->modalDescription(fn (): string => $on()
                 ? 'Angka sementara tidak lagi tampil di halaman publik. Hasil resmi tetap tampil setelah diumumkan.'
-                : 'Selama voting, halaman publik menampilkan perolehan sementara tiap calon (RW dan tiap RT) dan partisipasi, diperbarui tiap '.QuickCount::INTERVAL_MINUTES.' menit dan ditandai "belum resmi". Angka sementara bisa memengaruhi warga yang belum memilih.')
+                : 'Selama voting, halaman publik menampilkan perolehan sementara tiap calon (RW dan tiap RT) dan partisipasi, diperbarui serentak tiap '.app(QuickCount::class)->intervalMinutes($this->record).' menit (bisa diubah) dan ditandai "belum resmi". Angka sementara bisa memengaruhi warga yang belum memilih.')
             ->modalSubmitActionLabel(fn (): string => $on() ? 'Matikan' : 'Nyalakan')
             ->action(function () use ($on): void {
                 $enable = ! $on();
@@ -170,6 +171,38 @@ class EditElection extends EditRecord
                 app(AuditLogger::class)->log('election.quick_count', $this->record, $this->record, meta: ['enabled' => $enable]);
 
                 Notification::make()->title($enable ? 'Quick count dinyalakan.' : 'Quick count dimatikan.')->success()->send();
+            });
+    }
+
+    /**
+     * Jarak pembaruan angka quick count; bisa diubah kapan saja selama quick count aktif, berlaku di pembaruan berikutnya.
+     */
+    private function quickCountIntervalAction(): Action
+    {
+        $minutes = fn (): int => app(QuickCount::class)->intervalMinutes($this->record);
+
+        return Action::make('quickCountInterval')
+            ->label(fn (): string => "Quick count tiap {$minutes()} menit")
+            ->icon('heroicon-o-clock')
+            ->color('gray')
+            ->visible(fn (): bool => (auth()->user()?->isSuperAdmin() ?? false) && (bool) $this->record->setting('public_quick_count') && $this->record->isPublic() && $this->beforeOfficialResults())
+            ->modalHeading('Jarak pembaruan quick count')
+            ->modalDescription('Angka semua RT di halaman publik berganti serentak tiap jarak ini. Makin pendek makin cepat terlihat, tetapi pilihan warga yang baru keluar bilik lebih mudah ditebak.')
+            ->modalSubmitActionLabel('Simpan')
+            ->fillForm(fn (): array => ['minutes' => $minutes()])
+            ->schema([
+                Select::make('minutes')
+                    ->label('Perbarui tiap')
+                    ->options(collect(QuickCount::INTERVAL_OPTIONS)->mapWithKeys(fn (int $option): array => [$option => "{$option} menit"])->all())
+                    ->required()
+                    ->native(false),
+            ])
+            ->action(function (array $data): void {
+                $this->record->forceFill(['settings' => array_merge($this->record->settings ?? [], ['quick_count_minutes' => (int) $data['minutes']])])->save();
+
+                app(AuditLogger::class)->log('election.quick_count_interval', $this->record, $this->record, meta: ['minutes' => (int) $data['minutes']]);
+
+                Notification::make()->title("Quick count diperbarui tiap {$data['minutes']} menit.")->success()->send();
             });
     }
 
@@ -216,6 +249,7 @@ class EditElection extends EditRecord
             $this->publicListingAction(),
             $this->publicProfilesAction(),
             $this->quickCountAction(),
+            $this->quickCountIntervalAction(),
 
             Action::make('controlRoom')
                 ->label('Buka Ruang Kendali')

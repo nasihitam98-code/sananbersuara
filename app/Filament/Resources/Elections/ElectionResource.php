@@ -114,7 +114,7 @@ class ElectionResource extends Resource
                     // Hanya saat membuat; sesudahnya lewat tombol "Quick count" di halaman pemilihan (bisa diubah kapan saja).
                     Toggle::make('settings.public_quick_count')
                         ->label('Quick count di halaman publik')
-                        ->helperText('Selama voting, halaman publik menampilkan angka sementara tiap calon dan partisipasi, diperbarui tiap 10 menit. Bisa diubah nanti di halaman pemilihan. Mode Dadakan: pemilihan juga perlu ditampilkan di halaman publik.')
+                        ->helperText('Selama voting, halaman publik menampilkan angka sementara tiap calon dan partisipasi, diperbarui serentak tiap 10 menit (jaraknya bisa diubah). Bisa diubah nanti di halaman pemilihan. Mode Dadakan: pemilihan juga perlu ditampilkan di halaman publik.')
                         ->default(false)
                         ->visible(fn (?Election $record): bool => $record === null)
                         ->columnSpanFull(),

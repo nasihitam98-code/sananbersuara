@@ -3,21 +3,25 @@
 @php($quickCards = $snapshot['cards'])
 @php($quickUnitCards = $quickCards->filter(fn (array $card): bool => $card['unit'] !== null)->values())
 @php($quickTurnout = $snapshot['turnout'])
-<section id="quick-count" class="anchor section" aria-labelledby="quick-count-judul">
+<section id="quick-count" class="anchor section" aria-labelledby="quick-count-judul" @unless ($snapshot['final']) data-quick-interval="{{ $snapshot['minutes'] }}" @endunless>
     <div class="section__head reveal">
         <div>
             <p class="section__kicker">Quick count · hasil sementara</p>
             <h2 class="section__title" id="quick-count-judul">{{ $quick['election']->name }}</h2>
         </div>
+        {{-- Jam digital diisi portal.js (jam server WIB); kosong di HTML agar pemeriksa pembaruan halaman tidak terpicu tiap detik. --}}
+        <p class="quick-clock" aria-label="Jam sekarang">
+            <span class="quick-clock__time" data-clock data-clock-timezone="{{ config('app.timezone') }}">--:--:--</span>
+            <span class="quick-clock__zone">WIB</span>
+        </p>
     </div>
 
     <p class="quick-note reveal" role="note">
         <strong>{{ $snapshot['final'] ? 'Voting selesai' : 'Belum resmi' }}</strong>
         <span>
-            Data pukul {{ $snapshot['at']->format('H:i') }}.
             {{ $snapshot['final']
                 ? 'Ini angka akhir hitung cepat. Hasil resmi diumumkan setelah panitia memeriksa dan menetapkannya.'
-                : 'Diperbarui tiap '.\App\Services\Results\QuickCount::INTERVAL_MINUTES.' menit selama voting. Hasil resmi diumumkan setelah panitia menetapkannya.' }}
+                : 'Angka semua RT diperbarui serentak tiap '.$snapshot['minutes'].' menit selama voting. Hasil resmi diumumkan setelah panitia menetapkannya.' }}
         </span>
         @if ($quickTurnout['total'] > 0)
             <span>Partisipasi <strong>{{ number_format($quickTurnout['percent'], 1, ',', '') }}%</strong> ({{ $quickTurnout['voted'] }} dari {{ $quickTurnout['total'] }} {{ $quick['election']->isDadakan() ? 'warga hadir' : 'pemilih terdaftar' }})</span>

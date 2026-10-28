@@ -46,6 +46,9 @@ return [
         'booth_token_minutes' => 10,
         'desk_token_hours' => 24,
 
+        // Quick count di halaman publik: angka diperbarui tiap N menit (lihat QuickCount::INTERVAL_OPTIONS)
+        'quick_count_minutes' => 10,
+
         // Retensi (K26): keterkaitan pemilih-pilihan dihapus N hari setelah dipublikasikan
         'linkage_retention_days' => 30,
     ],

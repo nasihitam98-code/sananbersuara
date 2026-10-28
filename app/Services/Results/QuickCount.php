@@ -16,11 +16,12 @@ use Illuminate\Support\Facades\Cache;
  * Quick count di portal publik (keputusan rapat panitia 17 Okt 2026): perolehan sementara tiap calon dan partisipasi
  * selama voting sampai hasil resmi diumumkan. Angka dipotret tiap 10 menit (bukan tiap suara masuk) agar pilihan
  * seseorang tidak bisa ditebak dari angka yang naik tepat setelah ia keluar bilik. Hanya bila saklarnya dinyalakan
- * Super Admin dan pemilihan tampil di halaman publik.
+ * Super Admin dan pemilihan tampil di halaman publik. Jarak pembaruan bisa diatur per pemilihan (bawaan 10 menit).
  */
 class QuickCount
 {
-    public const INTERVAL_MINUTES = 10;
+    /** Pilihan jarak pembaruan (menit). Tidak per menit: angka yang naik tiap suara masuk bisa membuka pilihan orang. */
+    public const INTERVAL_OPTIONS = [5, 10, 15, 30];
 
     /** @var array<int, ElectionStatus> */
     public const STATUSES = [ElectionStatus::Berlangsung, ElectionStatus::Paused, ElectionStatus::Ditutup, ElectionStatus::Verifikasi];
@@ -40,6 +41,16 @@ class QuickCount
     }
 
     /**
+     * Jarak pembaruan angka pemilihan ini (menit).
+     */
+    public function intervalMinutes(Election $election): int
+    {
+        $minutes = (int) $election->setting('quick_count_minutes');
+
+        return in_array($minutes, self::INTERVAL_OPTIONS, true) ? $minutes : 10;
+    }
+
+    /**
      * Pemilihan yang quick count-nya tampil di beranda publik (yang terbaru), atau null.
      */
     public function current(): ?Election
@@ -54,21 +65,24 @@ class QuickCount
     /**
      * Potret terakhir: kartu per jabatan/RT (bentuk sama dengan kartu hasil resmi, tanpa yang ditetapkan) dan partisipasi.
      *
-     * @return array{at: Carbon, final: bool, cards: Collection<int, array<string, mixed>>, turnout: array{voted: int, total: int, percent: float, units: array<int, array{unit: string, voted: int, total: int, percent: float}>}}
+     * @return array{at: Carbon, minutes: int, final: bool, cards: Collection<int, array<string, mixed>>, turnout: array{voted: int, total: int, percent: float, units: array<int, array{unit: string, voted: int, total: int, percent: float}>}}
      */
     public function snapshot(Election $election): array
     {
-        $bucket = intdiv(now()->timestamp, self::INTERVAL_MINUTES * 60);
+        // Semua RT memakai potret yang sama: angka seluruh halaman berganti serentak di tiap batas waktu.
+        $minutes = $this->intervalMinutes($election);
+        $bucket = intdiv(now()->timestamp, $minutes * 60);
         // Status ikut kunci: begitu voting ditutup, angka akhir langsung tampil tanpa menunggu potret berikutnya.
         $data = Cache::remember(
             // Waktu Mulai ikut kunci: setelah "Ulang dari awal" lalu dimulai lagi, angka gladi lama tidak ikut terpakai.
-            "quick-count:{$election->id}:{$election->started_at?->timestamp}:{$election->status->value}:{$bucket}",
-            now()->addMinutes(self::INTERVAL_MINUTES + 5),
+            "quick-count:{$election->id}:{$election->started_at?->timestamp}:{$election->status->value}:{$minutes}:{$bucket}",
+            now()->addMinutes($minutes + 5),
             fn (): array => $this->capture($election),
         );
 
         return [
             'at' => Carbon::createFromTimestamp($data['at'], config('app.timezone')),
+            'minutes' => $minutes,
             'final' => ! $election->status->isLive(),
             // Tombol "Detail" (visi & misi) mengikuti saklarnya saat ini, bukan saat angka dipotret.
             'cards' => $this->hydrate($data['cards'])->map(fn (array $card): array => $card + ['profiles' => (bool) $election->setting('public_profiles')]),

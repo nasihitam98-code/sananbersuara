@@ -21,7 +21,6 @@ use App\Services\Voting\WaveManager;
 use Database\Seeders\DatabaseSeeder;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Carbon;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -65,7 +64,6 @@ class QuickCountTest extends TestCase
 
     public function test_candidates_stay_in_number_order_and_the_leader_is_marked(): void
     {
-        $this->travelTo(Carbon::parse('2026-10-29 00:42', 'Asia/Jakarta'));
         $this->election->forceFill(['settings' => ['show_public' => true, 'public_quick_count' => true]])->save();
         app(ElectionLifecycle::class)->start($this->election->fresh(), $this->superAdmin);
         app(WaveManager::class)->open($this->election->fresh(), WaveKind::Terbuka, null, $this->superAdmin);
@@ -75,9 +73,12 @@ class QuickCountTest extends TestCase
         $this->vote('Ojan', $second);
         $this->vote('Budi');
 
-        // Nomor 02 unggul, tetapi kartu tetap urut 01 lalu 02 dengan warna per nomor. Jam data dalam WIB, bukan UTC.
+        // Nomor 02 unggul, tetapi kartu tetap urut 01 lalu 02 dengan warna per nomor; jam digital diisi di browser.
         $this->get(route('public.index'))
-            ->assertSee('Data pukul 00:42')
+            ->assertDontSee('Data pukul')
+            ->assertSee('data-clock', false)
+            ->assertSee('data-quick-interval="10"', false)
+            ->assertSee('diperbarui serentak tiap 10 menit')
             ->assertSeeInOrder(['Nomor 01', 'Calon Pertama', '33,3', 'Nomor 02', 'Calon Kedua', '66,7', 'Unggul sementara'])
             ->assertSee('contender tone--red', false)
             ->assertSee('contender tone--amber', false);
@@ -262,6 +263,30 @@ class QuickCountTest extends TestCase
         $this->vote('Budi');
         app(ElectionLifecycle::class)->close($this->election->fresh(), $this->superAdmin);
         $this->get(route('public.index'))->assertSee('Voting selesai')->assertSee('3 suara')->assertSee('Sementara');
+    }
+
+    public function test_super_admin_can_switch_the_refresh_to_every_five_minutes(): void
+    {
+        $this->travelTo(now()->startOfHour());
+        $this->election->forceFill(['settings' => ['show_public' => true, 'public_quick_count' => true]])->save();
+        app(ElectionLifecycle::class)->start($this->election->fresh(), $this->superAdmin);
+        app(WaveManager::class)->open($this->election->fresh(), WaveKind::Terbuka, null, $this->superAdmin);
+
+        $this->actingAs($this->superAdmin);
+        Livewire::test(EditElection::class, ['record' => $this->election->public_id])
+            ->assertActionVisible('quickCountInterval')
+            ->callAction('quickCountInterval', ['minutes' => 5])
+            ->assertNotified('Quick count diperbarui tiap 5 menit.');
+
+        $this->assertSame(5, $this->election->fresh()->setting('quick_count_minutes'));
+        $this->assertTrue(AuditLog::query()->where('action', 'election.quick_count_interval')->exists());
+
+        $this->vote('Santi');
+        $this->get(route('public.index'))->assertSee('1 suara')->assertSee('diperbarui serentak tiap 5 menit')->assertSee('data-quick-interval="5"', false);
+
+        $this->vote('Ojan');
+        $this->travel(5)->minutes();
+        $this->get(route('public.index'))->assertSee('2 suara');
     }
 
     public function test_hidden_elections_never_show_a_quick_count(): void
