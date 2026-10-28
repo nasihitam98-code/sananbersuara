@@ -52,7 +52,9 @@
                     @unless ($showcase)
                         <p class="contender__percent">{{ $percent($row['percent']) }}<small>%</small></p>
                         <p class="contender__votes">{{ $votes($row['votes']) }} suara</p>
-                        @if ($isLeading($row))
+                        @if ($row['elected'])
+                            <p class="contender__lead">{{ $card['label'] }}</p>
+                        @elseif ($isLeading($row))
                             <p class="contender__lead">Teratas</p>
                         @endif
                     @endunless

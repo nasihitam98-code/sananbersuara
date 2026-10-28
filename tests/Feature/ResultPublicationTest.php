@@ -121,7 +121,8 @@ class ResultPublicationTest extends TestCase
             ->assertOk()
             ->assertSee('Lolos')
             ->assertSeeInOrder(['contender tone--blue is-elected', 'Calon Nomor 1', 'contender tone--blue is-elected', 'Calon Nomor 2', 'contender tone--blue is-elected', 'Calon Nomor 3', 'contender tone--slate', 'Calon Nomor 4'], false)
-            ->assertSee('4 suara sah.');
+            ->assertSee('4 suara sah.')
+            ->assertSee('<p class="contender__lead">Lolos</p>', false);
     }
 
     public function test_portal_home_shows_official_votes_per_candidate_after_publication(): void
