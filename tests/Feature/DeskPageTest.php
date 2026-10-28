@@ -115,6 +115,7 @@ class DeskPageTest extends TestCase
         Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])
             ->test(DeskPage::class)
             ->assertSee('Budi Santoso')
+            ->assertSee('No. absen 1')
             ->assertSee('Belum memilih (1)')
             ->assertSee('Sudah memilih (0)')
             ->assertSee('Semua (2)')

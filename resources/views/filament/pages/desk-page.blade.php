@@ -99,7 +99,7 @@
 
                 <div class="flex flex-wrap items-center gap-2">
                     <x-filament::input.wrapper class="min-w-[12rem] grow">
-                        <x-filament::input type="search" wire:model.live.debounce.300ms="search" placeholder="Saring nama atau No. …" class="text-lg" />
+                        <x-filament::input type="search" wire:model.live.debounce.300ms="search" placeholder="Saring nama atau No. absen …" class="text-lg" />
                     </x-filament::input.wrapper>
                     @if ($this->emergencyAddAction->isVisible()) {{ $this->emergencyAddAction }} @endif
                 </div>
@@ -116,10 +116,13 @@
                     @foreach ($rows as $row)
                         @php($voter = $row['voter'])
                         @php($status = $row['status'])
+                        {{-- Nomor berjalan per tab (1, 2, 3, ...): nomor terakhir = jumlah di tab itu, mis. yang belum memilih. --}}
                         <li class="flex flex-wrap items-center justify-between gap-3 py-3">
-                            <div>
-                                <p class="text-lg font-bold">@if ($voter->rt_number)<span class="me-1 tabular-nums text-gray-500">{{ $voter->rt_number }}.</span>@endif{{ $voter->name }}</p>
-                                <p class="text-sm text-gray-500">{{ collect([$voter->address, $voter->voter_number])->filter()->implode(' · ') }}</p>
+                            <div class="flex items-start gap-3">
+                                <span class="w-10 flex-none pt-0.5 text-right text-lg font-bold tabular-nums text-gray-400">{{ $loop->iteration }}</span>
+                                <div>
+                                <p class="text-lg font-bold">{{ $voter->name }}</p>
+                                <p class="text-sm text-gray-500">{{ collect([$voter->rt_number ? 'No. absen '.$voter->rt_number : null, $voter->address])->filter()->implode(' · ') }}</p>
                                 @if ($started)
                                     <p class="mt-1 flex flex-wrap gap-2 text-sm">
                                         @foreach ($election->ballots as $ballot)
@@ -133,6 +136,7 @@
                                 @if (! $voter->is_active)
                                     <x-filament::badge color="gray" class="mt-1">Nonaktif</x-filament::badge>
                                 @endif
+                                </div>
                             </div>
                             <div class="flex items-center gap-2">
                                 @switch ($row['state'])
