@@ -22,6 +22,7 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Models\Voter;
 use App\Services\Devices\DeviceManager;
+use App\Services\Voters\VoterRegistry;
 use App\Services\Voting\ElectionLifecycle;
 use Database\Seeders\DatabaseSeeder;
 use Filament\Actions\Testing\TestAction;
@@ -176,6 +177,37 @@ class DeskPageTest extends TestCase
         app(DeviceManager::class)->ensureSlots($this->election->fresh());
         $this->assertSame(1, $booths());
         $this->assertTrue(AuditLog::query()->where('action', 'device.booth_removed')->exists());
+    }
+
+    public function test_booth_added_mid_voting_takes_the_next_voter_without_disturbing_others(): void
+    {
+        $this->actingAs($this->deskOfficer);
+        $rt03 = Unit::query()->where('code', '03')->firstOrFail();
+        // Pemilihan sudah berjalan: warga kedua masuk lewat tambah darurat (ikut daftar berhak).
+        $second = app(VoterRegistry::class)->create(['name' => 'Siti Warga'], $rt03->id, $this->superAdmin, emergencyReason: EmergencyAddReason::BelumAdaDiDataAwal->value);
+        Device::query()->update(['last_seen_at' => now()]);
+
+        $page = Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])->test(DeskPage::class)
+            ->callAction(TestAction::make('grant')->arguments(['voter' => $this->voter->public_id]))
+            ->assertSet('lastAssignment.booth', 'Bilik 1');
+
+        // Satu-satunya bilik sedang dipakai: warga berikutnya harus menunggu.
+        $page->callAction(TestAction::make('grant')->arguments(['voter' => $second->public_id]))
+            ->assertNotified('Semua bilik terpakai. Tunggu bilik kosong.');
+
+        // Di tengah acara: tambah bilik, pasang laptopnya dengan token dari meja.
+        $page->callAction('addBooth')->assertNotified('Bilik 2 ditambahkan. Klik Buat Token untuk memasang laptopnya.');
+        $booth2 = Device::query()->where('unit_id', $rt03->id)->where('kind', DeviceKind::Bilik)->where('number', 2)->sole();
+        $manager = app(DeviceManager::class);
+        $manager->pair($manager->issueToken($booth2, $this->deskOfficer), 'Laptop Bilik Tambahan', Request::create('/'), DeviceKind::Bilik);
+        $booth2->fresh()->forceFill(['last_seen_at' => now()])->save();
+
+        // Warga berikutnya langsung diarahkan ke bilik baru; izin di Bilik 1 tidak terganggu.
+        $page->callAction(TestAction::make('grant')->arguments(['voter' => $second->public_id]))
+            ->assertSet('lastAssignment.booth', 'Bilik 2');
+
+        $this->assertSame(2, Permit::query()->whereNotNull('active_voter_id')->count());
+        $this->assertSame('Bilik 1', Permit::query()->where('voter_id', $this->voter->id)->sole()->device->name());
     }
 
     public function test_go_to_booth_card_disappears_once_the_permit_ends(): void
