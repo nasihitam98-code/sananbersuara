@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\AuditLogger;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Exceptions\Halt;
@@ -33,11 +34,12 @@ class EditUser extends EditRecord
                 ->label('Reset password')
                 ->color('warning')
                 ->schema([
-                    TextInput::make('password')->label('Password sementara baru')->password()->revealable()->required()->rule(Password::default())->helperText(PasswordHint::TEXT),
+                    TextInput::make('password')->label('Password baru')->password()->revealable()->required()->rule(Password::default())->helperText(PasswordHint::TEXT),
+                    Toggle::make('must_change_password')->label('Wajib ganti password saat login berikutnya')->default(false),
                     Reauthenticate::field(),
                 ])
                 ->action(function (array $data): void {
-                    $this->record->forceFill(['password' => $data['password'], 'must_change_password' => true])->save();
+                    $this->record->forceFill(['password' => $data['password'], 'must_change_password' => (bool) ($data['must_change_password'] ?? false)])->save();
                     DB::table('sessions')->where('user_id', $this->record->id)->delete();
                     app(AuditLogger::class)->log('user.password_reset_by_admin', $this->record);
                     Notification::make()->title('Password direset. Semua sesi akun ini dikeluarkan.')->success()->send();
@@ -65,6 +67,7 @@ class EditUser extends EditRecord
         $data['role'] = $this->record->roles->first()?->name;
         $data['unit_id'] = $this->record->unit_id;
         $data['permissions'] = $this->record->permissions->pluck('name')->all();
+        $data['must_change_password'] = (bool) $this->record->must_change_password;
 
         return $data;
     }
@@ -100,6 +103,7 @@ class EditUser extends EditRecord
         $record->fill(['name' => $data['name'], 'email' => $data['email']]);
         $record->forceFill([
             'is_active' => (bool) ($data['is_active'] ?? true),
+            'must_change_password' => (bool) ($data['must_change_password'] ?? false),
             'unit_id' => $isAdminRt ? $data['unit_id'] : null,
         ])->save();
         $record->syncRoles([$data['role']]);

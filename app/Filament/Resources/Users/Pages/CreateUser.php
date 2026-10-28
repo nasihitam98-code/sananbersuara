@@ -24,7 +24,7 @@ class CreateUser extends CreateRecord
 
         $user = new User($data);
         $user->forceFill([
-            'must_change_password' => true,
+            'must_change_password' => (bool) ($data['must_change_password'] ?? false),
             'is_active' => true,
             'unit_id' => $isAdminRt ? $data['unit_id'] : null,
         ])->save();

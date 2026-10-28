@@ -115,6 +115,12 @@ class UserResource extends Resource
                             ->validationMessages(['required' => 'Centang minimal satu izin.'])
                             ->helperText('Biasanya keduanya (satu akun untuk data pemilih dan Meja Izin RT). Petugas meja relawan cukup diberi izin Petugas Meja saja.'),
                         Toggle::make('is_active')->label('Aktif')->default(true)->visibleOn('edit'),
+                        // Opsional (keputusan pemilik 2026-10-28): bawaan tidak wajib ganti password.
+                        Toggle::make('must_change_password')
+                            ->label('Wajib ganti password saat login berikutnya')
+                            ->helperText('Bila dinyalakan, pengguna harus membuat password sendiri sebelum bisa memakai aplikasi.')
+                            ->default(false)
+                            ->columnSpanFull(),
                     ]),
             ]);
     }

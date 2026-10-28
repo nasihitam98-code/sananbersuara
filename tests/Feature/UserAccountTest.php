@@ -6,6 +6,7 @@ use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
 use App\Enums\StaffRole;
 use App\Filament\Resources\Users\Pages\CreateUser;
+use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\UserResource;
 use App\Filament\Support\Workspace;
 use App\Models\Election;
@@ -49,6 +50,15 @@ class UserAccountTest extends TestCase
         $created = User::query()->where('email', 'rt01@contoh.test')->sole();
         $this->assertTrue($created->hasPermissionTo(User::PERMISSION_MANAGE_VOTERS));
         $this->assertTrue($created->hasPermissionTo(User::PERMISSION_DESK));
+        // Ganti password saat login pertama opsional (bawaan tidak wajib).
+        $this->assertFalse($created->must_change_password);
+
+        // Bisa diwajibkan dari form Ubah.
+        Livewire::test(EditUser::class, ['record' => $created->getRouteKey()])
+            ->fillForm(['must_change_password' => true])
+            ->call('save')
+            ->assertHasNoFormErrors();
+        $this->assertTrue($created->fresh()->must_change_password);
     }
 
     public function test_assignment_in_a_cancelled_election_no_longer_offers_dadakan_mode(): void
