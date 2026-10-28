@@ -75,7 +75,7 @@ class QuickCountTest extends TestCase
 
         // Nomor 02 unggul, tetapi kartu tetap urut 01 lalu 02 dengan warna per nomor.
         $this->get(route('public.index'))
-            ->assertSeeInOrder(['Nomor 01', 'Calon Pertama', '33,3', 'Nomor 02', 'Calon Kedua', '66,7', 'Teratas'])
+            ->assertSeeInOrder(['Nomor 01', 'Calon Pertama', '33,3', 'Nomor 02', 'Calon Kedua', '66,7', 'Unggul sementara'])
             ->assertSee('contender tone--red', false)
             ->assertSee('contender tone--amber', false);
     }

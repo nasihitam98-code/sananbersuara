@@ -55,7 +55,7 @@
                         @if ($row['elected'])
                             <p class="contender__lead">{{ $card['label'] }}</p>
                         @elseif ($isLeading($row))
-                            <p class="contender__lead">Teratas</p>
+                            <p class="contender__lead">Unggul sementara</p>
                         @endif
                     @endunless
                 </div>
