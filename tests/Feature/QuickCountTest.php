@@ -21,6 +21,7 @@ use App\Services\Voting\WaveManager;
 use Database\Seeders\DatabaseSeeder;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -64,6 +65,7 @@ class QuickCountTest extends TestCase
 
     public function test_candidates_stay_in_number_order_and_the_leader_is_marked(): void
     {
+        $this->travelTo(Carbon::parse('2026-10-29 00:42', 'Asia/Jakarta'));
         $this->election->forceFill(['settings' => ['show_public' => true, 'public_quick_count' => true]])->save();
         app(ElectionLifecycle::class)->start($this->election->fresh(), $this->superAdmin);
         app(WaveManager::class)->open($this->election->fresh(), WaveKind::Terbuka, null, $this->superAdmin);
@@ -73,8 +75,9 @@ class QuickCountTest extends TestCase
         $this->vote('Ojan', $second);
         $this->vote('Budi');
 
-        // Nomor 02 unggul, tetapi kartu tetap urut 01 lalu 02 dengan warna per nomor.
+        // Nomor 02 unggul, tetapi kartu tetap urut 01 lalu 02 dengan warna per nomor. Jam data dalam WIB, bukan UTC.
         $this->get(route('public.index'))
+            ->assertSee('Data pukul 00:42')
             ->assertSeeInOrder(['Nomor 01', 'Calon Pertama', '33,3', 'Nomor 02', 'Calon Kedua', '66,7', 'Unggul sementara'])
             ->assertSee('contender tone--red', false)
             ->assertSee('contender tone--amber', false);

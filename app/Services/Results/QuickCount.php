@@ -68,7 +68,7 @@ class QuickCount
         );
 
         return [
-            'at' => Carbon::createFromTimestamp($data['at']),
+            'at' => Carbon::createFromTimestamp($data['at'], config('app.timezone')),
             'final' => ! $election->status->isLive(),
             // Tombol "Detail" (visi & misi) mengikuti saklarnya saat ini, bukan saat angka dipotret.
             'cards' => $this->hydrate($data['cards'])->map(fn (array $card): array => $card + ['profiles' => (bool) $election->setting('public_profiles')]),
