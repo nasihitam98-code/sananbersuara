@@ -54,12 +54,30 @@ class QuickCountTest extends TestCase
         app(ElectionLifecycle::class)->markReady($this->election, $this->superAdmin);
     }
 
-    private function vote(string $name): void
+    private function vote(string $name, ?Candidate $candidate = null): void
     {
         ['attendee' => $attendee, 'pin' => $pin] = app(AttendeeRegistrar::class)->register($this->election->fresh(), $name, null, $this->superAdmin);
         $election = $this->election->fresh();
         $box = app(BallotBox::class);
-        $box->cast($election, $attendee->fresh(), $box->verifyPin($election, $attendee->fresh(), $pin), $this->ballot, $this->first);
+        $box->cast($election, $attendee->fresh(), $box->verifyPin($election, $attendee->fresh(), $pin), $this->ballot, $candidate ?? $this->first);
+    }
+
+    public function test_candidates_stay_in_number_order_and_the_leader_is_marked(): void
+    {
+        $this->election->forceFill(['settings' => ['show_public' => true, 'public_quick_count' => true]])->save();
+        app(ElectionLifecycle::class)->start($this->election->fresh(), $this->superAdmin);
+        app(WaveManager::class)->open($this->election->fresh(), WaveKind::Terbuka, null, $this->superAdmin);
+
+        $second = $this->ballot->candidates()->where('number', 2)->firstOrFail();
+        $this->vote('Santi', $second);
+        $this->vote('Ojan', $second);
+        $this->vote('Budi');
+
+        // Nomor 02 unggul, tetapi kartu tetap urut 01 lalu 02 dengan warna per nomor.
+        $this->get(route('public.index'))
+            ->assertSeeInOrder(['Nomor 01', 'Calon Pertama', '33,3', 'Nomor 02', 'Calon Kedua', '66,7', 'Teratas'])
+            ->assertSee('contender tone--red', false)
+            ->assertSee('contender tone--amber', false);
     }
 
     public function test_quick_count_is_off_until_super_admin_turns_it_on(): void

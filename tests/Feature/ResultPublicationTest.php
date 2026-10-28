@@ -120,7 +120,7 @@ class ResultPublicationTest extends TestCase
         $this->get(route('public.show', $this->election->public_id))
             ->assertOk()
             ->assertSee('Lolos')
-            ->assertSeeInOrder(['contender tone--blue is-elected', 'Calon Nomor 1', 'contender tone--blue is-elected', 'Calon Nomor 2', 'contender tone--blue is-elected', 'Calon Nomor 3', 'contender tone--red', 'Calon Nomor 4'], false)
+            ->assertSeeInOrder(['contender tone--blue is-elected', 'Calon Nomor 1', 'contender tone--blue is-elected', 'Calon Nomor 2', 'contender tone--blue is-elected', 'Calon Nomor 3', 'contender tone--slate', 'Calon Nomor 4'], false)
             ->assertSee('4 suara sah.');
     }
 

@@ -4,14 +4,16 @@
     Batang memakai atribut SVG (bukan atribut style) agar aman untuk CSP ketat.
 --}}
 @php
-    // Warna: yang ditetapkan biru; calon lain bergantian merah, kuning, hijau, abu-abu (urut perolehan).
+    // Warna tetap per nomor urut (01 merah, 02 kuning, 03 hijau, 04 abu-abu) agar tidak berganti tiap pembaruan;
+    // yang ditetapkan biru. Kartu berjajar (<= 4 calon) urut nomor; daftar peringkat (> 4 calon) urut perolehan.
     $otherTones = ['red', 'amber', 'green', 'slate'];
-    $toneIndex = 0;
-    $rows = collect($card['tally']['rows'])->map(function (array $row) use ($otherTones, &$toneIndex): array {
-        return $row + ['tone' => $row['elected'] ? 'blue' : $otherTones[$toneIndex++ % count($otherTones)]];
-    });
+    $toneByCandidate = collect($card['tally']['rows'])->sortBy(fn (array $row): int => $row['candidate']->number)->values()
+        ->mapWithKeys(fn (array $row, int $index): array => [$row['candidate']->id => $otherTones[$index % count($otherTones)]]);
+    $rows = collect($card['tally']['rows'])->map(fn (array $row): array => $row + ['tone' => $row['elected'] ? 'blue' : $toneByCandidate[$row['candidate']->id]]);
     $valid = $card['tally']['valid'];
     $count = $rows->count();
+    $byNumber = $rows->sortBy(fn (array $row): int => $row['candidate']->number)->values();
+    $isLeading = fn (array $row): bool => $count > 1 && $valid > 0 && ($row['rank'] ?? null) === 1 && ! $row['elected'];
     $percent = fn (float $value): string => number_format($value, 1, ',', '');
     $votes = fn (int $value): string => number_format($value, 0, ',', '.');
     // Kartu perkenalan calon (sebelum ada angka): foto, nomor, dan nama saja, urut nomor.
@@ -39,7 +41,7 @@
         <p class="race__empty">Belum ada calon pada bagian ini.</p>
     @elseif ($count <= 4)
         <div class="duel duel--{{ $count }}">
-            @foreach ($rows as $row)
+            @foreach ($byNumber as $row)
                 <div class="contender tone--{{ $row['tone'] }} {{ $row['elected'] ? 'is-elected' : '' }}">
                     @include('public.partials.portrait', ['candidate' => $row['candidate'], 'class' => 'portrait--'.$row['tone']])
                     <p class="contender__number">Nomor {{ $row['candidate']->displayNumber() }}@if ($row['candidate']->originLabel()) · {{ $row['candidate']->originLabel() }}@endif</p>
@@ -50,6 +52,9 @@
                     @unless ($showcase)
                         <p class="contender__percent">{{ $percent($row['percent']) }}<small>%</small></p>
                         <p class="contender__votes">{{ $votes($row['votes']) }} suara</p>
+                        @if ($isLeading($row))
+                            <p class="contender__lead">Teratas</p>
+                        @endif
                     @endunless
                 </div>
             @endforeach
@@ -87,11 +92,11 @@
     @endif
 
     @if ($count > 0 && ! $showcase)
-        {{-- Batang perbandingan: potongan berurutan sesuai perolehan. --}}
-        <span class="share" role="img" aria-label="Perbandingan suara: {{ $rows->map(fn (array $row): string => $row['candidate']->name.' '.$percent($row['percent']).'%')->implode(', ') }}">
+        {{-- Batang perbandingan: potongan berurutan sesuai nomor, sama dengan urutan kartu. --}}
+        <span class="share" role="img" aria-label="Perbandingan suara: {{ $byNumber->map(fn (array $row): string => $row['candidate']->name.' '.$percent($row['percent']).'%')->implode(', ') }}">
             <svg viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true">
                 @php($offset = 0.0)
-                @foreach ($rows as $row)
+                @foreach ($byNumber as $row)
                     <rect class="share__seg share__seg--{{ $row['tone'] }}" x="{{ $offset }}" y="0" width="{{ $row['percent'] }}" height="8"></rect>
                     @php($offset += $row['percent'])
                 @endforeach
