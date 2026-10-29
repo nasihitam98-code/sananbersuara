@@ -258,6 +258,12 @@ class OfficialReportService
                 ->when($scope !== null, fn ($query) => $query->where('unit_id', $scope->id))
                 ->distinct()
                 ->count('voter_id'),
+            'Pemilih dihapus dari daftar saat berlangsung (dobel, pindah, dll.)' => (int) DB::table('ballot_voters')
+                ->whereIn('ballot_id', $election->ballots()->pluck('id'))
+                ->whereNotNull('revoked_at')
+                ->when($scope !== null, fn ($query) => $query->where('unit_id', $scope->id))
+                ->distinct()
+                ->count('voter_id'),
             'Suara dibatalkan lewat koreksi' => (int) DB::table('vote_cancellations')
                 ->join('votes', 'votes.id', '=', 'vote_cancellations.vote_id')
                 ->where('vote_cancellations.election_id', $election->id)

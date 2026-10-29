@@ -5,6 +5,7 @@ namespace App\Services\Voters;
 use App\Enums\ElectionMode;
 use App\Enums\ElectionStatus;
 use App\Models\Attendee;
+use App\Models\BallotVoter;
 use App\Models\Election;
 use App\Models\Permit;
 use App\Models\User;
@@ -13,6 +14,7 @@ use App\Models\Voter;
 use App\Services\AuditLogger;
 use App\Services\InternalNotifier;
 use App\Services\Voting\VotingException;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use SensitiveParameter;
@@ -239,6 +241,82 @@ class VoterRegistry
             "{$actor->name} menghapus pemilih darurat {$snapshot['name']} ({$snapshot['voter_number']}).",
             $actor,
         );
+    }
+
+    /**
+     * Nama dari data utama yang ternyata tidak berhak (dobel, bukan warga RT ini, pindah, meninggal) dicoret dari daftar
+     * pemilihan yang sedang berjalan, tanpa menghapus datanya: hak pilihnya dicabut (revoked) dan pemilih dinonaktifkan.
+     * Hanya selama belum pernah diberi izin memilih (keputusan pemilik 2026-10-29). Tercatat di berita acara.
+     */
+    public function canStrikeFromLiveList(Voter $voter): bool
+    {
+        $live = $this->liveResmiElection();
+
+        return $live !== null
+            && ! $voter->added_during_live
+            && $this->liveEntries($voter, $live)->whereNull('revoked_at')->exists()
+            && ! $voter->votes()->where('election_id', $live->id)->exists()
+            && ! Permit::query()->where('election_id', $live->id)->where('voter_id', $voter->id)->exists();
+    }
+
+    public function strikeFromLiveList(Voter $voter, string $reason, User $actor): void
+    {
+        abort_unless($actor->canManageVotersOf($voter->unit_id), 403);
+
+        if (! $this->canStrikeFromLiveList($voter)) {
+            throw VotingException::invalidState('Hanya pemilih yang belum pernah diberi izin memilih yang bisa dihapus dari daftar.');
+        }
+
+        $live = $this->liveResmiElection();
+
+        DB::transaction(function () use ($voter, $reason, $live): void {
+            $this->liveEntries($voter, $live)->whereNull('revoked_at')->update(['revoked_at' => Carbon::now(), 'revoked_reason' => $reason]);
+            $voter->forceFill(['is_active' => false, 'inactive_reason' => $reason])->save();
+        });
+
+        $this->audit->log('voter.struck_during_live', $voter, $live, note: $reason, meta: ['voter_number' => $voter->voter_number, 'unit_id' => $voter->unit_id], actor: $actor);
+
+        app(InternalNotifier::class)->notifySuperAdmins(
+            'Pemilih dihapus dari daftar',
+            "{$actor->name} menghapus {$voter->name} ({$voter->voter_number}) dari daftar pemilihan. Alasan: {$reason}.",
+            $actor,
+        );
+    }
+
+    public function canRestoreToLiveList(Voter $voter): bool
+    {
+        $live = $this->liveResmiElection();
+
+        return $live !== null && $this->liveEntries($voter, $live)->whereNotNull('revoked_at')->exists();
+    }
+
+    /**
+     * Salah coret: kembalikan hak pilih di pemilihan yang sedang berjalan dan aktifkan lagi pemilihnya.
+     */
+    public function restoreToLiveList(Voter $voter, User $actor): void
+    {
+        abort_unless($actor->canManageVotersOf($voter->unit_id), 403);
+
+        if (! $this->canRestoreToLiveList($voter)) {
+            throw VotingException::invalidState('Pemilih ini tidak sedang dihapus dari daftar.');
+        }
+
+        $live = $this->liveResmiElection();
+
+        DB::transaction(function () use ($voter, $live): void {
+            $this->liveEntries($voter, $live)->whereNotNull('revoked_at')->update(['revoked_at' => null, 'revoked_reason' => null]);
+            $voter->forceFill(['is_active' => true, 'inactive_reason' => null])->save();
+        });
+
+        $this->audit->log('voter.restored_during_live', $voter, $live, meta: ['voter_number' => $voter->voter_number, 'unit_id' => $voter->unit_id], actor: $actor);
+    }
+
+    /**
+     * @return HasMany<BallotVoter, Voter>
+     */
+    private function liveEntries(Voter $voter, Election $live): HasMany
+    {
+        return $voter->ballotEntries()->whereIn('ballot_id', $live->ballots()->select('id'));
     }
 
     public function liveResmiElection(): ?Election

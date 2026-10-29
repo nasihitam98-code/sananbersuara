@@ -22,6 +22,7 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Models\Voter;
 use App\Services\Devices\DeviceManager;
+use App\Services\Results\OfficialReportService;
 use App\Services\Voters\VoterRegistry;
 use App\Services\Voting\ElectionLifecycle;
 use Database\Seeders\DatabaseSeeder;
@@ -199,9 +200,8 @@ class DeskPageTest extends TestCase
 
         $typo = Voter::query()->where('name', 'Warga Salah Tulsi')->sole();
 
-        // Pemilih biasa tidak punya tombol hapus; pemilih darurat punya.
-        $page->assertActionHidden(TestAction::make('deleteEmergency')->arguments(['voter' => $this->voter->public_id]))
-            ->assertActionVisible(TestAction::make('deleteEmergency')->arguments(['voter' => $typo->public_id]))
+        // Pemilih darurat mendapat tombol Hapus di barisnya.
+        $page->assertSeeHtml('deleteEmergency')
             ->callAction(TestAction::make('deleteEmergency')->arguments(['voter' => $typo->public_id]), ['current_password' => 'salah'])
             ->assertHasFormErrors(['current_password']);
 
@@ -218,7 +218,45 @@ class DeskPageTest extends TestCase
         $page->callAction('emergencyAdd', ['name' => 'Warga Jadi Memilih', 'reason' => EmergencyAddReason::BelumAdaDiDataAwal->value]);
         $kept = Voter::query()->where('name', 'Warga Jadi Memilih')->sole();
         $page->callAction(TestAction::make('grant')->arguments(['voter' => $kept->public_id]))
-            ->assertActionHidden(TestAction::make('deleteEmergency')->arguments(['voter' => $kept->public_id]));
+            ->callAction(TestAction::make('deleteEmergency')->arguments(['voter' => $kept->public_id]), ['current_password' => 'password'])
+            ->assertNotified('Hanya pemilih darurat yang belum pernah diberi izin memilih yang bisa dihapus.');
+        $this->assertModelExists($kept);
+    }
+
+    public function test_wrong_name_from_the_main_list_is_removed_from_the_live_list_and_can_be_restored(): void
+    {
+        $this->actingAs($this->deskOfficer);
+        $this->deskOfficer->givePermissionTo(User::PERMISSION_MANAGE_VOTERS);
+        $page = Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])->test(DeskPage::class)
+            ->assertSee('Hapus dari daftar')
+            ->assertSee('Belum memilih (1)');
+
+        $page->callAction(TestAction::make('strike')->arguments(['voter' => $this->voter->public_id]), ['reason' => 'Nama dobel', 'current_password' => 'password'])
+            ->assertNotified('Budi Santoso dihapus dari daftar pemilih.')
+            ->assertSee('Belum memilih (0)')
+            ->set('voterTab', 'semua')
+            ->assertSee('Dihapus dari daftar')
+            ->assertSee('Kembalikan ke daftar');
+
+        $this->assertFalse($this->voter->fresh()->is_active);
+        $this->assertTrue(AuditLog::query()->where('action', 'voter.struck_during_live')->exists());
+
+        // Tidak bisa diberi izin selama dicoret; tercatat di berita acara.
+        $page->callAction(TestAction::make('grant')->arguments(['voter' => $this->voter->public_id]))
+            ->assertNotified('Tidak berhak di pemilihan/putaran ini.');
+        $this->assertSame(1, app(OfficialReportService::class)->buildContent($this->election, null)['incidents']['Pemilih dihapus dari daftar saat berlangsung (dobel, pindah, dll.)']);
+
+        // Salah hapus: dikembalikan, lalu bisa memilih lagi.
+        $page->callAction(TestAction::make('restoreStruck')->arguments(['voter' => $this->voter->public_id]), ['current_password' => 'password'])
+            ->assertNotified('Budi Santoso kembali ke daftar pemilih.')
+            ->set('voterTab', 'belum')
+            ->assertSee('Belum memilih (1)');
+        $this->assertTrue($this->voter->fresh()->is_active);
+
+        // Gladi diulang dari awal: nama yang sempat dicoret aktif lagi.
+        $page->callAction(TestAction::make('strike')->arguments(['voter' => $this->voter->public_id]), ['reason' => 'Sudah pindah', 'current_password' => 'password']);
+        app(ElectionLifecycle::class)->resetToDraft($this->election->fresh(), $this->superAdmin);
+        $this->assertTrue($this->voter->fresh()->is_active);
     }
 
     public function test_each_rt_adds_and_removes_its_own_booths(): void

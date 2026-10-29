@@ -223,8 +223,12 @@ class DeskPage extends Page
             ->whereIn('voter_id', $voters->modelKeys())
             ->pluck('voter_id')
             ->flip();
+        // Untuk tombol Hapus dari daftar / Kembalikan: dihitung sekali untuk seluruh daftar (halaman ini diperbarui tiap 3 detik).
+        $everPermitted = Permit::query()->where('election_id', $election->id)->whereIn('voter_id', $voters->modelKeys())->pluck('voter_id')->flip();
+        $struck = BallotVoter::query()->whereIn('ballot_id', $election->ballots()->select('id'))->whereIn('voter_id', $voters->modelKeys())->whereNotNull('revoked_at')->pluck('voter_id')->flip();
+        $live = in_array($election->status, [ElectionStatus::Berlangsung, ElectionStatus::Paused], true);
 
-        return $this->voterRowsCache = $voters->map(function (Voter $voter) use ($statuses, $started, $pendingCorrections): array {
+        return $this->voterRowsCache = $voters->map(function (Voter $voter) use ($statuses, $started, $pendingCorrections, $everPermitted, $struck, $live): array {
             $status = $statuses[$voter->id];
             $ballots = collect($status['ballots']);
 
@@ -236,7 +240,15 @@ class DeskPage extends Page
                 default => 'sudah',
             };
 
-            return ['voter' => $voter, 'status' => $status, 'state' => $state, 'correction_pending' => $pendingCorrections->has($voter->id)];
+            return [
+                'voter' => $voter,
+                'status' => $status,
+                'state' => $state,
+                'correction_pending' => $pendingCorrections->has($voter->id),
+                'can_strike' => $live && $state === 'belum' && ! $voter->added_during_live && ! $everPermitted->has($voter->id),
+                'can_restore' => $live && $struck->has($voter->id),
+                'can_delete_emergency' => $live && $state === 'belum' && $voter->added_during_live && ! $everPermitted->has($voter->id),
+            ];
         })->all();
     }
 
@@ -350,11 +362,8 @@ class DeskPage extends Page
             ->icon('heroicon-o-trash')
             ->color('danger')
             ->size('sm')
-            ->visible(function (array $arguments): bool {
-                $voter = $this->voterFromArguments($arguments);
-
-                return $voter !== null && $this->user()->canManageVotersOf($voter->unit_id) && app(VoterRegistry::class)->canDeleteEmergency($voter);
-            })
+            // Ringan (dirender per baris tiap 3 detik): syarat per pemilih dihitung di voterRows() dan diperiksa ulang saat disimpan.
+            ->visible(fn (): bool => $this->user()->canManageVotersOf((int) $this->user()->unit_id))
             ->modalHeading(fn (array $arguments): string => 'Hapus pemilih darurat '.($this->voterFromArguments($arguments)?->name ?? '').'?')
             ->modalDescription('Untuk nama yang salah tulis atau tidak jadi. Penghapusan dicatat dan dilaporkan ke Super Admin. Tidak bisa dibatalkan.')
             ->modalSubmitActionLabel('Ya, hapus')
@@ -364,6 +373,62 @@ class DeskPage extends Page
                 abort_if($voter === null, 404);
 
                 $this->run(fn () => app(VoterRegistry::class)->deleteEmergency($voter, $this->user()), "{$voter->name} dihapus.");
+            });
+    }
+
+    /**
+     * Nama dari data utama yang tidak berhak (dobel, bukan warga RT ini, pindah, meninggal): dicoret dari daftar
+     * pemilihan yang berjalan, dari barisnya (kanan), dengan alasan dan password akun RT.
+     */
+    public function strikeAction(): Action
+    {
+        return Action::make('strike')
+            ->label('Hapus dari daftar')
+            ->icon('heroicon-o-user-minus')
+            // Ada di setiap baris: dibuat tautan abu-abu agar tidak bersaing dengan tombol Izinkan Memilih.
+            ->link()
+            ->color('gray')
+            ->size('sm')
+            // Ringan (dirender per baris tiap 3 detik): syarat per pemilih dihitung di voterRows() dan diperiksa ulang saat disimpan.
+            ->visible(fn (): bool => $this->user()->canManageVotersOf((int) $this->user()->unit_id))
+            ->modalHeading(fn (array $arguments): string => 'Hapus '.($this->voterFromArguments($arguments)?->name ?? '').' dari daftar pemilih?')
+            ->modalDescription('Untuk nama yang tidak berhak: dobel, bukan warga RT ini, sudah pindah, atau meninggal. Data orangnya tidak dihapus; ia tidak lagi dihitung dan tidak bisa diberi izin. Tercatat di berita acara dan dilaporkan ke Super Admin. Salah hapus? Kembalikan dari tab Semua.')
+            ->modalSubmitActionLabel('Ya, hapus dari daftar')
+            ->schema([
+                Select::make('reason')->label('Alasan')->required()->options([
+                    'Nama dobel' => 'Nama dobel (orang yang sama tertulis dua kali)',
+                    'Bukan warga RT ini' => 'Bukan warga RT ini',
+                    'Sudah pindah' => 'Sudah pindah',
+                    'Meninggal dunia' => 'Meninggal dunia',
+                    'Lainnya' => 'Lainnya',
+                ]),
+                Reauthenticate::field(),
+            ])
+            ->action(function (array $data, array $arguments): void {
+                $voter = $this->voterFromArguments($arguments);
+                abort_if($voter === null, 404);
+
+                $this->run(fn () => app(VoterRegistry::class)->strikeFromLiveList($voter, $data['reason'], $this->user()), "{$voter->name} dihapus dari daftar pemilih.");
+            });
+    }
+
+    public function restoreStruckAction(): Action
+    {
+        return Action::make('restoreStruck')
+            ->label('Kembalikan ke daftar')
+            ->icon('heroicon-o-arrow-uturn-left')
+            ->color('gray')
+            ->size('sm')
+            // Ringan (dirender per baris tiap 3 detik): syarat per pemilih dihitung di voterRows() dan diperiksa ulang saat disimpan.
+            ->visible(fn (): bool => $this->user()->canManageVotersOf((int) $this->user()->unit_id))
+            ->modalHeading(fn (array $arguments): string => 'Kembalikan '.($this->voterFromArguments($arguments)?->name ?? '').' ke daftar pemilih?')
+            ->modalSubmitActionLabel('Kembalikan')
+            ->schema([Reauthenticate::field()])
+            ->action(function (array $arguments): void {
+                $voter = $this->voterFromArguments($arguments);
+                abort_if($voter === null, 404);
+
+                $this->run(fn () => app(VoterRegistry::class)->restoreToLiveList($voter, $this->user()), "{$voter->name} kembali ke daftar pemilih.");
             });
     }
 

@@ -149,7 +149,7 @@
                                         <x-filament::badge color="success" size="lg">✓ Selesai memilih</x-filament::badge>
                                         @break
                                     @case ('tidak_berhak')
-                                        <x-filament::badge color="gray" size="lg">Tidak berhak di pemilihan ini</x-filament::badge>
+                                        <x-filament::badge color="gray" size="lg">{{ $row['can_restore'] ? 'Dihapus dari daftar' : 'Tidak berhak di pemilihan ini' }}</x-filament::badge>
                                         @break
                                     @default
                                         @if ($desk && $election->status === \App\Enums\ElectionStatus::Berlangsung && ($this->grantAction)(['voter' => $voter->public_id])->isVisible())
@@ -160,8 +160,15 @@
                                 @endswitch
 
                                 {{-- Pemilih darurat salah tulis/tidak jadi: hapus selama belum pernah diberi izin (password akun RT). --}}
-                                @if ($voter->added_during_live && ($this->deleteEmergencyAction)(['voter' => $voter->public_id])->isVisible())
+                                @if ($row['can_delete_emergency'] && $this->deleteEmergencyAction->isVisible())
                                     {{ ($this->deleteEmergencyAction)(['voter' => $voter->public_id]) }}
+                                @endif
+                                {{-- Nama data utama yang tidak berhak: dicoret dari daftar (bisa dikembalikan dari tab Semua). --}}
+                                @if ($row['can_strike'] && $this->strikeAction->isVisible())
+                                    {{ ($this->strikeAction)(['voter' => $voter->public_id]) }}
+                                @endif
+                                @if ($row['can_restore'] && $this->restoreStruckAction->isVisible())
+                                    {{ ($this->restoreStruckAction)(['voter' => $voter->public_id]) }}
                                 @endif
 
                                 {{-- Koreksi suara: diajukan dari sini, diputuskan Super Admin. --}}

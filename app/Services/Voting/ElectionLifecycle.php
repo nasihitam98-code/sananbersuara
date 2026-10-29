@@ -309,6 +309,9 @@ class ElectionLifecycle
             $counts['izin'] = DB::table('permits')->where('election_id', $locked->id)->delete();
             DB::table('tps_pauses')->where('election_id', $locked->id)->delete();
             $counts['peserta_hadir'] = DB::table('attendees')->where('election_id', $locked->id)->delete();
+            // Nama yang dicoret dari daftar selama gladi diaktifkan lagi: daftar kembali seperti sebelum Mulai.
+            $struck = DB::table('ballot_voters')->whereIn('ballot_id', $ballotIds)->whereNotNull('revoked_at')->pluck('voter_id')->unique();
+            DB::table('voters')->whereIn('id', $struck)->update(['is_active' => true, 'inactive_reason' => null]);
             DB::table('ballot_voters')->whereIn('ballot_id', $ballotIds)->delete();
             DB::table('outcomes')->where('election_id', $locked->id)->delete();
             DB::table('official_reports')->where('election_id', $locked->id)->delete();
