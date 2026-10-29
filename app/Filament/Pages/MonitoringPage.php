@@ -100,7 +100,10 @@ class MonitoringPage extends Page
             ->filter(fn (Unit $unit): bool => $devices->has($unit->id) || $registered->has($unit->id))
             ->map(function (Unit $unit) use ($devices, $progress, $registered, $pauses, $election): array {
                 $unitDevices = $devices->get($unit->id, collect());
-                $desk = $unitDevices->first(fn (Device $device): bool => $device->kind === DeviceKind::Meja);
+                // Bisa ada beberapa laptop Meja per RT: tampilkan yang paling baru aktif.
+                $desk = $unitDevices->filter(fn (Device $device): bool => $device->kind === DeviceKind::Meja)
+                    ->sortByDesc(fn (Device $device): int => $device->isPaired() ? ($device->last_seen_at?->timestamp ?? 1) : 0)
+                    ->first();
                 $booths = $unitDevices->filter(fn (Device $device): bool => $device->kind === DeviceKind::Bilik);
                 $deskState = $desk?->connectionState() ?? 'Belum tersambung';
                 $offlineBooths = $booths->filter(fn (Device $device): bool => $device->connectionState() === 'Terputus')->map->code()->values()->all();

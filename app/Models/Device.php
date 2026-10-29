@@ -97,14 +97,15 @@ class Device extends Model
 
     public function name(): string
     {
+        // Meja pertama tetap "Meja RT 01"; Meja tambahan di RT yang sama: "Meja RT 01 (2)", "(3)".
         return $this->kind === DeviceKind::Meja
-            ? 'Meja '.$this->unit->name
+            ? 'Meja '.$this->unit->name.($this->number > 0 ? ' ('.($this->number + 1).')' : '')
             : 'Bilik '.$this->number;
     }
 
     public function code(): string
     {
-        return 'RT'.$this->unit->code.'-'.($this->kind === DeviceKind::Meja ? 'MEJA' : str_pad((string) $this->number, 2, '0', STR_PAD_LEFT));
+        return 'RT'.$this->unit->code.'-'.($this->kind === DeviceKind::Meja ? 'MEJA'.($this->number > 0 ? $this->number + 1 : '') : str_pad((string) $this->number, 2, '0', STR_PAD_LEFT));
     }
 
     /**

@@ -92,35 +92,48 @@ class DeskPageTest extends TestCase
         return $user;
     }
 
-    public function test_admin_rt_pairs_this_laptop_as_own_desk_without_a_super_admin_token(): void
+    public function test_admin_rt_pairs_more_desk_laptops_without_a_super_admin_token(): void
     {
         $this->actingAs($this->deskOfficer);
-        $desk = Device::query()->where('kind', DeviceKind::Meja)->where('unit_id', $this->deskOfficer->unit_id)->firstOrFail();
-        $oldSecret = $desk->session_secret_hash;
+        $unitId = $this->deskOfficer->unit_id;
+        $desks = fn () => Device::query()->where('kind', DeviceKind::Meja)->where('unit_id', $unitId)->orderBy('number')->get();
 
-        // Laptop lain (tanpa cookie Meja): tombol pasang sendiri muncul; laptop Meja lama akan terlepas.
+        // Laptop kedua (tanpa cookie Meja), akun RT yang sama: jadi Meja tambahan, laptop Meja pertama tetap terpasang.
         Livewire::test(DeskPage::class)
             ->assertActionVisible('pairOwnDesk')
             ->mountAction('pairOwnDesk')
-            ->assertMountedActionModalSee('Laptop Meja RT ini yang lama akan TERLEPAS.')
+            ->assertMountedActionModalSee('tetap terpasang')
             ->fillForm(['label' => 'Laptop Pak RT', 'current_password' => 'password'])
             ->callMountedAction()
             ->assertHasNoFormErrors()
             ->assertRedirect(DeskPage::getUrl());
 
-        $desk->refresh();
-        $this->assertSame('Laptop Pak RT', $desk->label);
-        $this->assertNotSame($oldSecret, $desk->session_secret_hash);
+        $this->assertSame([true, true], $desks()->map->isPaired()->all());
+        $this->assertSame('Meja RT 03 (2)', $desks()->last()->name());
+        $this->assertSame('Laptop Pak RT', $desks()->last()->label);
         $this->assertTrue(Cookie::hasQueued(DeviceManager::COOKIE));
         $this->assertTrue(AuditLog::query()->where('action', 'device.desk_self_paired')->exists());
 
-        // Laptop Meja lama tidak berlaku lagi.
-        Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])
-            ->test(DeskPage::class)
-            ->assertSee('Bukan laptop Meja RT Anda');
+        // Laptop Meja pertama masih berlaku.
+        Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])->test(DeskPage::class)->assertSee('Laptop Meja RT 03 terdaftar');
+
+        // Laptop ketiga: Meja (3). Laptop keempat: batas penuh, yang paling lama tidak aktif terlepas.
+        Livewire::withCookies([DeviceManager::COOKIE => 'laptop-baru'])->test(DeskPage::class)->callAction('pairOwnDesk', ['label' => 'Laptop Tiga', 'current_password' => 'password']);
+        $this->assertCount(3, $desks());
+        $desks()->each(fn (Device $desk, int $index) => $desk->forceFill(['last_seen_at' => now()->subMinutes(10 - $index)])->save());
+
+        Livewire::test(DeskPage::class)
+            ->mountAction('pairOwnDesk')
+            ->assertMountedActionModalSee('Meja RT 03 (Laptop Meja, paling lama tidak aktif) akan TERLEPAS.')
+            ->fillForm(['label' => 'Laptop Empat', 'current_password' => 'password'])
+            ->callMountedAction();
+
+        $this->assertCount(3, $desks());
+        $this->assertSame('Laptop Empat', $desks()->first()->label);
+        Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])->test(DeskPage::class)->assertSee('Bukan laptop Meja RT Anda');
 
         // Password salah ditolak.
-        Livewire::test(DeskPage::class)
+        Livewire::withCookies([DeviceManager::COOKIE => 'laptop-lain'])->test(DeskPage::class)
             ->callAction('pairOwnDesk', ['label' => 'Laptop Lain', 'current_password' => 'salah'])
             ->assertHasFormErrors(['current_password']);
     }

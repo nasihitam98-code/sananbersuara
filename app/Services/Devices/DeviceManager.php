@@ -41,6 +41,9 @@ class DeviceManager
     /** Batas bilik per RT yang bisa ditambah dari Meja Izin. */
     public const MAX_BOOTHS_PER_UNIT = 10;
 
+    /** Batas laptop Meja per RT yang terpasang bersamaan (beberapa antrean memakai satu akun RT). */
+    public const MAX_DESKS_PER_UNIT = 3;
+
     /**
      * Membuat slot Meja (nomor 0) untuk setiap RT yang punya pemilih berhak, dan Bilik 1..N (bawaan pengaturan) hanya
      * bila RT itu belum punya bilik sama sekali. Setelah itu jumlah bilik diatur tiap RT sendiri (tambah/hapus di
@@ -130,8 +133,21 @@ class DeviceManager
     }
 
     /**
+     * Slot Meja yang akan dipakai laptop baru RT ini: slot Meja yang kosong, atau null bila slot baru dibuat (masih di
+     * bawah batas), atau Meja yang paling lama tidak aktif bila sudah penuh (laptop itu akan terlepas).
+     */
+    public function ownDeskTarget(Election $election, int $unitId): ?Device
+    {
+        $desks = Device::query()->where('election_id', $election->id)->where('unit_id', $unitId)->where('kind', DeviceKind::Meja)->orderBy('number')->get();
+
+        return $desks->first(fn (Device $desk): bool => ! $desk->isPaired())
+            ?? ($desks->count() < self::MAX_DESKS_PER_UNIT ? null : $desks->sortBy(fn (Device $desk): int => $desk->last_seen_at?->timestamp ?? 0)->first());
+    }
+
+    /**
      * Admin RT memasang laptop yang sedang dipakainya sebagai Meja RT-nya sendiri, tanpa menunggu token dari Super Admin
-     * (keputusan pemilik 2026-10-29; identitas dipastikan lewat login + password ulang). Laptop Meja lama RT itu terlepas.
+     * (keputusan pemilik 2026-10-29; identitas dipastikan lewat login + password ulang). Satu RT boleh punya beberapa
+     * laptop Meja sekaligus (beberapa antrean, satu akun); laptop baru tidak melepas Meja lain kecuali batas sudah penuh.
      *
      * @return array{device: Device, secret: string}
      */
@@ -139,14 +155,23 @@ class DeviceManager
     {
         abort_unless($actor->is_active && $actor->hasRole(User::ROLE_ADMIN_RT) && $actor->hasPermissionTo(User::PERMISSION_DESK) && $actor->unit_id !== null, 403);
 
-        $desk = Device::query()
-            ->where('election_id', $election->id)
-            ->where('unit_id', $actor->unit_id)
-            ->where('kind', DeviceKind::Meja)
-            ->first();
+        $desks = Device::query()->where('election_id', $election->id)->where('unit_id', $actor->unit_id)->where('kind', DeviceKind::Meja);
+
+        if (! (clone $desks)->exists()) {
+            throw VotingException::invalidState('Meja RT ini belum disiapkan. Pemilihan harus berstatus Siap atau Berlangsung.');
+        }
+
+        $desk = $this->ownDeskTarget($election, $actor->unit_id);
 
         if ($desk === null) {
-            throw VotingException::invalidState('Meja RT ini belum disiapkan. Pemilihan harus berstatus Siap atau Berlangsung.');
+            $desk = new Device;
+            $desk->forceFill([
+                'election_id' => $election->id,
+                'unit_id' => $actor->unit_id,
+                'kind' => DeviceKind::Meja,
+                'number' => ((int) (clone $desks)->max('number')) + 1,
+                'public_id' => (string) Str::ulid(),
+            ])->save();
         }
 
         $result = $this->pair($this->issueToken($desk, $actor), $label, $request, DeviceKind::Meja);

@@ -563,20 +563,22 @@ class DeskPage extends Page
      */
     public function pairOwnDeskAction(): Action
     {
-        $deskPairedElsewhere = fn (): bool => Device::query()
-            ->where('election_id', $this->election()?->id)
-            ->where('unit_id', $this->user()->unit_id)
-            ->where('kind', DeviceKind::Meja)
-            ->whereNotNull('session_secret_hash')
-            ->exists();
+        // Laptop Meja lain RT ini tetap terpasang (beberapa antrean); hanya bila sudah penuh, yang paling lama tidak aktif terlepas.
+        $replaced = function (): ?Device {
+            $target = $this->election() === null ? null : app(DeviceManager::class)->ownDeskTarget($this->election(), (int) $this->user()->unit_id);
+
+            return $target?->isPaired() ? $target : null;
+        };
 
         return Action::make('pairOwnDesk')
             ->label('Jadikan laptop ini Meja RT')
             ->icon('heroicon-o-computer-desktop')
             ->visible(fn (): bool => $this->election() !== null && $this->desk() === null)
             ->modalHeading(fn (): string => 'Jadikan laptop ini Meja '.$this->user()->unit?->name.'?')
-            ->modalDescription(fn (): string => 'Laptop ini dipakai untuk memberi izin memilih. Cukup sekali; besok laptop yang sama tetap terpasang.'
-                .($deskPairedElsewhere() ? ' Laptop Meja RT ini yang lama akan TERLEPAS.' : ''))
+            ->modalDescription(fn (): string => 'Laptop ini dipakai untuk memberi izin memilih. Cukup sekali; besok laptop yang sama tetap terpasang. '
+                .(($old = $replaced()) !== null
+                    ? 'Sudah ada '.DeviceManager::MAX_DESKS_PER_UNIT.' laptop Meja: '.$old->name().' ('.($old->label ?? 'tanpa nama').', paling lama tidak aktif) akan TERLEPAS.'
+                    : 'Laptop Meja lain di RT ini (bila ada) tetap terpasang; bisa sampai '.DeviceManager::MAX_DESKS_PER_UNIT.' laptop Meja sekaligus.'))
             ->modalSubmitActionLabel('Pasang')
             ->schema([
                 TextInput::make('label')->label('Nama laptop')->required()->minLength(3)->maxLength(120)->default(fn (): string => 'Laptop Meja '.$this->user()->unit?->name),
