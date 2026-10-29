@@ -377,6 +377,30 @@ class DeskPage extends Page
     }
 
     /**
+     * Salah ketik nama: ubah langsung dari barisnya (kanan), juga saat voting berjalan. Tercatat di Audit Log.
+     */
+    public function editNameAction(): Action
+    {
+        return Action::make('editName')
+            ->label('Ubah')
+            ->icon('heroicon-o-pencil-square')
+            ->link()
+            ->color('gray')
+            ->size('sm')
+            ->visible(fn (): bool => $this->user()->canManageVotersOf((int) $this->user()->unit_id))
+            ->modalHeading('Ubah nama pemilih')
+            ->modalSubmitActionLabel('Simpan')
+            ->fillForm(fn (array $arguments): array => ['name' => $this->voterFromArguments($arguments)?->name])
+            ->schema([TextInput::make('name')->label('Nama lengkap')->required()->minLength(3)->maxLength(120)])
+            ->action(function (array $data, array $arguments): void {
+                $voter = $this->voterFromArguments($arguments);
+                abort_if($voter === null, 404);
+
+                $this->run(fn () => app(VoterRegistry::class)->update($voter, ['name' => $data['name'], 'address' => $voter->address], $this->user()), 'Nama diubah menjadi '.$data['name'].'.');
+            });
+    }
+
+    /**
      * Nama dari data utama yang tidak berhak (dobel, bukan warga RT ini, pindah, meninggal): dicoret dari daftar
      * pemilihan yang berjalan, dari barisnya (kanan), dengan alasan dan password akun RT.
      */

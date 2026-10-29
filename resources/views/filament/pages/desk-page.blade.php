@@ -160,6 +160,9 @@
                                 @endswitch
 
                                 {{-- Pemilih darurat salah tulis/tidak jadi: hapus selama belum pernah diberi izin (password akun RT). --}}
+                                @if ($this->editNameAction->isVisible())
+                                    {{ ($this->editNameAction)(['voter' => $voter->public_id]) }}
+                                @endif
                                 @if ($row['can_delete_emergency'] && $this->deleteEmergencyAction->isVisible())
                                     {{ ($this->deleteEmergencyAction)(['voter' => $voter->public_id]) }}
                                 @endif

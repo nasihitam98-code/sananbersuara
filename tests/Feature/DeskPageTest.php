@@ -259,6 +259,27 @@ class DeskPageTest extends TestCase
         $this->assertTrue($this->voter->fresh()->is_active);
     }
 
+    public function test_mistyped_name_is_fixed_from_its_row_during_voting(): void
+    {
+        $this->actingAs($this->deskOfficer);
+
+        // Tanpa izin kelola pemilih: tidak bisa mengubah.
+        Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])->test(DeskPage::class)->assertActionHidden('editName');
+
+        $this->deskOfficer->givePermissionTo(User::PERMISSION_MANAGE_VOTERS);
+
+        Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])->test(DeskPage::class)
+            ->mountAction(TestAction::make('editName')->arguments(['voter' => $this->voter->public_id]))
+            ->assertSchemaStateSet(['name' => 'Budi Santoso'])
+            ->fillForm(['name' => 'Budi Santosa'])
+            ->callMountedAction()
+            ->assertNotified('Nama diubah menjadi Budi Santosa.')
+            ->assertSee('Budi Santosa');
+
+        $this->assertSame('Budi Santosa', $this->voter->fresh()->name);
+        $this->assertTrue(AuditLog::query()->where('action', 'voter.updated')->exists());
+    }
+
     public function test_each_rt_adds_and_removes_its_own_booths(): void
     {
         $this->actingAs($this->deskOfficer);
