@@ -100,6 +100,16 @@ class VoterManagementTest extends TestCase
 
         $this->assertSame($this->rt03->id, Voter::query()->where('name', 'Tempel Satu')->sole()->unit_id);
 
+        // Mencari nama dari tab RT mana pun: hasilnya dari semua RT (huruf besar/kecil tidak berpengaruh).
+        Livewire::test(ListVoters::class)
+            ->set('activeTab', '03')
+            ->searchTable('warga empat')
+            ->assertSee('Warga Empat')
+            ->assertDontSee('Warga Tiga')
+            ->searchTable('')
+            ->assertSee('Warga Tiga')
+            ->assertDontSee('Warga Empat');
+
         $this->get(VoterResource::getUrl('create', ['rt' => '04']))->assertOk();
         Livewire::withQueryParams(['rt' => '04'])->test(CreateVoter::class)->assertFormSet(['unit_id' => $this->rt04->id]);
     }

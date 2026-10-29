@@ -72,7 +72,8 @@ class ListVoters extends ListRecords
         return Unit::query()->orderBy('sort')->get()
             ->mapWithKeys(fn (Unit $unit): array => [$unit->code => Tab::make($unit->name)
                 ->badge((int) ($counts[$unit->id] ?? 0))
-                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('unit_id', $unit->id))])
+                // Saat mencari nama, cari di semua RT (kolom RT menunjukkan RT-nya): nama di RT lain tetap ketemu.
+                ->modifyQueryUsing(fn (Builder $query): Builder => filled(trim((string) $this->tableSearch)) ? $query : $query->where('unit_id', $unit->id))])
             ->put('semua', Tab::make('Semua RT')->badge((int) $counts->sum()))
             ->all();
     }
