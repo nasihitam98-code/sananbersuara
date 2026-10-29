@@ -187,6 +187,40 @@ class DeskPageTest extends TestCase
             ->assertSet('lastAssignment.booth', 'Bilik 1');
     }
 
+    public function test_mistyped_emergency_voter_is_deleted_from_its_row_with_the_rt_password(): void
+    {
+        $this->actingAs($this->deskOfficer);
+        $this->deskOfficer->givePermissionTo(User::PERMISSION_MANAGE_VOTERS);
+
+        $page = Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])
+            ->test(DeskPage::class)
+            ->callAction('emergencyAdd', ['name' => 'Warga Salah Tulsi', 'reason' => EmergencyAddReason::BelumAdaDiDataAwal->value])
+            ->assertSee('Darurat');
+
+        $typo = Voter::query()->where('name', 'Warga Salah Tulsi')->sole();
+
+        // Pemilih biasa tidak punya tombol hapus; pemilih darurat punya.
+        $page->assertActionHidden(TestAction::make('deleteEmergency')->arguments(['voter' => $this->voter->public_id]))
+            ->assertActionVisible(TestAction::make('deleteEmergency')->arguments(['voter' => $typo->public_id]))
+            ->callAction(TestAction::make('deleteEmergency')->arguments(['voter' => $typo->public_id]), ['current_password' => 'salah'])
+            ->assertHasFormErrors(['current_password']);
+
+        $this->assertModelExists($typo);
+
+        $page = Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])->test(DeskPage::class);
+        $page->callAction(TestAction::make('deleteEmergency')->arguments(['voter' => $typo->public_id]), ['current_password' => 'password'])
+            ->assertNotified('Warga Salah Tulsi dihapus.');
+
+        $this->assertModelMissing($typo);
+        $this->assertTrue(AuditLog::query()->where('action', 'voter.emergency_deleted')->exists());
+
+        // Yang sudah diberi izin memilih tidak bisa dihapus lagi.
+        $page->callAction('emergencyAdd', ['name' => 'Warga Jadi Memilih', 'reason' => EmergencyAddReason::BelumAdaDiDataAwal->value]);
+        $kept = Voter::query()->where('name', 'Warga Jadi Memilih')->sole();
+        $page->callAction(TestAction::make('grant')->arguments(['voter' => $kept->public_id]))
+            ->assertActionHidden(TestAction::make('deleteEmergency')->arguments(['voter' => $kept->public_id]));
+    }
+
     public function test_each_rt_adds_and_removes_its_own_booths(): void
     {
         $this->actingAs($this->deskOfficer);

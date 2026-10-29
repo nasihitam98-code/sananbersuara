@@ -122,7 +122,7 @@
                             <div class="flex items-start gap-3">
                                 <span class="w-10 flex-none pt-0.5 text-right text-lg font-bold tabular-nums text-gray-400">{{ $loop->iteration }}</span>
                                 <div>
-                                <p class="text-lg font-bold">{{ $voter->name }}</p>
+                                <p class="text-lg font-bold">{{ $voter->name }} @if ($voter->added_during_live)<x-filament::badge color="warning" size="sm" class="ms-1 inline-flex">Darurat</x-filament::badge>@endif</p>
                                 <p class="text-sm text-gray-500">{{ collect([$voter->rt_number ? 'No. absen '.$voter->rt_number : null, $voter->address])->filter()->implode(' · ') }}</p>
                                 @if ($started)
                                     <p class="mt-1 flex flex-wrap gap-2 text-sm">
@@ -158,6 +158,11 @@
                                             <x-filament::badge color="warning">○ Belum memilih</x-filament::badge>
                                         @endif
                                 @endswitch
+
+                                {{-- Pemilih darurat salah tulis/tidak jadi: hapus selama belum pernah diberi izin (password akun RT). --}}
+                                @if ($voter->added_during_live && ($this->deleteEmergencyAction)(['voter' => $voter->public_id])->isVisible())
+                                    {{ ($this->deleteEmergencyAction)(['voter' => $voter->public_id]) }}
+                                @endif
 
                                 {{-- Koreksi suara: diajukan dari sini, diputuskan Super Admin. --}}
                                 @if ($row['correction_pending'])

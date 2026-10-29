@@ -340,6 +340,34 @@ class DeskPage extends Page
     }
 
     /**
+     * Hapus pemilih darurat yang salah tulis/tidak jadi, dari baris namanya (kanan), dengan password akun RT.
+     * Hanya selama belum pernah diberi izin memilih.
+     */
+    public function deleteEmergencyAction(): Action
+    {
+        return Action::make('deleteEmergency')
+            ->label('Hapus')
+            ->icon('heroicon-o-trash')
+            ->color('danger')
+            ->size('sm')
+            ->visible(function (array $arguments): bool {
+                $voter = $this->voterFromArguments($arguments);
+
+                return $voter !== null && $this->user()->canManageVotersOf($voter->unit_id) && app(VoterRegistry::class)->canDeleteEmergency($voter);
+            })
+            ->modalHeading(fn (array $arguments): string => 'Hapus pemilih darurat '.($this->voterFromArguments($arguments)?->name ?? '').'?')
+            ->modalDescription('Untuk nama yang salah tulis atau tidak jadi. Penghapusan dicatat dan dilaporkan ke Super Admin. Tidak bisa dibatalkan.')
+            ->modalSubmitActionLabel('Ya, hapus')
+            ->schema([Reauthenticate::field()])
+            ->action(function (array $arguments): void {
+                $voter = $this->voterFromArguments($arguments);
+                abort_if($voter === null, 404);
+
+                $this->run(fn () => app(VoterRegistry::class)->deleteEmergency($voter, $this->user()), "{$voter->name} dihapus.");
+            });
+    }
+
+    /**
      * Koreksi suara langsung dari baris pemilih: diputuskan di RT tanpa menunggu Super Admin (keputusan pemilik
      * 2026-10-23). Suara berstatus dibatalkan dan pemilih kembali ke "Belum memilih"; Super Admin diberi tahu.
      */
