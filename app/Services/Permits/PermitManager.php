@@ -279,9 +279,14 @@ class PermitManager
         $ballotIds = $election->ballots()->pluck('id');
 
         $resolver = app(RoundResolver::class);
+        // Cakupan putaran dicek sekali per surat suara/RT (bukan per pemilih): daftar ini digambar ulang tiap 3 detik.
+        $covers = [];
         $eligible = BallotVoter::query()->whereIn('voter_id', $ids)->whereIn('ballot_id', $ballotIds)->whereNull('revoked_at')
             ->get(['voter_id', 'ballot_id', 'unit_id'])
-            ->filter(fn (BallotVoter $entry): bool => $round === null || $resolver->covers($round, $entry->ballot_id, $entry->unit_id))
+            ->filter(function (BallotVoter $entry) use ($round, $resolver, &$covers): bool {
+                return $round === null
+                    || ($covers["{$entry->ballot_id}:{$entry->unit_id}"] ??= $resolver->covers($round, $entry->ballot_id, $entry->unit_id));
+            })
             ->groupBy('voter_id');
         $voted = Vote::query()->whereIn('voter_id', $ids)->where('round_id', $round?->id)->where('status', VoteStatus::Sah)
             ->get(['voter_id', 'ballot_id'])->groupBy('voter_id');

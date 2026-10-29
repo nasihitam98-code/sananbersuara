@@ -81,3 +81,40 @@
 .fi-hero {
     background: linear-gradient(135deg, #312e81, #581c87);
 }
+
+/* ---------- Meja Izin: tombol dan lencana baris pemilih (class pendek: daftar dikirim ulang tiap 5 detik) ---------- */
+.desk-btn-grant {
+    @apply rounded-lg bg-success-600 px-4 py-2.5 text-base font-semibold text-white shadow-sm hover:bg-success-500 focus-visible:outline-2 focus-visible:outline-success-600;
+}
+
+.desk-btn-danger {
+    @apply rounded-lg bg-danger-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-danger-500;
+}
+
+.desk-btn-gray {
+    @apply rounded-lg px-3 py-1.5 text-sm font-semibold text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50 dark:text-gray-200 dark:ring-white/20 dark:hover:bg-white/5;
+}
+
+.desk-btn-link {
+    @apply px-1 text-sm font-medium text-gray-600 underline-offset-2 hover:underline dark:text-gray-300;
+}
+
+.desk-pill {
+    @apply rounded-md px-2 py-0.5 text-xs font-medium ring-1;
+}
+
+.desk-pill-success {
+    @apply bg-success-50 text-success-700 ring-success-600/20 dark:bg-success-500/10 dark:text-success-400;
+}
+
+.desk-pill-warning {
+    @apply bg-warning-50 text-warning-700 ring-warning-600/20 dark:bg-warning-500/10 dark:text-warning-400;
+}
+
+.desk-pill-info {
+    @apply bg-info-50 text-info-700 ring-info-600/20 dark:bg-info-500/10 dark:text-info-400;
+}
+
+.desk-pill-gray {
+    @apply bg-gray-50 text-gray-600 ring-gray-500/20 dark:bg-white/5 dark:text-gray-400;
+}

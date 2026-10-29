@@ -124,6 +124,21 @@ class DeskPageTest extends TestCase
             ->assertHasFormErrors(['current_password']);
     }
 
+    public function test_booth_token_is_refused_on_the_desk_laptop_so_the_desk_stays_paired(): void
+    {
+        $booth = Device::query()->where('kind', DeviceKind::Bilik)->where('unit_id', $this->deskOfficer->unit_id)->firstOrFail();
+        $token = app(DeviceManager::class)->issueToken($booth, $this->superAdmin);
+
+        $this->withCookie(DeviceManager::COOKIE, $this->deskCookie)
+            ->from(route('booth.show'))
+            ->post(route('booth.pair', 'bilik'), ['token' => $token, 'label' => 'Salah laptop'])
+            ->assertSessionHasErrors(['token' => 'Laptop ini terpasang sebagai Meja. Buka alamat bilik di laptop bilik, bukan di laptop Meja.']);
+
+        $desk = Device::query()->where('kind', DeviceKind::Meja)->where('unit_id', $this->deskOfficer->unit_id)->firstOrFail();
+        $this->assertTrue($desk->isPaired());
+        $this->assertNotSame('Salah laptop', $booth->fresh()->label);
+    }
+
     public function test_desk_officer_on_desk_laptop_grants_permit(): void
     {
         $this->actingAs($this->deskOfficer);
@@ -132,6 +147,8 @@ class DeskPageTest extends TestCase
             ->test(DeskPage::class)
             ->set('search', 'budi')
             ->assertSee('Meja Izin RT 03')
+            ->assertSee(preg_replace('#^https?://#', '', route('booth.show')))
+            ->assertSee('Salin link')
             ->assertSee('Masuk sebagai '.$this->deskOfficer->name)
             ->assertSee('Budi Santoso')
             ->assertSee('Laptop Meja')

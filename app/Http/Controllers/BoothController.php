@@ -66,6 +66,11 @@ class BoothController extends Controller
 
         $expected = $kind === 'meja' ? DeviceKind::Meja : DeviceKind::Bilik;
 
+        // Satu browser satu perangkat: token bilik yang tak sengaja diketik di laptop Meja akan melepas Meja-nya.
+        if ($expected === DeviceKind::Bilik && $this->devices->authenticate($request, DeviceKind::Meja) !== null) {
+            return back()->withErrors(['token' => 'Laptop ini terpasang sebagai Meja. Buka alamat bilik di laptop bilik, bukan di laptop Meja.'])->withInput($request->only('label'));
+        }
+
         try {
             $result = $this->devices->pair($validated['token'], $validated['label'], $request, $expected);
         } catch (VotingException $exception) {

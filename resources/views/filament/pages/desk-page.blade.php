@@ -5,7 +5,7 @@
     @if ($election === null)
         <x-filament::section>Belum ada pemilihan Mode Resmi yang Siap atau Berlangsung.</x-filament::section>
     @else
-        <div wire:poll.3s data-auto-refresh="off" class="space-y-6">
+        <div wire:poll.5s data-auto-refresh="off" class="space-y-6">
             {{-- Status laptop --}}
             <div class="flex flex-wrap items-center gap-3">
                 <x-filament::badge size="lg" :color="$election->status->getColor()">{{ $election->name }} · {{ $election->status->getLabel() }}</x-filament::badge>
@@ -56,6 +56,15 @@
                 @if ($desk && $this->addBoothAction->isVisible())
                     <x-slot name="afterHeader">{{ $this->addBoothAction }}</x-slot>
                 @endif
+                {{-- Alamat laptop bilik selalu terlihat (tidak perlu dicari), dengan tombol salin. --}}
+                <div class="mb-4 flex flex-wrap items-center gap-3 rounded-xl bg-primary-50 p-3 ring-1 ring-primary-200 dark:bg-primary-500/10 dark:ring-primary-500/30" x-data="{ copied: false }">
+                    <span class="text-sm text-gray-600 dark:text-gray-300">Di <strong>laptop bilik</strong> (bukan laptop ini) buka:</span>
+                    <span class="font-mono text-lg font-bold text-primary-700 dark:text-primary-300">{{ preg_replace('#^https?://#', '', route('booth.show')) }}</span>
+                    <button type="button" class="desk-btn-gray" x-on:click="navigator.clipboard?.writeText(@js(route('booth.show'))); copied = true; setTimeout(() => copied = false, 2000)">
+                        <span x-show="! copied">Salin link</span><span x-show="copied" x-cloak>✓ Tersalin</span>
+                    </button>
+                    <span class="text-sm text-gray-500">lalu ketik token dari tombol <strong>Buat Token</strong> di bawah.</span>
+                </div>
                 <div class="grid gap-3 md:grid-cols-3">
                     @foreach ($this->booths() as $booth)
                         @php($state = $booth->connectionState())
@@ -113,6 +122,17 @@
                     <p class="mt-4 text-sm text-gray-500">{{ filled(trim($this->search)) ? 'Tidak ada nama yang cocok.' : match ($voterTab) { 'belum' => 'Semua pemilih sudah memilih.', 'sudah' => 'Belum ada yang memilih.', default => 'Belum ada pemilih di RT ini.' } }}</p>
                 @endif
 
+                @php($can = [
+                    'grant' => $desk && $election->status === \App\Enums\ElectionStatus::Berlangsung && $this->grantAction->isVisible(),
+                    'cancel' => $desk && $this->cancelPermitAction->isVisible(),
+                    'edit' => $this->editNameAction->isVisible(),
+                    'strike' => $this->strikeAction->isVisible(),
+                    'restore' => $this->restoreStruckAction->isVisible(),
+                    'correct' => $this->requestCorrectionAction->isVisible(),
+                ])
+                @php($btn = ['grant' => 'desk-btn-grant', 'danger' => 'desk-btn-danger', 'gray' => 'desk-btn-gray', 'link' => 'desk-btn-link'])
+                @php($pill = ['success' => 'desk-pill desk-pill-success', 'warning' => 'desk-pill desk-pill-warning', 'info' => 'desk-pill desk-pill-info', 'gray' => 'desk-pill desk-pill-gray'])
+
                 <ul class="mt-4 divide-y divide-gray-200 dark:divide-white/10">
                     @foreach ($rows as $row)
                         @php($voter = $row['voter'])
@@ -128,54 +148,56 @@
                                     <p class="mt-1 flex flex-wrap gap-2 text-sm">
                                         @foreach ($election->ballots as $ballot)
                                             @php($value = $status['ballots'][$ballot->id] ?? 'TIDAK_BERHAK')
-                                            <x-filament::badge :color="match ($value) { 'SUDAH' => 'success', 'BELUM' => 'warning', default => 'gray' }">
-                                                {{ $ballot->title }}: {{ match ($value) { 'SUDAH' => '✓ Sudah', 'BELUM' => '○ Belum', default => '— Tidak berhak' } }}
-                                            </x-filament::badge>
+                                            <span class="{{ $pill[match ($value) { 'SUDAH' => 'success', 'BELUM' => 'warning', default => 'gray' }] }}">{{ $ballot->title }}: {{ match ($value) { 'SUDAH' => '✓ Sudah', 'BELUM' => '○ Belum', default => '— Tidak berhak' } }}</span>
                                         @endforeach
                                     </p>
                                 @endif
                                 @if (! $voter->is_active)
-                                    <x-filament::badge color="gray" class="mt-1">Nonaktif</x-filament::badge>
+                                    <span class="{{ $pill['gray'] }} mt-1 inline-block">Nonaktif</span>
                                 @endif
                                 </div>
                             </div>
-                            <div class="flex items-center gap-2">
+                            {{-- Tombol baris dibuat ringan (tombol biasa yang membuka aksi Filament): daftar ini dikirim ulang tiap
+                                 3 detik, dan komponen aksi lengkap per baris membuat satu pembaruan ±580 KB. Izin dicek sekali di atas. --}}
+                            @php($id = \Illuminate\Support\Js::from(['voter' => $voter->public_id]))
+                            <div class="flex flex-wrap items-center justify-end gap-2">
                                 @switch ($row['state'])
                                     @case ('di_bilik')
-                                        <x-filament::badge color="info" size="lg">Di {{ $status['permit']->device->name() }}</x-filament::badge>
-                                        @if ($desk && ($this->cancelPermitAction)(['permit' => $status['permit']->public_id])->isVisible()) {{ ($this->cancelPermitAction)(['permit' => $status['permit']->public_id]) }} @endif
+                                        <span class="{{ $pill['info'] }} text-sm">Di {{ $status['permit']->device->name() }}</span>
+                                        @if ($can['cancel'])
+                                            <button type="button" class="{{ $btn['danger'] }}" wire:click="mountAction('cancelPermit', {{ \Illuminate\Support\Js::from(['permit' => $status['permit']->public_id]) }})">Batalkan Izin</button>
+                                        @endif
                                         @break
                                     @case ('sudah')
-                                        <x-filament::badge color="success" size="lg">✓ Selesai memilih</x-filament::badge>
+                                        <span class="{{ $pill['success'] }} text-sm">✓ Selesai memilih</span>
                                         @break
                                     @case ('tidak_berhak')
-                                        <x-filament::badge color="gray" size="lg">{{ $row['can_restore'] ? 'Dihapus dari daftar' : 'Tidak berhak di pemilihan ini' }}</x-filament::badge>
+                                        <span class="{{ $pill['gray'] }} text-sm">{{ $row['can_restore'] ? 'Dihapus dari daftar' : 'Tidak berhak di pemilihan ini' }}</span>
                                         @break
                                     @default
-                                        @if ($desk && $election->status === \App\Enums\ElectionStatus::Berlangsung && ($this->grantAction)(['voter' => $voter->public_id])->isVisible())
-                                            {{ ($this->grantAction)(['voter' => $voter->public_id]) }}
+                                        @if ($can['grant'])
+                                            <button type="button" class="{{ $btn['grant'] }}" wire:click="mountAction('grant', {{ $id }})">Izinkan Memilih</button>
                                         @else
-                                            <x-filament::badge color="warning">○ Belum memilih</x-filament::badge>
+                                            <span class="{{ $pill['warning'] }}">○ Belum memilih</span>
                                         @endif
                                 @endswitch
 
-                                {{-- Pemilih darurat salah tulis/tidak jadi: hapus selama belum pernah diberi izin (password akun RT). --}}
-                                @if ($this->editNameAction->isVisible())
-                                    {{ ($this->editNameAction)(['voter' => $voter->public_id]) }}
+                                @if ($can['edit'])
+                                    <button type="button" class="{{ $btn['link'] }}" wire:click="mountAction('editName', {{ $id }})">✎ Ubah</button>
                                 @endif
                                 {{-- Nama yang tidak berhak (data utama maupun tambahan darurat): dicoret dari daftar, bisa dikembalikan dari tab Semua. --}}
-                                @if ($row['can_strike'] && $this->strikeAction->isVisible())
-                                    {{ ($this->strikeAction)(['voter' => $voter->public_id]) }}
+                                @if ($row['can_strike'] && $can['strike'])
+                                    <button type="button" class="{{ $btn['link'] }}" wire:click="mountAction('strike', {{ $id }})">Hapus dari daftar</button>
                                 @endif
-                                @if ($row['can_restore'] && $this->restoreStruckAction->isVisible())
-                                    {{ ($this->restoreStruckAction)(['voter' => $voter->public_id]) }}
+                                @if ($row['can_restore'] && $can['restore'])
+                                    <button type="button" class="{{ $btn['link'] }}" wire:click="mountAction('restoreStruck', {{ $id }})">↩ Kembalikan ke daftar</button>
                                 @endif
 
-                                {{-- Koreksi suara: diputuskan langsung di RT (tombol Koreksi); lencana menunggu hanya untuk pengajuan lama/dari luar Meja Izin. --}}
+                                {{-- Koreksi suara: diputuskan langsung di RT; lencana menunggu hanya untuk pengajuan lama/dari luar Meja Izin. --}}
                                 @if ($row['correction_pending'])
                                     <x-filament::badge color="warning" icon="heroicon-o-clock">Koreksi menunggu Super Admin</x-filament::badge>
-                                @elseif (in_array('SUDAH', $status['ballots'], true) && ($this->requestCorrectionAction)(['voter' => $voter->public_id])->isVisible())
-                                    {{ ($this->requestCorrectionAction)(['voter' => $voter->public_id]) }}
+                                @elseif ($can['correct'] && in_array('SUDAH', $status['ballots'], true))
+                                    <button type="button" class="{{ $btn['gray'] }}" wire:click="mountAction('requestCorrection', {{ $id }})">Koreksi</button>
                                 @endif
                             </div>
                         </li>

@@ -80,6 +80,14 @@ class DeskPage extends Page
     /** @var array<int, array<string, mixed>>|null dihitung sekali per render */
     private ?array $voterRowsCache = null;
 
+    private ?Election $electionCache = null;
+
+    private bool $electionResolved = false;
+
+    private ?Device $deskCache = null;
+
+    private bool $deskResolved = false;
+
     /**
      * Penugasan terakhir: "Silakan ke Bilik N".
      *
@@ -124,11 +132,17 @@ class DeskPage extends Page
 
     public function election(): ?Election
     {
-        return Election::query()
-            ->where('mode', ElectionMode::Resmi)
-            ->whereIn('status', [ElectionStatus::Ready, ElectionStatus::Berlangsung, ElectionStatus::Paused])
-            ->latest()
-            ->first();
+        // Disimpan per permintaan: halaman ini memanggilnya berkali-kali saat menggambar daftar (diperbarui tiap 3 detik).
+        if (! $this->electionResolved) {
+            $this->electionCache = Election::query()
+                ->where('mode', ElectionMode::Resmi)
+                ->whereIn('status', [ElectionStatus::Ready, ElectionStatus::Berlangsung, ElectionStatus::Paused])
+                ->latest()
+                ->first();
+            $this->electionResolved = true;
+        }
+
+        return $this->electionCache;
     }
 
     /**
@@ -136,16 +150,21 @@ class DeskPage extends Page
      */
     public function desk(): ?Device
     {
+        if ($this->deskResolved) {
+            return $this->deskCache;
+        }
+
         $election = $this->election();
         $desk = app(DeviceManager::class)->authenticate(request(), DeviceKind::Meja);
+        $this->deskResolved = true;
 
         if ($election === null || $desk === null || $desk->election_id !== $election->id || $desk->unit_id !== $this->user()->unit_id) {
-            return null;
+            return $this->deskCache = null;
         }
 
         app(DeviceManager::class)->heartbeat($desk, request());
 
-        return $desk;
+        return $this->deskCache = $desk;
     }
 
     /**
