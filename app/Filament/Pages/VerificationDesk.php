@@ -239,7 +239,7 @@ class VerificationDesk extends Page
             ->color('gray')
             ->visible(fn (): bool => in_array($this->election()?->status, [ElectionStatus::Ditutup, ElectionStatus::Verifikasi], true))
             ->modalHeading('Buka putaran berikutnya')
-            ->modalDescription('Untuk seri atau keputusan panitia. Pemilihan kembali Berlangsung hanya untuk surat suara/RT yang dipilih, dengan calon yang dipilih. Mode Resmi: laptop meja dan bilik perlu dipasang ulang dengan token baru.')
+            ->modalDescription('Untuk seri atau keputusan panitia. Pemilihan kembali Berlangsung hanya untuk surat suara/RT yang dipilih, dengan calon yang dipilih. Mode Resmi: laptop Meja dipasang ulang (Jadikan laptop ini Meja RT) dan bilik dengan token baru dari Meja Izin.')
             ->schema(fn (): array => [
                 CheckboxList::make('slots')
                     ->label('Surat suara / RT yang diulang')

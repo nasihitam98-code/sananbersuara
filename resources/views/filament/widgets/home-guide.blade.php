@@ -41,7 +41,7 @@
                 @php($live = $this->otherLiveElection())
                 <x-filament::section>
                     <p class="text-lg font-semibold">Pemilihan mana yang mau dikerjakan?</p>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Setelah masuk, menu {{ $mode === \App\Enums\ElectionMode::Resmi ?'Calon, Data Pemilih, Meja Izin, Partisipasi,' : 'Calon, Meja Pintu, Ruang Kendali,' }} dan Hasil hanya berisi pemilihan itu. Bisa diganti lewat tombol "Ganti pemilihan" di atas.</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Setelah masuk, semua menu (calon, pemilih, meja, hasil) hanya berisi pemilihan itu. Bisa diganti lewat tombol "Ganti pemilihan" di atas.</p>
                     @if ($live)
                         <p class="mt-2 text-sm font-semibold text-success-700 dark:text-success-400">● Sedang berlangsung: {{ $live->name }}</p>
                     @endif

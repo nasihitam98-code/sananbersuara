@@ -171,7 +171,7 @@
                                     {{ ($this->restoreStruckAction)(['voter' => $voter->public_id]) }}
                                 @endif
 
-                                {{-- Koreksi suara: diajukan dari sini, diputuskan Super Admin. --}}
+                                {{-- Koreksi suara: diputuskan langsung di RT (tombol Koreksi); lencana menunggu hanya untuk pengajuan lama/dari luar Meja Izin. --}}
                                 @if ($row['correction_pending'])
                                     <x-filament::badge color="warning" icon="heroicon-o-clock">Koreksi menunggu Super Admin</x-filament::badge>
                                 @elseif (in_array('SUDAH', $status['ballots'], true) && ($this->requestCorrectionAction)(['voter' => $voter->public_id])->isVisible())

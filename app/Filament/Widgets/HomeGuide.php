@@ -9,6 +9,7 @@ use App\Filament\Pages\DeskPage;
 use App\Filament\Pages\DevicesPage;
 use App\Filament\Pages\DoorDesk;
 use App\Filament\Pages\GalleryPage;
+use App\Filament\Pages\MonitoringPage;
 use App\Filament\Pages\ParticipationPage;
 use App\Filament\Pages\ResultScreen;
 use App\Filament\Pages\VerificationDesk;
@@ -158,7 +159,8 @@ class HomeGuide extends Widget implements HasActions, HasSchemas
             [$dadakan && ControlRoom::canAccess() && ! $closed, 'Layar QR', 'Tampilan proyektor untuk warga', 'heroicon-o-qr-code', fn (): string => route('screens.qr', $election->public_id), true],
             [! $dadakan && DevicesPage::canAccess(), 'Perangkat', 'Laptop meja dan bilik', 'heroicon-o-computer-desktop', fn (): string => DevicesPage::getUrl($query), false],
             [! $dadakan && DeskPage::canAccess(), 'Meja Izin', 'Izinkan pemilih ke bilik', 'heroicon-o-clipboard-document-check', fn (): string => DeskPage::getUrl($query), false],
-            [! $dadakan && ParticipationPage::canAccess(), 'Partisipasi', 'Kehadiran per RT', 'heroicon-o-chart-bar-square', fn (): string => ParticipationPage::getUrl($query), false],
+            [! $dadakan && MonitoringPage::canAccess(), 'Monitoring', 'Semua RT: sudah/belum memilih', 'heroicon-o-chart-bar-square', fn (): string => MonitoringPage::getUrl($query), false],
+            [! $dadakan && ParticipationPage::shouldRegisterNavigation() && ParticipationPage::canAccess(), 'Partisipasi', 'Kehadiran per RT', 'heroicon-o-chart-bar-square', fn (): string => ParticipationPage::getUrl($query), false],
             [$closed && ResultScreen::canAccess(), 'Layar Hasil', 'Pengumuman hasil di proyektor', 'heroicon-o-presentation-chart-bar', fn (): string => ResultScreen::getUrl($query), false],
             [$closed && VerificationDesk::canAccess(), 'Verifikasi & Publikasi', 'Tetapkan, berita acara, umumkan', 'heroicon-o-document-check', fn (): string => VerificationDesk::getUrl($query), false],
         ];
@@ -301,7 +303,7 @@ class HomeGuide extends Widget implements HasActions, HasSchemas
         $targets = [
             [$edit, 'Surat suara, calon, dan penugasan diisi.'],
             [$edit ?? ($dadakan ? $page(DoorDesk::class) : $page(DevicesPage::class)), 'Data dikunci (Tandai Siap). Calon masih bisa diubah sampai Mulai.'],
-            [$dadakan ? ($page(ControlRoom::class) ?? $page(DoorDesk::class)) : ($page(DeskPage::class) ?? $page(ParticipationPage::class)), 'Pemilihan dimulai; voting bisa dibuka dan ditutup.'],
+            [$dadakan ? ($page(ControlRoom::class) ?? $page(DoorDesk::class)) : ($page(DeskPage::class) ?? $page(MonitoringPage::class) ?? $page(ParticipationPage::class)), 'Pemilihan dimulai; voting bisa dibuka dan ditutup.'],
             [$page(ResultScreen::class), 'Pemilihan ditutup; hasil boleh ditampilkan.'],
             [$page(VerificationDesk::class), 'Panitia menetapkan yang terpilih/lolos.'],
             [$election->status === ElectionStatus::Published && $election->isPublic() ? route('public.show', $election->public_id) : null, $election->isPublic() ? 'Hasil tampil di halaman publik.' : 'Hasil diumumkan (tidak tampil di halaman publik).'],
@@ -383,10 +385,10 @@ class HomeGuide extends Widget implements HasActions, HasSchemas
                         fn () => $page(DoorDesk::class, 'Buka Meja Pintu'),
                     ]]
                 : [$manager
-                    ? 'Sudah siap. Pasang laptop meja dan bilik dengan token, lalu buka halaman pemilihan dan klik Mulai Pemilihan.'
-                    : 'Sudah siap. Laptop meja dipasang Super Admin; laptop bilik Anda pasang sendiri dari Meja Izin (tombol Buat Token di tiap bilik). Pemilihan dimulai oleh Super Admin.', [
-                        fn () => $page(DeskPage::class, 'Buka Meja Izin (pasang bilik)'),
-                        fn () => $page(DevicesPage::class, 'Pasang laptop (Perangkat)'),
+                    ? 'Sudah siap. Tiap RT memasang laptop Meja sendiri (Meja Izin → Jadikan laptop ini Meja RT) dan laptop bilik (Buat Token). Pantau di Perangkat, lalu klik Mulai Pemilihan.'
+                    : 'Sudah siap. Buka Meja Izin: klik Jadikan laptop ini Meja RT (sekali saja), lalu pasang laptop bilik dengan Buat Token di tiap bilik. Pemilihan dimulai oleh Super Admin.', [
+                        fn () => $page(DeskPage::class, 'Buka Meja Izin (pasang Meja & bilik)'),
+                        fn () => $page(DevicesPage::class, 'Pantau laptop (Perangkat)'),
                         fn () => $edit('Buka halaman pemilihan (Mulai Pemilihan)'),
                     ]],
             ElectionStatus::Berlangsung, ElectionStatus::Paused => $dadakan
@@ -399,7 +401,8 @@ class HomeGuide extends Widget implements HasActions, HasSchemas
                     ]]
                 : ['Pemilihan berjalan. Petugas meja mengizinkan pemilih ke bilik.', [
                     fn () => $page(DeskPage::class, 'Buka Meja Izin'),
-                    fn () => $page(ParticipationPage::class, 'Lihat Partisipasi'),
+                    fn () => $page(MonitoringPage::class, 'Buka Monitoring'),
+                    fn () => ParticipationPage::shouldRegisterNavigation() ? $page(ParticipationPage::class, 'Lihat Partisipasi') : null,
                     fn () => $edit('Status: Jeda / Tutup Pemilihan'),
                 ]],
             ElectionStatus::Ditutup => ['Pemilihan sudah ditutup. Tampilkan hasil, lalu lanjut ke Verifikasi & Publikasi.', [
@@ -452,11 +455,11 @@ class HomeGuide extends Widget implements HasActions, HasSchemas
                 [CandidateResource::class, 'Masukkan calon RT tiap RT dan calon RW', ''],
                 [GalleryPage::class, 'Media: unggah dan pasang foto calon', ''],
                 [UserResource::class, 'Buat akun Admin RT untuk tiap RT', 'Centang izin Kelola data pemilih dan/atau Petugas Meja.'],
-                [VoterResource::class, 'Isi data pemilih per RT', 'Satu per satu atau import Excel (template tersedia).'],
-                [ElectionResource::class, 'Quick count di halaman publik (opsional)', 'Di halaman pemilihan, tombol "Quick count: mati" di kanan atas. Bila aktif, warga melihat angka sementara tiap 10 menit selama voting.'],
-                [DevicesPage::class, 'Tandai Siap, lalu pasang laptop dengan token', 'Laptop meja dan bilik tiap RT. Setelah itu Mulai Pemilihan.'],
-                [DeskPage::class, 'Meja Izin: izinkan pemilih ke bilik', 'Cari nama di RT sendiri, tekan Izinkan Memilih.'],
-                [ParticipationPage::class, 'Pantau partisipasi per RT', ''],
+                [VoterResource::class, 'Isi data pemilih per RT', 'Satu per satu, Tambah banyak (tempel daftar nama), atau import Excel. Bisa juga oleh Admin RT sendiri sampai Mulai.'],
+                [ElectionResource::class, 'Quick count di halaman publik (opsional)', 'Di halaman pemilihan, tombol "Quick count: mati" di kanan atas. Bila aktif, warga melihat angka sementara tiap 10 menit (jaraknya bisa diubah) selama voting.'],
+                [DevicesPage::class, 'Tandai Siap, lalu tiap RT memasang laptop', 'Admin RT: Meja Izin → Jadikan laptop ini Meja RT, lalu Buat Token untuk tiap bilik. Pantau di Perangkat, lalu Mulai Pemilihan.'],
+                [DeskPage::class, 'Meja Izin: izinkan pemilih ke bilik', 'Daftar RT langsung tampil; saring nama atau No. absen, tekan Izinkan Memilih. Ubah / Hapus dari daftar di kanan nama.'],
+                [MonitoringPage::class, 'Monitoring: pantau semua RT', ''],
                 [VerificationDesk::class, 'Tutup, tetapkan terpilih, berita acara, Publish', ''],
             ],
             default => [],

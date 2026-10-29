@@ -138,7 +138,7 @@ class ElectionChecklist
             'done' => $ready,
             'detail' => match (true) {
                 $ready && $election->isDadakan() => 'Sudah Siap. Petugas pintu sudah bisa mendata. Saat acara dimulai: tombol Mulai Pemilihan di kanan atas.',
-                $ready => 'Sudah Siap. Pasang laptop meja dan bilik di menu Perangkat, lalu Mulai Pemilihan di kanan atas.',
+                $ready => 'Sudah Siap. Tiap RT memasang laptop Meja (Meja Izin → Jadikan laptop ini Meja RT) dan bilik; pantau di Perangkat, lalu Mulai Pemilihan di kanan atas.',
                 $prepared => 'Semua langkah di atas lengkap. Tekan tombol Tandai Siap di kanan atas.',
                 default => 'Lengkapi langkah di atas dulu, lalu tekan Tandai Siap di kanan atas.',
             },
