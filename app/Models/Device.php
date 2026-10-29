@@ -74,11 +74,12 @@ class Device extends Model
     }
 
     /**
-     * Token pemasangan yang masih berlaku dan belum dipakai (untuk ditampilkan lagi di Meja Izin/Perangkat), atau null.
+     * Token slot ini yang masih berlaku (ditampilkan di Meja Izin/Perangkat), atau null. Berlaku sampai slot dilepas atau
+     * token baru dibuat, dan bisa dipakai lagi untuk menyambung ulang laptop.
      */
     public function pendingToken(): ?string
     {
-        return $this->pairing_token_hash !== null && $this->pairing_token_expires_at?->isFuture()
+        return $this->pairing_token_hash !== null && $this->pairing_token_expires_at?->isPast() !== true
             ? $this->pairing_token_encrypted
             : null;
     }

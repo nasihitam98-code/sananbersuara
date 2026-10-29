@@ -275,26 +275,36 @@ class ResmiVotingTest extends TestCase
             ->assertDontSee('Calon RT Tiga');
     }
 
-    public function test_device_tokens_are_single_use_and_expire(): void
+    public function test_device_tokens_reconnect_until_replaced_or_released(): void
     {
         $device = Device::query()->where('kind', DeviceKind::Bilik)->where('unit_id', $this->rt03->id)->where('number', 1)->firstOrFail();
         $manager = app(DeviceManager::class);
 
         $token = $manager->issueToken($device, $this->superAdmin);
-        $manager->pair($token, 'Laptop A', Request::create('/'), DeviceKind::Bilik);
+        $first = $manager->pair($token, 'Laptop A', Request::create('/'), DeviceKind::Bilik);
+
+        // Tidak kedaluwarsa: berjam-jam kemudian token yang sama masih menyambungkan ulang (mis. Incognito ditutup).
+        $this->travel(5)->hours();
+        $again = $manager->pair($token, 'Laptop A', Request::create('/'), DeviceKind::Bilik);
+        $this->assertNotSame($first['secret'], $again['secret']);
+        $this->assertSame($token, $device->fresh()->pendingToken());
+
+        // Token baru membuat token lama tidak berlaku.
+        $newToken = $manager->issueToken($device->fresh(), $this->superAdmin);
 
         try {
             $manager->pair($token, 'Laptop B', Request::create('/'), DeviceKind::Bilik);
-            $this->fail('Token bekas seharusnya ditolak.');
+            $this->fail('Token lama seharusnya ditolak setelah token baru dibuat.');
         } catch (VotingException) {
             $this->assertTrue(true);
         }
 
-        $expired = $manager->issueToken($device, $this->superAdmin);
-        $this->travel(11)->minutes();
+        // Dilepas: token tidak berlaku lagi.
+        $manager->release($device->fresh(), DeviceReleaseReason::Diganti, $this->superAdmin);
+        $this->assertNull($device->fresh()->pendingToken());
 
         $this->expectException(VotingException::class);
-        $manager->pair($expired, 'Laptop C', Request::create('/'), DeviceKind::Bilik);
+        $manager->pair($newToken, 'Laptop C', Request::create('/'), DeviceKind::Bilik);
     }
 
     public function test_booth_token_cannot_pair_a_desk(): void

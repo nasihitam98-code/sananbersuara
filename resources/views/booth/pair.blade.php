@@ -13,7 +13,7 @@
                 @if ($kind->value === 'MEJA')
                     Lebih cepat tanpa token: login akun RT di laptop ini, buka Meja Izin, klik <strong>Jadikan laptop ini Meja RT</strong>. Atau ketik token Meja dari Super Admin di sini.
                 @else
-                    Token bilik dibuat petugas di laptop Meja (menu Meja Izin → Bilik). Token berlaku 10 menit dan sekali pakai.
+                    Token bilik dibuat petugas di laptop Meja (menu Meja Izin → Bilik) dan tampil di kartu bilik. Token tetap berlaku sampai bilik dilepas, jadi bisa diketik lagi bila laptop ini perlu disambungkan ulang.
                 @endif
             </p>
 
@@ -21,7 +21,7 @@
             @if (! empty($why))
                 <p class="error" role="status">{{ $why }}</p>
             @elseif ($kind->value !== 'MEJA')
-                <p class="muted">Sudah pernah dipasang tapi diminta token lagi? Biasanya karena memakai jendela Incognito/Tamu atau data browser terhapus. Pakai jendela Chrome biasa.</p>
+                <p class="muted">Sudah pernah dipasang tapi diminta token lagi? Biasanya karena jendela Incognito/Tamu atau data browser terhapus. Ketik lagi token bilik yang tampil di Meja (masih berlaku), dan pakai jendela Chrome biasa.</p>
             @endif
 
             <form method="POST" action="{{ route('booth.pair', $kind->value === 'MEJA' ? 'meja' : 'bilik') }}" class="stack" data-once>

@@ -24,7 +24,8 @@ use Symfony\Component\HttpFoundation\Cookie as SymfonyCookie;
 
 /**
  * Perangkat Meja/Bilik (bagian 5.2–5.4, 10A-B):
- * token acak sekali pakai (disimpan hash, tampil sekali, ada masa berlaku, terikat satu slot),
+ * token acak per slot (disimpan hash + salinan terenkripsi untuk ditampilkan ulang). Token tidak kedaluwarsa dan bisa
+ * dipakai lagi untuk menyambung ulang slot yang sama sampai slot dilepas atau token baru dibuat (keputusan pemilik 2026-10-29);
  * sesi perangkat lewat cookie terenkripsi + hash rahasia di server, dan pelepasan yang langsung mencabut akses.
  */
 class DeviceManager
@@ -195,20 +196,15 @@ class DeviceManager
         $isDesk = $device->kind === DeviceKind::Meja;
         $length = $isDesk ? 12 : 8;
         $token = collect(range(1, $length))->map(fn (): string => self::TOKEN_ALPHABET[random_int(0, strlen(self::TOKEN_ALPHABET) - 1)])->implode('');
-        $expiresAt = $isDesk
-            ? Carbon::now()->addHours((int) $election->setting('desk_token_hours'))
-            : Carbon::now()->addMinutes((int) $election->setting('booth_token_minutes'));
-
+        // Token baru menggantikan token lama slot ini. Disimpan terenkripsi agar tetap tampil di Meja/Perangkat.
         $device->forceFill([
             'pairing_token_hash' => static::hashToken($token),
-            'pairing_token_expires_at' => $expiresAt,
-            // Terenkripsi, agar token tetap tampil di Meja/Perangkat sampai dipakai atau kedaluwarsa.
+            'pairing_token_expires_at' => null,
             'pairing_token_encrypted' => implode('-', str_split($token, 4)),
         ])->save();
 
         $this->audit->log('device.token_issued', $device, $election, meta: [
             'device' => $device->code(),
-            'expires_at' => $expiresAt->toIso8601String(),
         ], actor: $actor);
 
         return implode('-', str_split($token, 4));
@@ -226,7 +222,8 @@ class DeviceManager
         $result = DB::transaction(function () use ($hash, $label, $request, $kind): ?array {
             $device = Device::query()->where('pairing_token_hash', $hash)->where('kind', $kind)->lockForUpdate()->first();
 
-            if ($device === null || $device->pairing_token_expires_at?->isPast() !== false) {
+            // Token lama (sebelum aturan tanpa kedaluwarsa) masih menghormati masa berlakunya.
+            if ($device === null || $device->pairing_token_expires_at?->isPast() === true) {
                 return null;
             }
 
@@ -237,10 +234,8 @@ class DeviceManager
             $replacedAnotherLaptop = $device->isPaired();
             $secret = Str::random(48);
 
+            // Token tetap disimpan: bila laptop ini lupa (Incognito/data terhapus), token yang sama menyambungkan lagi.
             $device->forceFill([
-                'pairing_token_hash' => null,
-                'pairing_token_expires_at' => null,
-                'pairing_token_encrypted' => null,
                 'session_secret_hash' => hash('sha256', $secret),
                 'label' => Str::of($label)->squish()->limit(120, '')->toString() ?: null,
                 'paired_at' => Carbon::now(),
@@ -257,7 +252,7 @@ class DeviceManager
         if ($result === null) {
             $this->audit->log('device.token_rejected', meta: ['ip' => $request->ip()], actorType: 'device');
 
-            throw VotingException::invalidState('Token salah, sudah dipakai, atau kedaluwarsa. Minta token baru ke petugas.');
+            throw VotingException::invalidState('Token salah, sudah diganti token baru, atau bilik/meja sudah dilepas. Minta token ke petugas Meja.');
         }
 
         $this->audit->log('device.paired', $result['device'], $result['device']->election, meta: [

@@ -139,7 +139,7 @@ class DeskPageTest extends TestCase
             ->assertHasFormErrors(['current_password']);
     }
 
-    public function test_unused_booth_token_stays_visible_until_it_is_used(): void
+    public function test_booth_token_stays_visible_and_reusable_until_the_booth_is_released(): void
     {
         $this->actingAs($this->deskOfficer);
         $booth = Device::query()->where('kind', DeviceKind::Bilik)->where('unit_id', $this->deskOfficer->unit_id)->firstOrFail();
@@ -152,14 +152,14 @@ class DeskPageTest extends TestCase
         // Tersimpan terenkripsi, bukan teks biasa.
         $this->assertStringNotContainsString($token, (string) DB::table('devices')->where('id', $booth->id)->value('pairing_token_encrypted'));
 
-        // Halaman dimuat ulang: token masih terlihat di kartu bilik.
+        // Sesudah dipakai pun tetap terlihat di kartu bilik (untuk menyambung ulang laptop yang lupa).
+        app(DeviceManager::class)->pair($token, 'Laptop Bilik Baru', Request::create('/'), DeviceKind::Bilik);
         Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])->test(DeskPage::class)
             ->assertSee($token)
-            ->assertSee('Token (belum dipakai)');
+            ->assertSee('Token bilik ini (bisa dipakai lagi)');
 
-        // Setelah dipakai di laptop bilik: hilang.
-        app(DeviceManager::class)->pair($token, 'Laptop Bilik Baru', Request::create('/'), DeviceKind::Bilik);
-        $this->assertNull($booth->fresh()->pendingToken());
+        // Dilepas: token hilang dari kartu.
+        app(DeviceManager::class)->release($booth->fresh(), DeviceReleaseReason::Diganti, $this->superAdmin);
         Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])->test(DeskPage::class)->assertDontSee($token);
     }
 

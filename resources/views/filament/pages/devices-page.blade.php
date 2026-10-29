@@ -17,7 +17,7 @@
 
             @if ($issuedToken)
                 <div class="rounded-2xl border-2 border-primary-500 p-6 text-center" role="status">
-                    <p>Token untuk <strong>{{ $issuedToken['desk'] }}</strong> (tampil sekali, berlaku {{ $election->setting('desk_token_hours') }} jam):</p>
+                    <p>Token untuk <strong>{{ $issuedToken['desk'] }}</strong> (tetap berlaku sampai meja dilepas):</p>
                     <p class="font-mono text-5xl font-black tracking-widest text-primary-700 dark:text-primary-300">{{ $issuedToken['token'] }}</p>
                     <x-filament::button color="gray" class="mt-3" wire:click="dismissToken">Tutup</x-filament::button>
                 </div>
@@ -50,7 +50,7 @@
                                         <td class="pe-3">
                                             {{ $device->label ?? '-' }}
                                             @if ($pendingToken = $device->pendingToken())
-                                                <span class="block font-mono font-bold tracking-wider text-primary-700 dark:text-primary-300" title="Token belum dipakai, berlaku sampai {{ $device->pairing_token_expires_at->format('d/m H:i') }}">Token: {{ $pendingToken }}</span>
+                                                <span class="block font-mono font-bold tracking-wider text-primary-700 dark:text-primary-300" title="Berlaku sampai dilepas; bisa dipakai lagi untuk menyambung ulang">Token: {{ $pendingToken }}</span>
                                             @endif
                                         </td>
                                         <td class="pe-3">{{ $device->last_seen_at?->diffForHumans() ?? '-' }}</td>

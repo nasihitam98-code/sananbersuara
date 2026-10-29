@@ -33,7 +33,7 @@
 
             @if ($issuedToken)
                 <div class="rounded-2xl border-2 border-primary-500 p-6 text-center" role="status">
-                    <p>Token untuk <strong>{{ $issuedToken['booth'] }}</strong> (berlaku {{ $election->setting('booth_token_minutes') }} menit, sekali pakai):</p>
+                    <p>Token untuk <strong>{{ $issuedToken['booth'] }}</strong> (tetap berlaku sampai bilik dilepas; bisa dipakai lagi untuk menyambung ulang):</p>
                     <p class="font-mono text-5xl font-black tracking-widest text-primary-700 dark:text-primary-300">{{ $issuedToken['token'] }}</p>
                     <p class="text-sm text-gray-500">Di laptop bilik buka <strong>{{ url('/bilik') }}</strong> lalu ketik token ini.</p>
                     <x-filament::button color="gray" class="mt-3" wire:click="dismissToken">Tutup</x-filament::button>
@@ -84,12 +84,12 @@
                             @if ($booth->activePermit)
                                 <p class="mt-1 text-sm">Pemilih di dalam: {{ $booth->activePermit->voter->name }}</p>
                             @endif
-                            {{-- Token yang belum dipakai tetap terlihat (juga setelah halaman dimuat ulang) sampai dipakai atau kedaluwarsa. --}}
+                            {{-- Token bilik tetap terlihat dan berlaku sampai bilik dilepas: laptop yang lupa (Incognito/data terhapus) cukup diketik token yang sama. --}}
                             @if ($desk && ($pendingToken = $booth->pendingToken()))
                                 <p class="mt-2 rounded-lg bg-primary-50 px-3 py-2 dark:bg-primary-500/10">
-                                    <span class="text-xs text-gray-500">Token (belum dipakai):</span>
+                                    <span class="text-xs text-gray-500">Token bilik ini (bisa dipakai lagi):</span>
                                     <span class="block font-mono text-2xl font-black tracking-widest text-primary-700 dark:text-primary-300">{{ $pendingToken }}</span>
-                                    <span class="text-xs text-gray-500">berlaku sampai {{ $booth->pairing_token_expires_at->format('H:i') }}</span>
+                                    <span class="text-xs text-gray-500">berlaku sampai bilik dilepas</span>
                                 </p>
                             @endif
                             @if ($desk)

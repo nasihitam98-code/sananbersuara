@@ -608,7 +608,7 @@ class DeskPage extends Page
             ->requiresConfirmation()
             // Konfirmasi hanya bila bilik sedang terpasang (deskripsi saja membuat Filament selalu membuka jendela).
             ->modalHidden(fn (array $arguments): bool => $this->boothFromArguments($arguments)?->isPaired() !== true)
-            ->modalDescription('Bilik ini sedang terpasang. Token baru dipakai untuk mengganti laptop; laptop lama akan terlepas saat token dipakai.')
+            ->modalDescription('Bilik ini sedang terpasang. Untuk menyambung ulang laptop yang sama, cukup ketik lagi token yang tampil di kartu bilik. Token baru membuat token lama tidak berlaku; laptop lama terlepas saat token baru dipakai.')
             ->action(function (array $arguments): void {
                 $booth = $this->boothFromArguments($arguments);
                 $desk = $this->requireDesk();

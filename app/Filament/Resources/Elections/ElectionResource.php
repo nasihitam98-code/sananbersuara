@@ -145,14 +145,7 @@ class ElectionResource extends Resource
                         ->label('Sesi bilik berakhir jika diam (menit)')
                         ->numeric()->minValue(1)->maxValue(30)
                         ->placeholder('Bawaan: '.config('voting.defaults.booth_idle_minutes')),
-                    TextInput::make('settings.booth_token_minutes')
-                        ->label('Masa berlaku token bilik (menit)')
-                        ->numeric()->minValue(1)->maxValue(60)
-                        ->placeholder('Bawaan: '.config('voting.defaults.booth_token_minutes')),
-                    TextInput::make('settings.desk_token_hours')
-                        ->label('Masa berlaku token meja (jam)')
-                        ->numeric()->minValue(1)->maxValue(72)
-                        ->placeholder('Bawaan: '.config('voting.defaults.desk_token_hours')),
+                    // Token meja/bilik tidak kedaluwarsa (berlaku sampai dilepas), jadi tidak ada pengaturan masa berlaku.
                 ])
                 ->disabled($locked),
             Section::make('Pengaturan lanjutan Mode Dadakan (boleh dibiarkan)')
