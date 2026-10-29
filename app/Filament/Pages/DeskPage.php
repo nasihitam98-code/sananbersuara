@@ -13,6 +13,7 @@ use App\Enums\PermitCancelReason;
 use App\Enums\PermitStatus;
 use App\Enums\TpsPauseReason;
 use App\Enums\VoteStatus;
+use App\Filament\Support\Reauthenticate;
 use App\Filament\Support\Workspace;
 use App\Models\Attendee;
 use App\Models\BallotVoter;
@@ -43,6 +44,7 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cookie;
 use UnitEnum;
 
 /**
@@ -430,6 +432,45 @@ class DeskPage extends Page
                 $reason = $data['reason'] instanceof PermitCancelReason ? $data['reason'] : PermitCancelReason::from($data['reason']);
 
                 $this->run(fn () => app(PermitManager::class)->cancel($permit, $reason, $this->user(), $this->requireDesk()), 'Izin dibatalkan. Bilik terkunci kembali.');
+            });
+    }
+
+    /**
+     * Admin RT memasang laptop ini sebagai Meja RT-nya sendiri (tanpa token Super Admin), cukup password akunnya.
+     */
+    public function pairOwnDeskAction(): Action
+    {
+        $deskPairedElsewhere = fn (): bool => Device::query()
+            ->where('election_id', $this->election()?->id)
+            ->where('unit_id', $this->user()->unit_id)
+            ->where('kind', DeviceKind::Meja)
+            ->whereNotNull('session_secret_hash')
+            ->exists();
+
+        return Action::make('pairOwnDesk')
+            ->label('Jadikan laptop ini Meja RT')
+            ->icon('heroicon-o-computer-desktop')
+            ->visible(fn (): bool => $this->election() !== null && $this->desk() === null)
+            ->modalHeading(fn (): string => 'Jadikan laptop ini Meja '.$this->user()->unit?->name.'?')
+            ->modalDescription(fn (): string => 'Laptop ini dipakai untuk memberi izin memilih. Cukup sekali; besok laptop yang sama tetap terpasang.'
+                .($deskPairedElsewhere() ? ' Laptop Meja RT ini yang lama akan TERLEPAS.' : ''))
+            ->modalSubmitActionLabel('Pasang')
+            ->schema([
+                TextInput::make('label')->label('Nama laptop')->required()->minLength(3)->maxLength(120)->default(fn (): string => 'Laptop Meja '.$this->user()->unit?->name),
+                Reauthenticate::field(),
+            ])
+            ->action(function (array $data): void {
+                try {
+                    $result = app(DeviceManager::class)->pairOwnDesk($this->election(), $this->user(), $data['label'], request());
+                } catch (VotingException $exception) {
+                    Notification::make()->title($exception->getMessage())->danger()->send();
+
+                    return;
+                }
+
+                Cookie::queue(app(DeviceManager::class)->cookieFor($result['device'], $result['secret']));
+                Notification::make()->title('Laptop ini terpasang sebagai Meja '.$this->user()->unit?->name.'.')->success()->send();
+                $this->redirect(static::getUrl());
             });
     }
 

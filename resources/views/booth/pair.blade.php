@@ -11,7 +11,7 @@
             <h1>Masukkan token {{ strtolower($kind->getLabel()) }}</h1>
             <p class="muted">
                 @if ($kind->value === 'MEJA')
-                    Token meja dibuat Super Admin. Setelah terpasang, login sebagai Petugas Meja di laptop ini.
+                    Lebih cepat tanpa token: login akun RT di laptop ini, buka Meja Izin, klik <strong>Jadikan laptop ini Meja RT</strong>. Atau ketik token Meja dari Super Admin di sini.
                 @else
                     Token bilik dibuat petugas di laptop Meja (menu Meja Izin → Bilik). Token berlaku 10 menit dan sekali pakai.
                 @endif

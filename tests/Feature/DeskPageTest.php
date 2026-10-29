@@ -29,6 +29,7 @@ use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cookie;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -87,6 +88,39 @@ class DeskPageTest extends TestCase
         $user->givePermissionTo($permissions);
 
         return $user;
+    }
+
+    public function test_admin_rt_pairs_this_laptop_as_own_desk_without_a_super_admin_token(): void
+    {
+        $this->actingAs($this->deskOfficer);
+        $desk = Device::query()->where('kind', DeviceKind::Meja)->where('unit_id', $this->deskOfficer->unit_id)->firstOrFail();
+        $oldSecret = $desk->session_secret_hash;
+
+        // Laptop lain (tanpa cookie Meja): tombol pasang sendiri muncul; laptop Meja lama akan terlepas.
+        Livewire::test(DeskPage::class)
+            ->assertActionVisible('pairOwnDesk')
+            ->mountAction('pairOwnDesk')
+            ->assertMountedActionModalSee('Laptop Meja RT ini yang lama akan TERLEPAS.')
+            ->fillForm(['label' => 'Laptop Pak RT', 'current_password' => 'password'])
+            ->callMountedAction()
+            ->assertHasNoFormErrors()
+            ->assertRedirect(DeskPage::getUrl());
+
+        $desk->refresh();
+        $this->assertSame('Laptop Pak RT', $desk->label);
+        $this->assertNotSame($oldSecret, $desk->session_secret_hash);
+        $this->assertTrue(Cookie::hasQueued(DeviceManager::COOKIE));
+        $this->assertTrue(AuditLog::query()->where('action', 'device.desk_self_paired')->exists());
+
+        // Laptop Meja lama tidak berlaku lagi.
+        Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])
+            ->test(DeskPage::class)
+            ->assertSee('Bukan laptop Meja RT Anda');
+
+        // Password salah ditolak.
+        Livewire::test(DeskPage::class)
+            ->callAction('pairOwnDesk', ['label' => 'Laptop Lain', 'current_password' => 'salah'])
+            ->assertHasFormErrors(['current_password']);
     }
 
     public function test_desk_officer_on_desk_laptop_grants_permit(): void

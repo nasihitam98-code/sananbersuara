@@ -130,6 +130,33 @@ class DeviceManager
     }
 
     /**
+     * Admin RT memasang laptop yang sedang dipakainya sebagai Meja RT-nya sendiri, tanpa menunggu token dari Super Admin
+     * (keputusan pemilik 2026-10-29; identitas dipastikan lewat login + password ulang). Laptop Meja lama RT itu terlepas.
+     *
+     * @return array{device: Device, secret: string}
+     */
+    public function pairOwnDesk(Election $election, User $actor, string $label, Request $request): array
+    {
+        abort_unless($actor->is_active && $actor->hasRole(User::ROLE_ADMIN_RT) && $actor->hasPermissionTo(User::PERMISSION_DESK) && $actor->unit_id !== null, 403);
+
+        $desk = Device::query()
+            ->where('election_id', $election->id)
+            ->where('unit_id', $actor->unit_id)
+            ->where('kind', DeviceKind::Meja)
+            ->first();
+
+        if ($desk === null) {
+            throw VotingException::invalidState('Meja RT ini belum disiapkan. Pemilihan harus berstatus Siap atau Berlangsung.');
+        }
+
+        $result = $this->pair($this->issueToken($desk, $actor), $label, $request, DeviceKind::Meja);
+
+        $this->audit->log('device.desk_self_paired', $result['device'], $election, meta: ['device' => $result['device']->code(), 'label' => $result['device']->label], actor: $actor);
+
+        return $result;
+    }
+
+    /**
      * Token baru membuat token lama slot ini hangus. Mengembalikan token (tampil sekali).
      */
     public function issueToken(Device $device, User $actor): string

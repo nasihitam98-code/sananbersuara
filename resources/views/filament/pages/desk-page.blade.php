@@ -13,7 +13,8 @@
                     <x-filament::badge size="lg" color="success" icon="heroicon-o-check-circle">Laptop Meja {{ $desk->unit->name }} terdaftar</x-filament::badge>
                 @else
                     <x-filament::badge size="lg" color="danger" icon="heroicon-o-x-circle">Bukan laptop Meja RT Anda: tombol aksi nonaktif</x-filament::badge>
-                    <a href="{{ route('desk.pair') }}" class="text-sm text-primary-600 underline">Pasang laptop ini sebagai Meja (butuh token dari Super Admin)</a>
+                    @if ($this->pairOwnDeskAction->isVisible()) {{ $this->pairOwnDeskAction }} @endif
+                    <a href="{{ route('desk.pair') }}" class="text-sm text-gray-500 underline">atau pakai token Meja dari Super Admin</a>
                 @endif
                 @if ($pause = $this->tpsPause())
                     <x-filament::badge size="lg" color="warning" icon="heroicon-o-pause">TPS DIJEDA: {{ $pause->reason_code->getLabel() }} sejak {{ $pause->paused_at->format('H:i') }}</x-filament::badge>

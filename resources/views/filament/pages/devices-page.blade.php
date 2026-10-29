@@ -11,7 +11,7 @@
                 @if ($disconnected > 0)
                     <x-filament::badge size="lg" color="danger" icon="heroicon-o-exclamation-triangle">{{ $disconnected }} perangkat terputus lebih dari 30 detik</x-filament::badge>
                 @endif
-                <span class="text-sm text-gray-500">Laptop meja dipasang di <strong>{{ route('desk.pair') }}</strong>; laptop bilik di <strong>{{ route('booth.show') }}</strong>.</span>
+                <span class="text-sm text-gray-500">Laptop Meja dipasang sendiri oleh Admin RT dari Meja Izin (tombol <strong>Jadikan laptop ini Meja RT</strong>), atau dengan token di sini lewat <strong>{{ route('desk.pair') }}</strong>; laptop bilik di <strong>{{ route('booth.show') }}</strong>.</span>
             </div>
 
             @if ($issuedToken)
