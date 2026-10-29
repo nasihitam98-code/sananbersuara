@@ -30,9 +30,16 @@ class ListVoters extends ListRecords
             $this->bulkAddAction(),
             // Tambah ke RT yang sedang dibuka (tab), agar tidak tercampur.
             CreateAction::make()
-                ->label(fn (): string => ($unit = $this->activeUnit()) ? "Tambah pemilih {$unit->name}" : 'Tambah pemilih')
+                ->label(fn (): string => (VoterResource::votingIsLive() ? 'Tambah pemilih darurat' : 'Tambah pemilih').(($unit = $this->activeUnit()) ? " {$unit->name}" : ''))
                 ->url(fn (): string => VoterResource::getUrl('create', array_filter(['rt' => $this->activeUnit()?->code]))),
         ];
+    }
+
+    public function getSubheading(): ?string
+    {
+        return VoterResource::votingIsLive()
+            ? 'Pemilihan sedang berlangsung: daftar dibekukan. Di sini hanya lihat, cari, ubah nama, dan tambah pemilih darurat. Untuk menghapus nama yang tidak berhak, pakai tombol "Hapus dari daftar" di Meja Izin.'
+            : null;
     }
 
     /**
@@ -86,7 +93,7 @@ class ListVoters extends ListRecords
             ->label('Tambah banyak pemilih')
             ->icon(Heroicon::OutlinedQueueList)
             ->color('gray')
-            ->visible(fn (): bool => VoterResource::canCreate())
+            ->visible(fn (): bool => VoterResource::canCreate() && ! VoterResource::votingIsLive())
             ->modalHeading('Tambah banyak pemilih sekaligus')
             ->modalDescription($user->isSuperAdmin()
                 ? 'Satu orang per baris: "Nama | RT 03", atau tempel 2 kolom (nama, RT) dari Excel. Baris tanpa RT memakai RT yang dipilih.'

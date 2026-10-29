@@ -171,13 +171,13 @@ class VoterResource extends Resource
                 Action::make('deactivate')
                     ->label('Nonaktifkan')
                     ->color('warning')
-                    ->visible(fn (Voter $record): bool => $record->is_active)
+                    ->visible(fn (Voter $record): bool => $record->is_active && ! static::votingIsLive())
                     ->schema([Textarea::make('reason')->label('Alasan')->required()->maxLength(190)])
                     ->action(fn (Voter $record, array $data) => static::run(fn () => app(VoterRegistry::class)->deactivate($record, $data['reason'], auth()->user()), 'Pemilih dinonaktifkan.')),
                 Action::make('reactivate')
                     ->label('Aktifkan')
                     ->color('success')
-                    ->visible(fn (Voter $record): bool => ! $record->is_active)
+                    ->visible(fn (Voter $record): bool => ! $record->is_active && ! static::votingIsLive())
                     ->requiresConfirmation()
                     ->action(fn (Voter $record) => static::run(fn () => app(VoterRegistry::class)->reactivate($record, auth()->user()), 'Pemilih diaktifkan.')),
                 Action::make('moveUnit')
@@ -192,7 +192,7 @@ class VoterResource extends Resource
                 Action::make('delete')
                     ->label('Hapus')
                     ->color('danger')
-                    ->visible(fn (Voter $record): bool => auth()->user()->can('delete', $record))
+                    ->visible(fn (Voter $record): bool => ! static::votingIsLive() && auth()->user()->can('delete', $record))
                     ->requiresConfirmation()
                     ->modalHeading(fn (Voter $record): string => "Hapus {$record->name} ({$record->unit?->name})?")
                     ->modalDescription('Data pemilih ini dihapus permanen dan tercatat di audit. Bila hanya pindah/meninggal/tidak memenuhi syarat, lebih baik "Nonaktifkan".')
@@ -204,6 +204,7 @@ class VoterResource extends Resource
                 BulkAction::make('deleteSelected')
                     ->label('Hapus yang dicentang')
                     ->icon(Heroicon::OutlinedTrash)
+                    ->visible(fn (): bool => ! static::votingIsLive())
                     ->color('danger')
                     ->requiresConfirmation()
                     ->modalHeading(fn (Collection $records): string => "Hapus {$records->count()} pemilih?")
@@ -244,6 +245,15 @@ class VoterResource extends Resource
                     ->color('gray')
                     ->url(fn (): string => route('voters.template')),
             ]);
+    }
+
+    /**
+     * Voting sedang berjalan: daftar dibekukan. Nonaktifkan/hapus di sini tidak berpengaruh ke daftar yang berjalan,
+     * jadi disembunyikan; tambah/ubah/hapus dari daftar dilakukan di Meja Izin (keputusan pemilik 2026-10-29).
+     */
+    public static function votingIsLive(): bool
+    {
+        return once(fn (): bool => app(VoterRegistry::class)->liveResmiElection() !== null);
     }
 
     public static function run(callable $callback, string $success): void

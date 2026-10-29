@@ -332,5 +332,17 @@ class VoterManagementTest extends TestCase
 
         $this->assertTrue($voter->added_during_live);
         $this->assertTrue($rw->voterEntries()->where('voter_id', $voter->id)->where('added_during_live', true)->exists());
+
+        // Selama berlangsung Data Pemilih hanya lihat, ubah nama, dan tambah darurat; hapus/nonaktifkan lewat Meja Izin.
+        $this->actingAs($this->superAdmin);
+        Livewire::test(ListVoters::class)
+            ->set('activeTab', '03')
+            ->assertSee('daftar dibekukan')
+            ->assertSee('Tambah pemilih darurat RT 03')
+            ->assertActionHidden('bulkAdd')
+            ->assertTableActionVisible('edit', $voter)
+            ->assertTableActionHidden('deactivate', $voter)
+            ->assertTableActionHidden('delete', $voter)
+            ->assertTableBulkActionHidden('deleteSelected');
     }
 }
