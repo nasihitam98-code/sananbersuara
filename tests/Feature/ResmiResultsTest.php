@@ -170,11 +170,11 @@ class ResmiResultsTest extends TestCase
         Livewire::test(ParticipationPage::class)
             ->assertSee('RT 04')
             ->assertSee('50%')
-            ->assertSee('Belum memilih (1 orang)')
-            ->assertSee('Sudah memilih (4 orang)')
+            ->assertSeeInOrder(['Belum memilih', '1 orang', 'Sudah memilih'])
+            ->assertSeeInOrder(['Sudah memilih', '4 orang'])
             ->assertSee($pendingRt04->name)
             ->call('showUnit', $this->rt03->id)
-            ->assertSee('Belum memilih (0 orang)')
+            ->assertSeeInOrder(['Belum memilih', '0 orang', 'Sudah memilih'])
             ->assertSee('Semua pemilih sudah memilih.')
             ->assertDontSee($pendingRt04->name);
 
@@ -182,7 +182,7 @@ class ResmiResultsTest extends TestCase
         $this->actingAs($this->adminRt03);
         $votedRt03 = Voter::query()->where('unit_id', $this->rt03->id)->first();
         Livewire::test(ParticipationPage::class)
-            ->assertSee('Sudah memilih (3 orang)')
+            ->assertSeeInOrder(['Sudah memilih', '3 orang'])
             ->set('voterTab', 'sudah')
             ->assertSee($votedRt03->name)
             ->assertDontSee($pendingRt04->name);

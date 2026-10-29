@@ -464,7 +464,7 @@ class DeskPageTest extends TestCase
         // Daftar nama (dulu menu Partisipasi) ada di Monitoring: klik kartu RT.
         Livewire::test(MonitoringPage::class)
             ->call('showUnit', $this->voter->unit_id)
-            ->assertSee('Belum memilih (1 orang)')
+            ->assertSeeInOrder(['Belum memilih', '1 orang', 'Sudah memilih'])
             ->assertSee('Budi Santoso');
         $this->assertFalse(ParticipationPage::shouldRegisterNavigation(), 'Super Admin memakai Monitoring');
 
