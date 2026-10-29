@@ -11,6 +11,7 @@
                 @if ($disconnected > 0)
                     <x-filament::badge size="lg" color="danger" icon="heroicon-o-exclamation-triangle">{{ $disconnected }} perangkat terputus lebih dari 30 detik</x-filament::badge>
                 @endif
+                <span class="w-full text-sm text-gray-600 dark:text-gray-300"><strong>Terputus</strong> = laptop masih terdaftar tetapi mati/tertutup/tanpa internet; begitu dibuka lagi langsung tersambung tanpa token. <strong>Lepas</strong> hanya untuk laptop rusak, hilang, atau diganti (perlu token baru). Tutup Pemilihan melepas semua laptop otomatis.</span>
                 <span class="text-sm text-gray-500">Laptop Meja dipasang sendiri oleh Admin RT dari Meja Izin (tombol <strong>Jadikan laptop ini Meja RT</strong>), atau dengan token di sini lewat <strong>{{ route('desk.pair') }}</strong>; laptop bilik di <strong>{{ route('booth.show') }}</strong>.</span>
             </div>
 

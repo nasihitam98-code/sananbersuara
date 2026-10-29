@@ -77,6 +77,9 @@
                             <p class="text-sm text-gray-500">{{ $booth->label ?? 'Belum ada laptop' }}</p>
                             @if ($booth->last_seen_at)
                                 <p class="text-xs text-gray-500">Terakhir aktif {{ $booth->last_seen_at->diffForHumans() }}</p>
+                                @if ($state === 'Terputus')
+                                    <p class="mt-1 text-xs text-danger-600 dark:text-danger-400">Nyalakan laptop bilik ini dan buka lagi /bilik: tersambung sendiri, tanpa token. Lepas hanya bila laptopnya diganti.</p>
+                                @endif
                             @endif
                             @if ($booth->activePermit)
                                 <p class="mt-1 text-sm">Pemilih di dalam: {{ $booth->activePermit->voter->name }}</p>
