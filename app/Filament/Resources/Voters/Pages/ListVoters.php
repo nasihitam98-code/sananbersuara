@@ -35,6 +35,16 @@ class ListVoters extends ListRecords
         ];
     }
 
+    /**
+     * Admin RT hanya melihat RT sendiri: judulnya menyebut RT itu.
+     */
+    public function getTitle(): string
+    {
+        $user = auth()->user();
+
+        return $user instanceof User && $user->isAdminRt() && $user->unit !== null ? "Data Pemilih {$user->unit->name}" : parent::getTitle();
+    }
+
     public function getSubheading(): ?string
     {
         return VoterResource::votingIsLive()

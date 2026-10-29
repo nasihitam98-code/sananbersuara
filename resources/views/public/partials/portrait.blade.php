@@ -1,7 +1,10 @@
 {{-- Potret calon: foto persegi membulat berbingkai; tanpa foto tampil siluet orang (bukan inisial). --}}
 <span class="portrait {{ $class ?? '' }}">
     @if ($candidate->photoUrl('card'))
-        <img class="portrait__img" src="{{ $candidate->photoUrl('card') }}" alt="Foto {{ $candidate->name }}" width="480" height="480" loading="lazy" decoding="async">
+        {{-- Klik/Enter: foto ukuran besar di jendela (portal.js), ditutup dengan ✕, klik di luar, atau Esc. --}}
+        <img class="portrait__img" src="{{ $candidate->photoUrl('card') }}" alt="Foto {{ $candidate->name }}" width="480" height="480" loading="lazy" decoding="async"
+            data-photo-zoom="{{ $candidate->photoUrl('large') }}" data-photo-caption="Nomor {{ $candidate->displayNumber() }} · {{ $candidate->name }}"
+            role="button" tabindex="0" title="Klik untuk memperbesar foto">
     @else
         <svg class="portrait__silhouette" viewBox="0 0 100 100" role="img" aria-label="Belum ada foto {{ $candidate->name }}">
             <circle cx="50" cy="38" r="19"></circle>

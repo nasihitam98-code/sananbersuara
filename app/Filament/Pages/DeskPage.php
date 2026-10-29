@@ -109,6 +109,19 @@ class DeskPage extends Page
         return $user;
     }
 
+    /**
+     * Judul besar memuat RT akun yang login, agar petugas yakin berada di Meja RT yang benar.
+     */
+    public function getTitle(): string
+    {
+        return trim('Meja Izin '.$this->user()->unit?->name);
+    }
+
+    public function getSubheading(): string
+    {
+        return "Masuk sebagai {$this->user()->name} ({$this->user()->email})";
+    }
+
     public function election(): ?Election
     {
         return Election::query()

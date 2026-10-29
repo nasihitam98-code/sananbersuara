@@ -62,6 +62,16 @@ class QuickCountTest extends TestCase
         $box->cast($election, $attendee->fresh(), $box->verifyPin($election, $attendee->fresh(), $pin), $this->ballot, $candidate ?? $this->first);
     }
 
+    public function test_candidate_photos_open_large_in_a_popup(): void
+    {
+        $this->first->forceFill(['photo_key' => 'contohfoto'])->save();
+
+        // Kartu calon (sebelum voting): foto bisa diklik, jendelanya memakai ukuran besar dan nama calon.
+        $this->get(route('public.index'))
+            ->assertSee('data-photo-zoom="'.$this->first->photoUrl('large').'"', false)
+            ->assertSee('data-photo-caption="Nomor 01 · Calon Pertama"', false);
+    }
+
     public function test_candidates_stay_in_number_order_and_the_leader_is_marked(): void
     {
         $this->election->forceFill(['settings' => ['show_public' => true, 'public_quick_count' => true]])->save();

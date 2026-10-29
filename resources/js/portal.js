@@ -501,7 +501,59 @@ initFullscreen();
  * Jendela visi & misi: tombol "Detail" di kartu calon/quick count. Lewat delegasi agar kartu RT yang disematkan
  * (salinan kartu) ikut berfungsi. Klik di luar jendela atau tombol Tutup menutupnya.
  */
+/*
+ * Foto calon diperbesar: klik foto (atau Enter) membuka satu jendela bersama berisi foto ukuran besar, nama, dan
+ * tombol ✕. Jendela dibuat sekali di <body> sehingga tetap ada saat isi halaman diganti (layar penuh).
+ */
+function photoDialog() {
+    let dialog = document.getElementById('photo-dialog');
+
+    if (!dialog) {
+        dialog = document.createElement('dialog');
+        dialog.id = 'photo-dialog';
+        dialog.className = 'photo-dialog';
+        dialog.innerHTML = '<button type="button" class="photo-dialog__close" data-photo-close aria-label="Tutup foto">✕</button>'
+            + '<img class="photo-dialog__img" alt=""><p class="photo-dialog__caption"></p>';
+        document.body.append(dialog);
+    }
+
+    return dialog;
+}
+
+function openPhoto(trigger) {
+    const dialog = photoDialog();
+    const image = dialog.querySelector('.photo-dialog__img');
+    image.src = trigger.dataset.photoZoom;
+    image.alt = trigger.alt || '';
+    dialog.querySelector('.photo-dialog__caption').textContent = trigger.dataset.photoCaption || '';
+    dialog.showModal();
+}
+
+document.addEventListener('keydown', (event) => {
+    const trigger = event.target.closest?.('[data-photo-zoom]');
+
+    if (trigger && (event.key === 'Enter' || event.key === ' ')) {
+        event.preventDefault();
+        openPhoto(trigger);
+    }
+});
+
 document.addEventListener('click', (event) => {
+    const zoom = event.target.closest('[data-photo-zoom]');
+
+    if (zoom) {
+        event.preventDefault();
+        openPhoto(zoom);
+
+        return;
+    }
+
+    if (event.target.closest('[data-photo-close]') || (event.target instanceof HTMLDialogElement && event.target.id === 'photo-dialog')) {
+        photoDialog().close();
+
+        return;
+    }
+
     const opener = event.target.closest('[data-profile-open]');
 
     if (opener) {

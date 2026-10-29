@@ -2163,3 +2163,67 @@ h4 {
 .rt-pinned .race {
     box-shadow: 0 0 0 2px var(--p-indigo-500);
 }
+
+/* Foto calon diperbesar (klik foto di kartu). */
+.portrait__img[data-photo-zoom] {
+    cursor: zoom-in;
+}
+
+.portrait__img[data-photo-zoom]:focus-visible {
+    outline: 3px solid var(--p-indigo-500);
+    outline-offset: 2px;
+}
+
+.photo-dialog {
+    position: relative;
+    width: min(560px, calc(100vw - 32px));
+    max-height: calc(100dvh - 32px);
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.45);
+}
+
+.photo-dialog::backdrop {
+    background: rgba(15, 23, 42, 0.8);
+}
+
+.photo-dialog__img {
+    display: block;
+    width: 100%;
+    max-height: calc(100dvh - 110px);
+    object-fit: contain;
+    background: #f1f5f9;
+}
+
+.photo-dialog__caption {
+    margin: 0;
+    padding: 12px 16px;
+    color: var(--p-ink-strong);
+    font-size: 17px;
+    font-weight: 800;
+    text-align: center;
+}
+
+.photo-dialog__close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.75);
+    color: #fff;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 40px;
+    cursor: pointer;
+}
+
+.photo-dialog__close:hover,
+.photo-dialog__close:focus-visible {
+    background: rgba(15, 23, 42, 0.95);
+}
