@@ -9,7 +9,6 @@ use App\Models\BallotVoter;
 use App\Models\Election;
 use App\Models\Permit;
 use App\Models\User;
-use App\Models\VoteCorrection;
 use App\Models\Voter;
 use App\Services\AuditLogger;
 use App\Services\InternalNotifier;
@@ -206,46 +205,8 @@ class VoterRegistry
     }
 
     /**
-     * Pemilih darurat yang ternyata salah tulis/tidak jadi boleh dihapus dari Meja Izin selama voting, asalkan belum
-     * pernah diberi izin (keputusan pemilik 2026-10-29). Yang sudah diberi izin atau mencoblos tetap tercatat.
-     */
-    public function canDeleteEmergency(Voter $voter): bool
-    {
-        return $voter->added_during_live
-            && $this->liveResmiElection() !== null
-            && ! $voter->votes()->exists()
-            && ! Permit::query()->where('voter_id', $voter->id)->exists()
-            && ! VoteCorrection::query()->where('voter_id', $voter->id)->exists();
-    }
-
-    public function deleteEmergency(Voter $voter, User $actor): void
-    {
-        abort_unless($actor->canManageVotersOf($voter->unit_id), 403);
-
-        if (! $this->canDeleteEmergency($voter)) {
-            throw VotingException::invalidState('Hanya pemilih darurat yang belum pernah diberi izin memilih yang bisa dihapus.');
-        }
-
-        $live = $this->liveResmiElection();
-        $snapshot = ['name' => $voter->name, 'voter_number' => $voter->voter_number, 'unit_id' => $voter->unit_id];
-
-        DB::transaction(function () use ($voter): void {
-            $voter->ballotEntries()->delete();
-            $voter->delete();
-        });
-
-        $this->audit->log('voter.emergency_deleted', null, $live, meta: $snapshot, actor: $actor);
-
-        app(InternalNotifier::class)->notifySuperAdmins(
-            'Pemilih darurat dihapus',
-            "{$actor->name} menghapus pemilih darurat {$snapshot['name']} ({$snapshot['voter_number']}).",
-            $actor,
-        );
-    }
-
-    /**
-     * Nama dari data utama yang ternyata tidak berhak (dobel, bukan warga RT ini, pindah, meninggal) dicoret dari daftar
-     * pemilihan yang sedang berjalan, tanpa menghapus datanya: hak pilihnya dicabut (revoked) dan pemilih dinonaktifkan.
+     * Nama yang ternyata tidak berhak (dobel, salah tambah darurat, bukan warga RT ini, pindah, meninggal) dicoret dari
+     * daftar pemilihan yang sedang berjalan, tanpa menghapus datanya: hak pilihnya dicabut (revoked) dan pemilih dinonaktifkan.
      * Hanya selama belum pernah diberi izin memilih (keputusan pemilik 2026-10-29). Tercatat di berita acara.
      */
     public function canStrikeFromLiveList(Voter $voter): bool
@@ -253,7 +214,6 @@ class VoterRegistry
         $live = $this->liveResmiElection();
 
         return $live !== null
-            && ! $voter->added_during_live
             && $this->liveEntries($voter, $live)->whereNull('revoked_at')->exists()
             && ! $voter->votes()->where('election_id', $live->id)->exists()
             && ! Permit::query()->where('election_id', $live->id)->where('voter_id', $voter->id)->exists();

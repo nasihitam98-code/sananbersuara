@@ -245,9 +245,8 @@ class DeskPage extends Page
                 'status' => $status,
                 'state' => $state,
                 'correction_pending' => $pendingCorrections->has($voter->id),
-                'can_strike' => $live && $state === 'belum' && ! $voter->added_during_live && ! $everPermitted->has($voter->id),
+                'can_strike' => $live && $state === 'belum' && ! $everPermitted->has($voter->id),
                 'can_restore' => $live && $struck->has($voter->id),
-                'can_delete_emergency' => $live && $state === 'belum' && $voter->added_during_live && ! $everPermitted->has($voter->id),
             ];
         })->all();
     }
@@ -352,31 +351,6 @@ class DeskPage extends Page
     }
 
     /**
-     * Hapus pemilih darurat yang salah tulis/tidak jadi, dari baris namanya (kanan), dengan password akun RT.
-     * Hanya selama belum pernah diberi izin memilih.
-     */
-    public function deleteEmergencyAction(): Action
-    {
-        return Action::make('deleteEmergency')
-            ->label('Hapus')
-            ->icon('heroicon-o-trash')
-            ->color('danger')
-            ->size('sm')
-            // Ringan (dirender per baris tiap 3 detik): syarat per pemilih dihitung di voterRows() dan diperiksa ulang saat disimpan.
-            ->visible(fn (): bool => $this->user()->canManageVotersOf((int) $this->user()->unit_id))
-            ->modalHeading(fn (array $arguments): string => 'Hapus pemilih darurat '.($this->voterFromArguments($arguments)?->name ?? '').'?')
-            ->modalDescription('Untuk nama yang salah tulis atau tidak jadi. Penghapusan dicatat dan dilaporkan ke Super Admin. Tidak bisa dibatalkan.')
-            ->modalSubmitActionLabel('Ya, hapus')
-            ->schema([Reauthenticate::field()])
-            ->action(function (array $arguments): void {
-                $voter = $this->voterFromArguments($arguments);
-                abort_if($voter === null, 404);
-
-                $this->run(fn () => app(VoterRegistry::class)->deleteEmergency($voter, $this->user()), "{$voter->name} dihapus.");
-            });
-    }
-
-    /**
      * Salah ketik nama: ubah langsung dari barisnya (kanan), juga saat voting berjalan. Tercatat di Audit Log.
      */
     public function editNameAction(): Action
@@ -401,8 +375,8 @@ class DeskPage extends Page
     }
 
     /**
-     * Nama dari data utama yang tidak berhak (dobel, bukan warga RT ini, pindah, meninggal): dicoret dari daftar
-     * pemilihan yang berjalan, dari barisnya (kanan), dengan alasan dan password akun RT.
+     * Nama yang tidak berhak (dobel, salah tambah, bukan warga RT ini, pindah, meninggal), dari data utama maupun tambahan
+     * darurat: dicoret dari daftar pemilihan yang berjalan, dari barisnya (kanan), dengan alasan dan password akun RT.
      */
     public function strikeAction(): Action
     {

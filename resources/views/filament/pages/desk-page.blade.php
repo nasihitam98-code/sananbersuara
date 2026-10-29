@@ -122,7 +122,7 @@
                             <div class="flex items-start gap-3">
                                 <span class="w-10 flex-none pt-0.5 text-right text-lg font-bold tabular-nums text-gray-400">{{ $loop->iteration }}</span>
                                 <div>
-                                <p class="text-lg font-bold">{{ $voter->name }} @if ($voter->added_during_live)<x-filament::badge color="warning" size="sm" class="ms-1 inline-flex">Darurat</x-filament::badge>@endif</p>
+                                <p class="text-lg font-bold">{{ $voter->name }}</p>
                                 <p class="text-sm text-gray-500">{{ collect([$voter->rt_number ? 'No. absen '.$voter->rt_number : null, $voter->address])->filter()->implode(' · ') }}</p>
                                 @if ($started)
                                     <p class="mt-1 flex flex-wrap gap-2 text-sm">
@@ -163,10 +163,7 @@
                                 @if ($this->editNameAction->isVisible())
                                     {{ ($this->editNameAction)(['voter' => $voter->public_id]) }}
                                 @endif
-                                @if ($row['can_delete_emergency'] && $this->deleteEmergencyAction->isVisible())
-                                    {{ ($this->deleteEmergencyAction)(['voter' => $voter->public_id]) }}
-                                @endif
-                                {{-- Nama data utama yang tidak berhak: dicoret dari daftar (bisa dikembalikan dari tab Semua). --}}
+                                {{-- Nama yang tidak berhak (data utama maupun tambahan darurat): dicoret dari daftar, bisa dikembalikan dari tab Semua. --}}
                                 @if ($row['can_strike'] && $this->strikeAction->isVisible())
                                     {{ ($this->strikeAction)(['voter' => $voter->public_id]) }}
                                 @endif

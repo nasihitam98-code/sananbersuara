@@ -188,39 +188,37 @@ class DeskPageTest extends TestCase
             ->assertSet('lastAssignment.booth', 'Bilik 1');
     }
 
-    public function test_mistyped_emergency_voter_is_deleted_from_its_row_with_the_rt_password(): void
+    public function test_emergency_voter_joins_the_list_and_is_removed_the_same_way(): void
     {
         $this->actingAs($this->deskOfficer);
         $this->deskOfficer->givePermissionTo(User::PERMISSION_MANAGE_VOTERS);
 
         $page = Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])
             ->test(DeskPage::class)
-            ->callAction('emergencyAdd', ['name' => 'Warga Salah Tulsi', 'reason' => EmergencyAddReason::BelumAdaDiDataAwal->value])
-            ->assertSee('Darurat');
+            ->callAction('emergencyAdd', ['name' => 'Warga Tidak Jadi', 'reason' => EmergencyAddReason::BelumAdaDiDataAwal->value])
+            ->assertSee('Belum memilih (2)')
+            ->assertDontSee('Darurat');
 
-        $typo = Voter::query()->where('name', 'Warga Salah Tulsi')->sole();
+        $added = Voter::query()->where('name', 'Warga Tidak Jadi')->sole();
 
-        // Pemilih darurat mendapat tombol Hapus di barisnya.
-        $page->assertSeeHtml('deleteEmergency')
-            ->callAction(TestAction::make('deleteEmergency')->arguments(['voter' => $typo->public_id]), ['current_password' => 'salah'])
+        // Sama seperti nama data utama: Hapus dari daftar dengan alasan + password, bisa dikembalikan.
+        $page->callAction(TestAction::make('strike')->arguments(['voter' => $added->public_id]), ['reason' => 'Lainnya', 'current_password' => 'salah'])
             ->assertHasFormErrors(['current_password']);
 
-        $this->assertModelExists($typo);
+        Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])->test(DeskPage::class)
+            ->callAction(TestAction::make('strike')->arguments(['voter' => $added->public_id]), ['reason' => 'Lainnya', 'current_password' => 'password'])
+            ->assertNotified('Warga Tidak Jadi dihapus dari daftar pemilih.')
+            ->assertSee('Belum memilih (1)');
 
-        $page = Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])->test(DeskPage::class);
-        $page->callAction(TestAction::make('deleteEmergency')->arguments(['voter' => $typo->public_id]), ['current_password' => 'password'])
-            ->assertNotified('Warga Salah Tulsi dihapus.');
+        $this->assertModelExists($added);
+        $this->assertFalse($added->fresh()->is_active);
 
-        $this->assertModelMissing($typo);
-        $this->assertTrue(AuditLog::query()->where('action', 'voter.emergency_deleted')->exists());
-
-        // Yang sudah diberi izin memilih tidak bisa dihapus lagi.
-        $page->callAction('emergencyAdd', ['name' => 'Warga Jadi Memilih', 'reason' => EmergencyAddReason::BelumAdaDiDataAwal->value]);
-        $kept = Voter::query()->where('name', 'Warga Jadi Memilih')->sole();
-        $page->callAction(TestAction::make('grant')->arguments(['voter' => $kept->public_id]))
-            ->callAction(TestAction::make('deleteEmergency')->arguments(['voter' => $kept->public_id]), ['current_password' => 'password'])
-            ->assertNotified('Hanya pemilih darurat yang belum pernah diberi izin memilih yang bisa dihapus.');
-        $this->assertModelExists($kept);
+        // Yang sudah diberi izin memilih tidak bisa dihapus dari daftar.
+        Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])->test(DeskPage::class)
+            ->callAction(TestAction::make('grant')->arguments(['voter' => $this->voter->public_id]))
+            ->callAction(TestAction::make('strike')->arguments(['voter' => $this->voter->public_id]), ['reason' => 'Nama dobel', 'current_password' => 'password'])
+            ->assertNotified('Hanya pemilih yang belum pernah diberi izin memilih yang bisa dihapus dari daftar.');
+        $this->assertTrue($this->voter->fresh()->is_active);
     }
 
     public function test_wrong_name_from_the_main_list_is_removed_from_the_live_list_and_can_be_restored(): void
