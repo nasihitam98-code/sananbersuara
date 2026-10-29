@@ -177,6 +177,8 @@ class DeviceManager
         $device->forceFill([
             'pairing_token_hash' => static::hashToken($token),
             'pairing_token_expires_at' => $expiresAt,
+            // Terenkripsi, agar token tetap tampil di Meja/Perangkat sampai dipakai atau kedaluwarsa.
+            'pairing_token_encrypted' => implode('-', str_split($token, 4)),
         ])->save();
 
         $this->audit->log('device.token_issued', $device, $election, meta: [
@@ -213,6 +215,7 @@ class DeviceManager
             $device->forceFill([
                 'pairing_token_hash' => null,
                 'pairing_token_expires_at' => null,
+                'pairing_token_encrypted' => null,
                 'session_secret_hash' => hash('sha256', $secret),
                 'label' => Str::of($label)->squish()->limit(120, '')->toString() ?: null,
                 'paired_at' => Carbon::now(),
@@ -296,6 +299,7 @@ class DeviceManager
                 'session_secret_hash' => null,
                 'pairing_token_hash' => null,
                 'pairing_token_expires_at' => null,
+                'pairing_token_encrypted' => null,
                 'released_at' => Carbon::now(),
                 'release_reason' => $reason,
             ])->save();

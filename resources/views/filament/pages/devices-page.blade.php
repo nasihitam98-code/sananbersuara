@@ -46,7 +46,12 @@
                                         <td class="py-2 pe-3 font-mono">{{ $device->code() }}</td>
                                         {{-- Meja yang aktif tidak "menunggu" apa pun: tampil "Tersambung" (sama seperti Monitoring). --}}
                                         <td class="pe-3"><x-filament::badge :color="$color">{{ $device->kind === \App\Enums\DeviceKind::Meja && $state === 'Menunggu' ? 'Tersambung' : $state }}</x-filament::badge></td>
-                                        <td class="pe-3">{{ $device->label ?? '-' }}</td>
+                                        <td class="pe-3">
+                                            {{ $device->label ?? '-' }}
+                                            @if ($pendingToken = $device->pendingToken())
+                                                <span class="block font-mono font-bold tracking-wider text-primary-700 dark:text-primary-300" title="Token belum dipakai, berlaku sampai {{ $device->pairing_token_expires_at->format('d/m H:i') }}">Token: {{ $pendingToken }}</span>
+                                            @endif
+                                        </td>
                                         <td class="pe-3">{{ $device->last_seen_at?->diffForHumans() ?? '-' }}</td>
                                         <td class="pe-3">{{ $device->paired_at?->format('d/m H:i') ?? '-' }}</td>
                                         <td class="pe-3 max-w-[16rem] truncate" title="{{ $device->user_agent }}">{{ \Illuminate\Support\Str::limit((string) $device->user_agent, 40) ?: '-' }}</td>

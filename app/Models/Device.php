@@ -15,7 +15,7 @@ use Illuminate\Support\Carbon;
 /**
  * Slot perangkat (Meja/Bilik). Diubah hanya oleh DeviceManager.
  */
-#[Hidden(['pairing_token_hash', 'session_secret_hash'])]
+#[Hidden(['pairing_token_hash', 'pairing_token_encrypted', 'session_secret_hash'])]
 #[RouteKey('public_id')]
 class Device extends Model
 {
@@ -41,6 +41,7 @@ class Device extends Model
             'kind' => DeviceKind::class,
             'release_reason' => DeviceReleaseReason::class,
             'pairing_token_expires_at' => 'datetime',
+            'pairing_token_encrypted' => 'encrypted',
             'paired_at' => 'datetime',
             'last_seen_at' => 'datetime',
             'released_at' => 'datetime',
@@ -70,6 +71,16 @@ class Device extends Model
     public function activePermit(): HasOne
     {
         return $this->hasOne(Permit::class, 'active_device_id');
+    }
+
+    /**
+     * Token pemasangan yang masih berlaku dan belum dipakai (untuk ditampilkan lagi di Meja Izin/Perangkat), atau null.
+     */
+    public function pendingToken(): ?string
+    {
+        return $this->pairing_token_hash !== null && $this->pairing_token_expires_at?->isFuture()
+            ? $this->pairing_token_encrypted
+            : null;
     }
 
     public function isPaired(): bool

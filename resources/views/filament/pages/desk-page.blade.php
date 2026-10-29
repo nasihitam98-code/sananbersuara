@@ -81,6 +81,14 @@
                             @if ($booth->activePermit)
                                 <p class="mt-1 text-sm">Pemilih di dalam: {{ $booth->activePermit->voter->name }}</p>
                             @endif
+                            {{-- Token yang belum dipakai tetap terlihat (juga setelah halaman dimuat ulang) sampai dipakai atau kedaluwarsa. --}}
+                            @if ($desk && ($pendingToken = $booth->pendingToken()))
+                                <p class="mt-2 rounded-lg bg-primary-50 px-3 py-2 dark:bg-primary-500/10">
+                                    <span class="text-xs text-gray-500">Token (belum dipakai):</span>
+                                    <span class="block font-mono text-2xl font-black tracking-widest text-primary-700 dark:text-primary-300">{{ $pendingToken }}</span>
+                                    <span class="text-xs text-gray-500">berlaku sampai {{ $booth->pairing_token_expires_at->format('H:i') }}</span>
+                                </p>
+                            @endif
                             @if ($desk)
                                 <div class="mt-3 flex flex-wrap gap-2">
                                     @if (($this->issueBoothTokenAction)(['booth' => $booth->public_id])->isVisible()) {{ ($this->issueBoothTokenAction)(['booth' => $booth->public_id]) }} @endif

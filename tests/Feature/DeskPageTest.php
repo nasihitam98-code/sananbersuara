@@ -31,6 +31,7 @@ use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cookie;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -122,6 +123,30 @@ class DeskPageTest extends TestCase
         Livewire::test(DeskPage::class)
             ->callAction('pairOwnDesk', ['label' => 'Laptop Lain', 'current_password' => 'salah'])
             ->assertHasFormErrors(['current_password']);
+    }
+
+    public function test_unused_booth_token_stays_visible_until_it_is_used(): void
+    {
+        $this->actingAs($this->deskOfficer);
+        $booth = Device::query()->where('kind', DeviceKind::Bilik)->where('unit_id', $this->deskOfficer->unit_id)->firstOrFail();
+
+        Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])->test(DeskPage::class)
+            ->callAction(TestAction::make('issueBoothToken')->arguments(['booth' => $booth->public_id]));
+
+        $token = $booth->fresh()->pendingToken();
+        $this->assertMatchesRegularExpression('/^[A-Z0-9]{4}-[A-Z0-9]{4}$/', (string) $token);
+        // Tersimpan terenkripsi, bukan teks biasa.
+        $this->assertStringNotContainsString($token, (string) DB::table('devices')->where('id', $booth->id)->value('pairing_token_encrypted'));
+
+        // Halaman dimuat ulang: token masih terlihat di kartu bilik.
+        Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])->test(DeskPage::class)
+            ->assertSee($token)
+            ->assertSee('Token (belum dipakai)');
+
+        // Setelah dipakai di laptop bilik: hilang.
+        app(DeviceManager::class)->pair($token, 'Laptop Bilik Baru', Request::create('/'), DeviceKind::Bilik);
+        $this->assertNull($booth->fresh()->pendingToken());
+        Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])->test(DeskPage::class)->assertDontSee($token);
     }
 
     public function test_booth_token_is_refused_on_the_desk_laptop_so_the_desk_stays_paired(): void

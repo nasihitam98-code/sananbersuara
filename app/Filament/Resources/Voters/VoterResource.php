@@ -147,7 +147,13 @@ class VoterResource extends Resource
                         : $query->whereRaw('1 = 0'))
                     ->alignEnd()
                     ->width('4rem'),
-                TextColumn::make('voter_number')->label('ID')->searchable()->fontFamily('mono')->toggleable(isToggledHiddenByDefault: true),
+                // Angka saja = No. absen (kolom di atas); ID dicari hanya bila diketik dengan hurufnya, mis. "VTR-0012".
+                TextColumn::make('voter_number')->label('ID')
+                    ->searchable(query: fn (Builder $query, string $search): Builder => ctype_digit(trim($search))
+                        ? $query->whereRaw('1 = 0')
+                        : $query->where('voter_number', 'like', '%'.addcslashes(trim($search), '%_\\').'%'))
+                    ->fontFamily('mono')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('name')->label('Nama')->searchable(query: fn (Builder $query, string $search): Builder => $query->where('name_search', 'like', '%'.addcslashes(mb_strtolower($search), '%_\\').'%'))->weight('bold'),
                 TextColumn::make('unit.name')->label('RT')->sortable(),
                 // Form Buat cukup nama + RT, jadi alamat/NIK biasanya kosong: disembunyikan, bisa dimunculkan dari ikon kolom.
