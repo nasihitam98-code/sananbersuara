@@ -37,7 +37,7 @@ class BoothController extends Controller
         $booth = $this->devices->authenticate($request, DeviceKind::Bilik);
 
         if ($booth === null) {
-            return view('booth.pair', ['kind' => DeviceKind::Bilik]);
+            return view('booth.pair', ['kind' => DeviceKind::Bilik, 'why' => $this->devices->explainUnrecognized($request, DeviceKind::Bilik)]);
         }
 
         $this->devices->heartbeat($booth, $request);

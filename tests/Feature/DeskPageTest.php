@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\BallotScope;
 use App\Enums\DeviceKind;
+use App\Enums\DeviceReleaseReason;
 use App\Enums\ElectionMode;
 use App\Enums\EmergencyAddReason;
 use App\Enums\PermitStatus;
@@ -160,6 +161,27 @@ class DeskPageTest extends TestCase
         app(DeviceManager::class)->pair($token, 'Laptop Bilik Baru', Request::create('/'), DeviceKind::Bilik);
         $this->assertNull($booth->fresh()->pendingToken());
         Livewire::withCookies([DeviceManager::COOKIE => $this->deskCookie])->test(DeskPage::class)->assertDontSee($token);
+    }
+
+    public function test_booth_page_explains_why_a_token_is_asked_again(): void
+    {
+        $manager = app(DeviceManager::class);
+        $booth = Device::query()->where('kind', DeviceKind::Bilik)->where('unit_id', $this->deskOfficer->unit_id)->firstOrFail();
+        $paired = $manager->pair($manager->issueToken($booth, $this->superAdmin), 'Laptop Bilik Baru', Request::create('/'), DeviceKind::Bilik);
+        $cookie = $booth->public_id.'|'.$paired['secret'];
+
+        // Belum pernah dipasang di browser ini: petunjuk Incognito/data terhapus.
+        $this->get('/bilik')->assertOk()->assertSee('Incognito/Tamu');
+
+        // Masih terpasang: langsung tersambung (laptop dinyalakan lagi), tanpa token.
+        $this->withCookie(DeviceManager::COOKIE, $cookie)->get('/bilik')->assertOk()->assertSee('Menunggu pemilih');
+
+        // Dilepas: alasannya ditampilkan.
+        $manager->release($booth->fresh(), DeviceReleaseReason::Rusak, $this->superAdmin);
+        $this->withCookie(DeviceManager::COOKIE, $cookie)->get('/bilik')
+            ->assertOk()
+            ->assertSee('Laptop ini pernah terpasang sebagai Bilik 1, tetapi dilepas', false)
+            ->assertSee('Laptop rusak');
     }
 
     public function test_booth_token_is_refused_on_the_desk_laptop_so_the_desk_stays_paired(): void

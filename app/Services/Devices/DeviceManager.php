@@ -299,6 +299,33 @@ class DeviceManager
         return $device;
     }
 
+    /**
+     * Kenapa browser ini tidak dikenali sebagai perangkat (untuk ditampilkan di halaman token), atau null bila belum
+     * pernah dipasang. Membantu panitia membedakan Incognito/data terhapus, laptop dilepas/diganti, atau pemilihan ditutup.
+     */
+    public function explainUnrecognized(Request $request, DeviceKind $kind): ?string
+    {
+        $raw = (string) $request->cookie(self::COOKIE);
+
+        if (! str_contains($raw, '|')) {
+            return null;
+        }
+
+        [$publicId, $secret] = explode('|', $raw, 2);
+        $device = Device::query()->with(['election', 'unit'])->where('public_id', $publicId)->first();
+
+        return match (true) {
+            $device === null => 'Laptop ini pernah terpasang, tetapi slotnya sudah tidak ada (pemilihan lama dihapus). Minta token baru.',
+            $device->kind !== $kind => "Laptop ini terpasang sebagai {$device->name()}, bukan {$kind->getLabel()}.",
+            $device->session_secret_hash === null => "Laptop ini pernah terpasang sebagai {$device->name()}, tetapi dilepas"
+                .($device->released_at ? ' pukul '.$device->released_at->format('H:i') : '')
+                .($device->release_reason ? ' ('.$device->release_reason->getLabel().')' : '').'. Minta token baru.',
+            ! hash_equals($device->session_secret_hash, hash('sha256', $secret)) => "{$device->name()} sudah dipasang di laptop/browser lain sesudah laptop ini. Minta token baru bila laptop ini yang dipakai.",
+            ! in_array($device->election->status, [ElectionStatus::Ready, ElectionStatus::Berlangsung, ElectionStatus::Paused], true) => "Laptop ini terpasang sebagai {$device->name()}, tetapi pemilihan sedang {$device->election->status->getLabel()}. Tersambung lagi sendiri setelah pemilihan Siap/Berlangsung.",
+            default => null,
+        };
+    }
+
     public function heartbeat(Device $device, Request $request): void
     {
         if ($device->last_seen_at !== null && $device->last_seen_at->greaterThan(Carbon::now()->subSeconds(5))) {

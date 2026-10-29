@@ -17,6 +17,13 @@
                 @endif
             </p>
 
+            {{-- Kenapa laptop ini diminta token lagi (dilepas, diganti, pemilihan ditutup); tanpa keterangan = belum pernah dipasang di browser ini. --}}
+            @if (! empty($why))
+                <p class="error" role="status">{{ $why }}</p>
+            @elseif ($kind->value !== 'MEJA')
+                <p class="muted">Sudah pernah dipasang tapi diminta token lagi? Biasanya karena memakai jendela Incognito/Tamu atau data browser terhapus. Pakai jendela Chrome biasa.</p>
+            @endif
+
             <form method="POST" action="{{ route('booth.pair', $kind->value === 'MEJA' ? 'meja' : 'bilik') }}" class="stack" data-once>
                 @csrf
                 <div>
