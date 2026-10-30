@@ -43,7 +43,7 @@
                             aria-pressed="{{ $isSelected ? 'true' : 'false' }}"
                             class="relative block aspect-square w-full overflow-hidden rounded-md bg-gray-100 transition dark:bg-white/5 {{ $isSelected ? 'ring-4 ring-primary-600' : 'ring-1 ring-gray-200 hover:ring-2 hover:ring-primary-400 dark:ring-white/10' }}"
                         >
-                            <img src="{{ $photo->previewUrl() }}" alt="{{ $photo->original_name }}" class="h-full w-full object-cover" loading="lazy">
+                            <img src="{{ $photo->previewUrl() }}" alt="{{ $photo->original_name }}" class="h-full w-full object-contain" loading="lazy">
                             @if ($photo->isLogo())
                                 <span class="absolute bottom-1 left-1 rounded bg-info-600 px-1.5 text-[10px] font-medium text-white">logo</span>
                             @elseif ($usage !== [])

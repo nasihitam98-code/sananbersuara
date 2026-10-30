@@ -58,7 +58,7 @@ class CandidateGallery
             $height = $image->height();
 
             $disk->put(GalleryPhoto::DIRECTORY."/{$key}.webp", (string) $image->encode(new WebpEncoder(quality: 85, strip: true)));
-            $disk->put(GalleryPhoto::DIRECTORY."/{$key}-thumb.webp", (string) $image->cover(240, 240)->encode(new WebpEncoder(quality: 80, strip: true)));
+            $disk->put(GalleryPhoto::DIRECTORY."/{$key}-thumb.webp", (string) $image->scaleDown(240, 240)->encode(new WebpEncoder(quality: 80, strip: true)));
 
             $photo = new GalleryPhoto(['original_name' => Str::limit($originalName, 180, ''), 'file_key' => $key, 'width' => $width, 'height' => $height]);
             $photo->uploader()->associate($actor);

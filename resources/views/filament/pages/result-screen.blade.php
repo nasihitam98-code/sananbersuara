@@ -138,7 +138,7 @@
                                         <p class="max-w-xs text-sm text-gray-500">{{ $group->take(3)->map(fn (array $row): string => $row['candidate']->name)->implode(', ') }}{{ $group->count() > 3 ? ', dan '.($group->count() - 3).' lainnya' : '' }}</p>
                                     @else
                                         @if ($podium['candidate']->photoUrl('card'))
-                                            <img src="{{ $podium['candidate']->photoUrl('card') }}" alt="Foto {{ $podium['candidate']->name }}" class="{{ $podiumIndex === 0 ? 'h-32 w-32' : 'h-24 w-24' }} rounded-full object-cover ring-4 {{ $podiumIndex === 0 ? 'ring-warning-400' : 'ring-gray-300' }}">
+                                            <img src="{{ $podium['candidate']->photoUrl('card') }}" alt="Foto {{ $podium['candidate']->name }}" class="{{ $podiumIndex === 0 ? 'h-32 w-32' : 'h-24 w-24' }} rounded-full object-cover object-top ring-4 {{ $podiumIndex === 0 ? 'ring-warning-400' : 'ring-gray-300' }}">
                                         @else
                                             <span class="{{ $podiumIndex === 0 ? 'h-32 w-32 text-4xl' : 'h-24 w-24 text-2xl' }} grid place-items-center rounded-full bg-gray-200 font-black text-primary-700">{{ $podium['candidate']->initials() }}</span>
                                         @endif
@@ -182,7 +182,7 @@
                         >
                             <span class="text-2xl font-black text-gray-400 tabular-nums">{{ $row['votes'] > 0 ? '#'.$row['rank'] : '–' }}</span>
                             @if ($candidate->photoUrl('thumb'))
-                                <img src="{{ $candidate->photoUrl('thumb') }}" alt="Foto {{ $candidate->name }}" class="h-14 w-14 rounded-full object-cover">
+                                <img src="{{ $candidate->photoUrl('thumb') }}" alt="Foto {{ $candidate->name }}" class="h-14 w-14 rounded-full object-cover object-top">
                             @else
                                 <span class="grid h-14 w-14 place-items-center rounded-full bg-gray-200 font-bold text-primary-700">{{ $candidate->initials() }}</span>
                             @endif

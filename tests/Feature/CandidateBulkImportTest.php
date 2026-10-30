@@ -423,7 +423,7 @@ class CandidateBulkImportTest extends TestCase
         $this->assertNotNull($candidate->fresh()->photo_key);
     }
 
-    public function test_large_phone_photo_becomes_three_square_sizes(): void
+    public function test_large_phone_photo_keeps_its_shape_in_three_sizes(): void
     {
         Storage::fake('local');
         Storage::fake(config('voting.photo.disk'));
@@ -437,7 +437,8 @@ class CandidateBulkImportTest extends TestCase
 
         foreach (config('voting.photo.sizes') as $size => $pixels) {
             $file = Storage::disk(config('voting.photo.disk'))->path(config('voting.photo.directory')."/{$key}-{$size}.webp");
-            $this->assertSame([$pixels, $pixels], array_slice(getimagesize($file) ?: [], 0, 2), "Ukuran {$size}");
+            // Tidak dipotong: sisi terpanjang = ukuran, perbandingan 4:3 asli tetap.
+            $this->assertSame([$pixels, (int) round($pixels * 3 / 4)], array_slice(getimagesize($file) ?: [], 0, 2), "Ukuran {$size}");
         }
     }
 

@@ -12,7 +12,8 @@ use RuntimeException;
 
 /**
  * Foto kandidat (bagian 10B): validasi MIME asli, re-encode ke WebP (metadata/EXIF terbuang),
- * dipotong persegi seragam dalam tiga ukuran, nama file acak.
+ * disimpan utuh dengan bentuk aslinya (hanya diperkecil, tanpa dipotong) dalam tiga ukuran, nama file acak.
+ * Pemotongan dilakukan tampilan sesuai bingkainya (keputusan pemilik 2026-10-30).
  */
 class CandidatePhotoProcessor
 {
@@ -42,14 +43,14 @@ class CandidatePhotoProcessor
             $disk = Storage::disk(config('voting.photo.disk'));
             $manager = ImageManager::usingDriver(GdDriver::class);
 
-            // Foto HP bisa belasan megapiksel: baca sekali, potong persegi di ukuran terbesar,
-            // lalu ukuran lain diturunkan dari hasil itu (hemat memori dan waktu).
+            // Foto HP bisa belasan megapiksel: baca sekali, perkecil (sisi terpanjang) di ukuran terbesar tanpa
+            // memotong, lalu ukuran lain diturunkan dari hasil itu (hemat memori dan waktu).
             $sizes = config('voting.photo.sizes');
             $largest = max($sizes);
-            $base = $manager->decodePath($absolute)->orient()->cover($largest, $largest);
+            $base = $manager->decodePath($absolute)->orient()->scaleDown($largest, $largest);
 
             foreach ($sizes as $size => $pixels) {
-                $image = $pixels === $largest ? $base : (clone $base)->resize($pixels, $pixels);
+                $image = $pixels === $largest ? $base : (clone $base)->scaleDown($pixels, $pixels);
                 $encoded = $image->encode(new WebpEncoder(quality: 82, strip: true));
 
                 $disk->put(config('voting.photo.directory')."/{$newKey}-{$size}.webp", (string) $encoded);

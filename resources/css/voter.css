@@ -516,6 +516,7 @@ label {
     height: 100%;
     border-radius: 50%;
     object-fit: cover;
+    object-position: center top;
     background: var(--c-line);
 }
 
@@ -976,6 +977,7 @@ body[data-phase="finished"] .screen__grid {
     height: 4rem;
     border-radius: 50%;
     object-fit: cover;
+    object-position: center top;
 }
 
 .results__photo--initials,
@@ -1086,6 +1088,7 @@ body[data-phase="finished"] .screen__grid {
     height: 7rem;
     border-radius: 50%;
     object-fit: cover;
+    object-position: center top;
     border: 4px solid var(--c-line);
 }
 
