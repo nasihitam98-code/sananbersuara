@@ -2229,3 +2229,16 @@ h4 {
 .photo-dialog__close:focus-visible {
     background: rgba(15, 23, 42, 0.95);
 }
+
+/* Posisi foto calon di bingkai (diatur per calon, foto disimpan utuh). */
+.focus-0 { object-position: center 0%; }
+.focus-10 { object-position: center 10%; }
+.focus-20 { object-position: center 20%; }
+.focus-30 { object-position: center 30%; }
+.focus-40 { object-position: center 40%; }
+.focus-50 { object-position: center 50%; }
+.focus-60 { object-position: center 60%; }
+.focus-70 { object-position: center 70%; }
+.focus-80 { object-position: center 80%; }
+.focus-90 { object-position: center 90%; }
+.focus-100 { object-position: center 100%; }

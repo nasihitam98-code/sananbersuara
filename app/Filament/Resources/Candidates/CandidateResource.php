@@ -31,11 +31,13 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
@@ -308,6 +310,36 @@ class CandidateResource extends Resource
     }
 
     /**
+     * Geser bagian foto yang terlihat di bingkai (atas/tengah/bawah) tanpa unggah ulang; foto disimpan utuh.
+     */
+    public static function photoFocusAction(): Action
+    {
+        return Action::make('photoFocus')
+            ->label('Atur posisi foto')
+            ->icon(Heroicon::OutlinedArrowsUpDown)
+            ->color('gray')
+            ->visible(fn (Candidate $record): bool => $record->photo_key !== null)
+            ->modalHeading(fn (Candidate $record): string => "Posisi foto {$record->displayNumber()} {$record->name}")
+            ->modalDescription('Pilih bagian foto yang terlihat di kartu halaman publik dan bilik. Foto asli tidak berubah; pop-up foto tetap menampilkan foto utuh.')
+            ->modalSubmitActionLabel('Simpan')
+            ->fillForm(fn (Candidate $record): array => ['photo_focus' => (int) round($record->photo_focus / 10) * 10])
+            ->schema(fn (Candidate $record): array => [
+                ToggleButtons::make('photo_focus')
+                    ->label('Bagian yang terlihat')
+                    ->options([0 => 'Paling atas', 10 => '10', 20 => '20', 30 => '30', 40 => '40', 50 => 'Tengah', 60 => '60', 70 => '70', 80 => '80', 90 => '90', 100 => 'Paling bawah'])
+                    ->inline()
+                    ->required()
+                    ->live(),
+                View::make('filament.resources.candidates.photo-focus-preview')
+                    ->viewData(fn (Get $get): array => ['url' => $record->photoUrl('card'), 'focus' => (int) ($get('photo_focus') ?? 0)]),
+            ])
+            ->action(function (Candidate $record, array $data): void {
+                $record->forceFill(['photo_focus' => min(100, max(0, (int) $data['photo_focus']))])->save();
+                Notification::make()->title('Posisi foto disimpan.')->success()->send();
+            });
+    }
+
+    /**
      * Pasang foto langsung dari baris daftar calon: unggah dari laptop/HP, atau pilih dari Media.
      */
     public static function galleryPhotoAction(): Action
@@ -457,6 +489,7 @@ class CandidateResource extends Resource
             // Tombol ikon agar tabel tidak perlu digeser; keterangan muncul saat kursor diarahkan.
             ->recordActions([
                 static::galleryPhotoAction()->iconButton()->tooltip('Foto: unggah atau pilih dari Media'),
+                static::photoFocusAction()->iconButton()->tooltip('Atur posisi foto (geser bagian yang terlihat)'),
                 EditAction::make()->iconButton()->tooltip('Ubah (visi & misi, foto, dll.)'),
                 static::deleteAction()->iconButton()->tooltip('Hapus calon'),
             ])

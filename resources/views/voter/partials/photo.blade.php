@@ -1,6 +1,6 @@
 @php($photo = $candidate->photoUrl($size ?? 'thumb'))
 @php($responsive = $responsive ?? false)
-<span class="photo">
+<span class="photo {{ $candidate->photoFocusClass() }}">
     @if ($photo && $responsive)
         <img
             src="{{ $candidate->photoUrl('card') }}"

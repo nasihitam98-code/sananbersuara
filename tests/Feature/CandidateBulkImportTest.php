@@ -423,6 +423,21 @@ class CandidateBulkImportTest extends TestCase
         $this->assertNotNull($candidate->fresh()->photo_key);
     }
 
+    public function test_photo_position_can_be_moved_later_without_uploading_again(): void
+    {
+        $this->actingAs($this->superAdmin);
+        $candidate = Candidate::factory()->for($this->ballot)->create(['number' => 1, 'name' => 'Calon Geser', 'photo_key' => 'fotoutuh']);
+
+        Livewire::test(ListCandidates::class)
+            ->callAction(TestAction::make('photoFocus')->table($candidate), ['photo_focus' => 30])
+            ->assertNotified('Posisi foto disimpan.');
+
+        $this->assertSame(30, (int) $candidate->fresh()->photo_focus);
+        $this->assertSame('focus-30', $candidate->fresh()->photoFocusClass());
+        $this->assertStringContainsString('portrait__img focus-30', view('public.partials.portrait', ['candidate' => $candidate->fresh()])->render());
+        $this->assertStringContainsString('photo focus-30', view('voter.partials.photo', ['candidate' => $candidate->fresh()])->render());
+    }
+
     public function test_large_phone_photo_keeps_its_shape_in_three_sizes(): void
     {
         Storage::fake('local');

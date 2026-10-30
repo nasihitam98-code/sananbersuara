@@ -1274,3 +1274,16 @@ body[data-phase="finished"] .screen__grid {
 .ballot-filter p {
     margin: 8px 0 0;
 }
+
+/* Posisi foto calon di bingkai bilik (diatur per calon). */
+.photo.focus-0 img { object-position: center 0%; }
+.photo.focus-10 img { object-position: center 10%; }
+.photo.focus-20 img { object-position: center 20%; }
+.photo.focus-30 img { object-position: center 30%; }
+.photo.focus-40 img { object-position: center 40%; }
+.photo.focus-50 img { object-position: center 50%; }
+.photo.focus-60 img { object-position: center 60%; }
+.photo.focus-70 img { object-position: center 70%; }
+.photo.focus-80 img { object-position: center 80%; }
+.photo.focus-90 img { object-position: center 90%; }
+.photo.focus-100 img { object-position: center 100%; }

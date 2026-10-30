@@ -125,6 +125,14 @@ class Candidate extends Model
     }
 
     /**
+     * Class CSS posisi foto di bingkai (focus-0 … focus-100, langkah 10): class, bukan style, agar aman untuk CSP ketat.
+     */
+    public function photoFocusClass(): string
+    {
+        return 'focus-'.(int) (round(min(100, max(0, (int) $this->photo_focus)) / 10) * 10);
+    }
+
+    /**
      * URL foto ukuran tertentu (thumb, card, large) atau null jika belum ada foto.
      */
     public function photoUrl(string $size = 'card'): ?string

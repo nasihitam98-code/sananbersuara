@@ -2,7 +2,7 @@
 <span class="portrait {{ $class ?? '' }}">
     @if ($candidate->photoUrl('card'))
         {{-- Klik/Enter: foto ukuran besar di jendela (portal.js), ditutup dengan ✕, klik di luar, atau Esc. --}}
-        <img class="portrait__img" src="{{ $candidate->photoUrl('card') }}" alt="Foto {{ $candidate->name }}" width="480" height="480" loading="lazy" decoding="async"
+        <img class="portrait__img {{ $candidate->photoFocusClass() }}" src="{{ $candidate->photoUrl('card') }}" alt="Foto {{ $candidate->name }}" width="480" height="480" loading="lazy" decoding="async"
             data-photo-zoom="{{ $candidate->photoUrl('large') }}" data-photo-caption="Nomor {{ $candidate->displayNumber() }} · {{ $candidate->name }}"
             role="button" tabindex="0" title="Klik untuk memperbesar foto">
     @else
