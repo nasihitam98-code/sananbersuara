@@ -2242,3 +2242,10 @@ h4 {
 .focus-80 { object-position: center 80%; }
 .focus-90 { object-position: center 90%; }
 .focus-100 { object-position: center 100%; }
+
+/* Semua bingkai foto sama ukuran (4:5) apa pun bentuk foto aslinya; foto mengisi bingkai sesuai posisi yang diatur. */
+.portrait__img,
+.portrait__silhouette {
+    aspect-ratio: 4 / 5;
+    height: auto;
+}
